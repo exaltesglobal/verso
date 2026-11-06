@@ -1,4 +1,5 @@
 mod commands;
+mod export;
 mod tools;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -17,6 +18,9 @@ pub fn run() {
             commands::projects::list_projects,
             commands::thumbnails::media_filmstrip,
             commands::waveform::media_waveform,
+            commands::export::detect_encoders,
+            commands::export::start_export,
+            commands::export::cancel_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");
