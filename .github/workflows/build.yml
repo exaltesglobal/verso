@@ -1,0 +1,138 @@
+# Builds installers on a version tag (v1.2.3) and drafts a GitHub release with updater artifacts.
+# Setup (repo Settings > Secrets and variables > Actions) is listed in docs/RELEASE.md.
+name: Build and release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - run: pnpm install --frozen-lockfile
+
+      # ---------- FFmpeg sidecars (LGPL) ----------
+      - name: Fetch FFmpeg sidecars (Windows)
+        if: runner.os == 'Windows'
+        run: pnpm fetch:ffmpeg
+
+      # Placeholder: BtbN has no macOS builds. Point MACOS_FFMPEG_LGPL_URL_<ARCH> (repo variables) at a zip that
+      # contains LGPL `ffmpeg`, `ffprobe` and a LICENSE file (for example your own build with
+      # --disable-gpl --disable-nonfree). Without it the Mac build ships without FFmpeg.
+      - name: FFmpeg sidecars (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          URL_ARM: ${{ vars.MACOS_FFMPEG_LGPL_URL_AARCH64 }}
+          URL_X64: ${{ vars.MACOS_FFMPEG_LGPL_URL_X86_64 }}
+        run: |
+          url="$URL_X64"; [ "${{ matrix.target }}" = "aarch64-apple-darwin" ] && url="$URL_ARM"
+          if [ -z "$url" ]; then
+            echo "::warning::No macOS FFmpeg URL set for ${{ matrix.target }}; building without sidecars."
+            exit 0
+          fi
+          mkdir -p ffmpeg-dl src-tauri/binaries
+          curl -fsSL "$url" -o ffmpeg-dl/ffmpeg.zip
+          unzip -q ffmpeg-dl/ffmpeg.zip -d ffmpeg-dl
+          for b in ffmpeg ffprobe; do
+            cp "$(find ffmpeg-dl -type f -name "$b" | head -1)" "src-tauri/binaries/$b-${{ matrix.target }}"
+            chmod +x "src-tauri/binaries/$b-${{ matrix.target }}"
+          done
+          cp "$(find ffmpeg-dl -type f -iname 'LICENSE*' | head -1)" src-tauri/binaries/FFMPEG-LICENSE.txt
+
+      # ---------- Release config overlay ----------
+      - name: Release config
+        id: cfg
+        shell: bash
+        env:
+          PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+          ENDPOINT: ${{ vars.VERSO_UPDATE_ENDPOINT }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pubkey = process.env.PUBKEY || "";
+            const cfg = { bundle: { createUpdaterArtifacts: Boolean(pubkey) }, plugins: { updater: { pubkey } } };
+            if (process.env.ENDPOINT) cfg.plugins.updater.endpoints = [process.env.ENDPOINT];
+            fs.writeFileSync("src-tauri/tauri.release.conf.json", JSON.stringify(cfg, null, 2));
+          '
+          args="--target ${{ matrix.target }} --config src-tauri/tauri.release.conf.json"
+          [ -f "src-tauri/binaries/FFMPEG-LICENSE.txt" ] && args="$args --config src-tauri/tauri.sidecar.conf.json"
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      # Apple signing and notarization run only when the secrets exist (empty values make the bundler fail).
+      - name: Apple signing env
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!v}" ] && echo "$v=${!v}" >> "$GITHUB_ENV"
+          done
+          true
+
+      # Placeholder: Windows code signing. Import a .pfx from secrets and set bundle.windows.certificateThumbprint
+      # (see docs/RELEASE.md). Unsigned installers work but show a SmartScreen warning.
+      # - name: Import Windows certificate
+      #   if: runner.os == 'Windows'
+      #   shell: pwsh
+      #   env:
+      #     WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      #     WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      #   run: |
+      #     [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+      #     Import-PfxCertificate -FilePath cert.pfx -CertStoreLocation Cert:\CurrentUser\My `
+      #       -Password (ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force)
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_VERSO_API_URL: ${{ vars.VITE_VERSO_API_URL }}
+          VITE_VERSO_BETA_GATE: ${{ vars.VITE_VERSO_BETA_GATE }}
+          VERSO_ENTITLEMENT_PUBLIC_KEY: ${{ vars.VERSO_ENTITLEMENT_PUBLIC_KEY }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Verso v__VERSION__
+          releaseBody: Download the installer for your computer below.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ steps.cfg.outputs.args }}
