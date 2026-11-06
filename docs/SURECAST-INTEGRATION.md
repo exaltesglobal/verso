@@ -14,10 +14,10 @@ Studied from the Surecast source (main branch, Oct 2026 bundle), read-only. Sure
 
 Surecast has two kinds of auth:
 
-| Kind | How | Fit for Verso |
-|---|---|---|
-| Session | 6-digit email code, opaque token in an httpOnly `sc_session` cookie (same-origin web app only) | No: cookie-bound, no token endpoint |
-| API key | `Authorization: Bearer sc_live_...`, created in Surecast > Settings > API keys (owner/admin only). Acts for one workspace with **editor** rights. Stored hashed; no expiry; revocable | **Yes**, used by Verso |
+| Kind    | How                                                                                                                                                                                   | Fit for Verso                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Session | 6-digit email code, opaque token in an httpOnly `sc_session` cookie (same-origin web app only)                                                                                        | No: cookie-bound, no token endpoint |
+| API key | `Authorization: Bearer sc_live_...`, created in Surecast > Settings > API keys (owner/admin only). Acts for one workspace with **editor** rights. Stored hashed; no expiry; revocable | **Yes**, used by Verso              |
 
 There is no OAuth/PKCE authorization server, so Verso can't do a loopback sign-in like its own accounts (`src-tauri/src/account.rs`). The user pastes a key once; Verso checks it with `GET /v1/me` and saves it with the `keyring` crate (service `com.agapelabs.verso`, user `surecast-token`). The key never reaches JavaScript after it is entered: every request is made in Rust.
 
@@ -25,15 +25,15 @@ There is no OAuth/PKCE authorization server, so Verso can't do a loopback sign-i
 
 All paths are relative to the Surecast address (Settings field, default from `VITE_SURECAST_URL`).
 
-| Use | Request | Response (fields Verso reads) |
-|---|---|---|
-| Check key, show who's connected | `GET /v1/me` | `{ user: { id, email, name }, workspaces: [{ id, name, timezone, role }], workspaceId }` |
-| Feature detection (public) | `GET /v1/openapi.json` | OpenAPI 3.1, `paths` keyed without `/v1` (e.g. `"/clients/{id}/queue"`) |
-| Brands to post for | `GET /v1/clients` | `{ clients: [{ id, name, timezone, color, archivedAt, channelCount, ... }] }` |
-| Upload video and cover | `POST /v1/media`, `multipart/form-data`, field `file` (+ optional `alt`) | `201 { media: { id, filename, mime, size, alt, url, storage } }` |
-| Create the draft | `POST /v1/posts` JSON `{ clientId, body, mediaIds: [videoId], action: "draft" }` | `201 { post: { id, status, ... } }` |
-| Read status back | `GET /v1/posts/{id}` | `{ post: { id, status, scheduledAt, targets: [{ platform, status, remoteUrl, publishedAt, error }] } }` |
-| Open in the web app | browser `GET {base}/posts/{id}/edit` | Surecast composer for the draft |
+| Use                             | Request                                                                          | Response (fields Verso reads)                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Check key, show who's connected | `GET /v1/me`                                                                     | `{ user: { id, email, name }, workspaces: [{ id, name, timezone, role }], workspaceId }`                |
+| Feature detection (public)      | `GET /v1/openapi.json`                                                           | OpenAPI 3.1, `paths` keyed without `/v1` (e.g. `"/clients/{id}/queue"`)                                 |
+| Brands to post for              | `GET /v1/clients`                                                                | `{ clients: [{ id, name, timezone, color, archivedAt, channelCount, ... }] }`                           |
+| Upload video and cover          | `POST /v1/media`, `multipart/form-data`, field `file` (+ optional `alt`)         | `201 { media: { id, filename, mime, size, alt, url, storage } }`                                        |
+| Create the draft                | `POST /v1/posts` JSON `{ clientId, body, mediaIds: [videoId], action: "draft" }` | `201 { post: { id, status, ... } }`                                                                     |
+| Read status back                | `GET /v1/posts/{id}`                                                             | `{ post: { id, status, scheduledAt, targets: [{ platform, status, remoteUrl, publishedAt, error }] } }` |
+| Open in the web app             | browser `GET {base}/posts/{id}/edit`                                             | Surecast composer for the draft                                                                         |
 
 ### Upload limits and formats
 
@@ -65,9 +65,16 @@ Each network is an adapter with limits (`server/src/platforms/*`). Today **only 
   "coverMediaId": "med_cover",
   "externalRef": "verso:<project.id>",
   "verso": {
-    "projectId": "…", "projectName": "…", "title": "…", "hook": "…", "caption": "…",
-    "hashtags": ["#…"], "captionsSrt": "1\n00:00:00,000 --> …", "language": "hinglish",
-    "durationSec": 31.4, "aspect": "9:16"
+    "projectId": "…",
+    "projectName": "…",
+    "title": "…",
+    "hook": "…",
+    "caption": "…",
+    "hashtags": ["#…"],
+    "captionsSrt": "1\n00:00:00,000 --> …",
+    "language": "hinglish",
+    "durationSec": 31.4,
+    "aspect": "9:16"
   }
 }
 ```
@@ -76,14 +83,14 @@ Surecast stores `clientId`, `body` and `mediaIds` today. The cover is uploaded t
 
 ## Verso side
 
-| Piece | File |
-|---|---|
-| Keychain, HTTP, persistent queue, worker, cover frame (FFmpeg), status read-back | `src-tauri/src/surecast.rs` |
-| Frontend API, polling hook, SRT from caption clips, best-frame scoring, status labels | `src/lib/surecast.ts` |
-| Offline caption + hashtag writer (EN / HI / Hinglish, TF-IDF, niche tag sets, pluggable) | `src/lib/captionWriter.ts` |
-| Settings section | `src/components/publish/SurecastSettings.tsx` |
-| Send dialog | `src/components/publish/PublishDialog.tsx` |
-| Welcome list | `src/components/publish/SentToSurecast.tsx` |
+| Piece                                                                                    | File                                          |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Keychain, HTTP, persistent queue, worker, cover frame (FFmpeg), status read-back         | `src-tauri/src/surecast.rs`                   |
+| Frontend API, polling hook, SRT from caption clips, best-frame scoring, status labels    | `src/lib/surecast.ts`                         |
+| Offline caption + hashtag writer (EN / HI / Hinglish, TF-IDF, niche tag sets, pluggable) | `src/lib/captionWriter.ts`                    |
+| Settings section                                                                         | `src/components/publish/SurecastSettings.tsx` |
+| Send dialog                                                                              | `src/components/publish/PublishDialog.tsx`    |
+| Welcome list                                                                             | `src/components/publish/SentToSurecast.tsx`   |
 
 **Queue.** Jobs live in `<app data>/surecast-queue.json` (atomic write). Steps are saved as they finish (cover, video media id, cover media id, post id), so a restart resumes where it stopped. Offline, 429 and 5xx errors retry with backoff (30 s doubling to 1 h, 8 tries); other 4xx fail at once with Surecast's own message. If Surecast lists `/media/uploads` in its OpenAPI, Verso uses the proposed resumable upload and resumes from the server's offset.
 
@@ -101,11 +108,18 @@ ExportDialog done state, next to "Open folder" (`src/components/editor/ExportDia
 import { PublishDialog } from "../publish/PublishDialog";
 const [publishing, setPublishing] = useState(false);
 // in the phase.step === "done" actions:
-<Button onClick={() => setPublishing(true)}>Send to Surecast</Button>
+<Button onClick={() => setPublishing(true)}>Send to Surecast</Button>;
 // after the dialog markup:
-{publishing && phase.step === "done" && (
-  <PublishDialog outputPath={phase.outputPath} project={project} aspect={aspect} onClose={() => setPublishing(false)} />
-)}
+{
+  publishing && phase.step === "done" && (
+    <PublishDialog
+      outputPath={phase.outputPath}
+      project={project}
+      aspect={aspect}
+      onClose={() => setPublishing(false)}
+    />
+  );
+}
 ```
 
 Keep "Open folder" as the one Ember button there, or make "Send to Surecast" primary and demote "Open folder"; only one should be Ember.
@@ -114,7 +128,7 @@ Welcome (`src/screens/Welcome.tsx`), under the recent projects:
 
 ```tsx
 import { SentToSurecast } from "../components/publish/SentToSurecast";
-<SentToSurecast />
+<SentToSurecast />;
 ```
 
 It renders nothing until something has been sent, and mounting it also restarts any unsent jobs after a restart.

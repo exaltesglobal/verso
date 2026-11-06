@@ -55,14 +55,14 @@ Tokens should carry a scope such as `media:write posts:draft posts:read`, and sh
 
 ## P2. Post package fields on `POST /v1/posts` and `PATCH /v1/posts/{id}`
 
-| Field | Type | Why |
-|---|---|---|
-| `externalRef` | string ≤ 120, e.g. `verso:p…` | Link the post to the Verso project; find it again; show "From Verso" in the composer |
-| `title` | string ≤ 100 | YouTube title without forcing it into the first body line; TikTok title |
-| `coverMediaId` | media id (image) | Thumbnail per post: YouTube `thumbnails.set`, Instagram `cover_url`, TikTok cover. Today a video post rejects any image in `mediaIds` |
-| `captionsSrt` | string (SRT) or `captionsMediaId` | YouTube `captions.insert`; burn-in is already done by Verso, but platform captions help reach and accessibility |
-| `language` | BCP 47 (`en`, `hi`, `hi-Latn` for Hinglish) | YouTube `defaultLanguage`/`defaultAudioLanguage`; caption track language |
-| `verso` | object `{ projectId, projectName, hook, caption, hashtags[], durationSec, aspect }` | Kept as metadata, shown read-only in the composer so the editor sees the source |
+| Field          | Type                                                                                | Why                                                                                                                                   |
+| -------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `externalRef`  | string ≤ 120, e.g. `verso:p…`                                                       | Link the post to the Verso project; find it again; show "From Verso" in the composer                                                  |
+| `title`        | string ≤ 100                                                                        | YouTube title without forcing it into the first body line; TikTok title                                                               |
+| `coverMediaId` | media id (image)                                                                    | Thumbnail per post: YouTube `thumbnails.set`, Instagram `cover_url`, TikTok cover. Today a video post rejects any image in `mediaIds` |
+| `captionsSrt`  | string (SRT) or `captionsMediaId`                                                   | YouTube `captions.insert`; burn-in is already done by Verso, but platform captions help reach and accessibility                       |
+| `language`     | BCP 47 (`en`, `hi`, `hi-Latn` for Hinglish)                                         | YouTube `defaultLanguage`/`defaultAudioLanguage`; caption track language                                                              |
+| `verso`        | object `{ projectId, projectName, hook, caption, hashtags[], durationSec, aspect }` | Kept as metadata, shown read-only in the composer so the editor sees the source                                                       |
 
 Also accept `.srt`/`.vtt` in `POST /v1/media` (text sniff) if a file is preferred over a field.
 
