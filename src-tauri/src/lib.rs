@@ -96,6 +96,7 @@ pub fn run() {
             commands::voice::synthesize,
             commands::voice::translate,
             commands::voice::dub,
+            commands::sfx::sound_library,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

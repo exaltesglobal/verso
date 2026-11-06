@@ -709,7 +709,10 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   gap: var(--vs-space-1);
-  padding: var(--vs-space-3) var(--vs-space-2);
+  padding: var(--vs-space-2);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
   border-right: 1px solid var(--vs-color-role-border);
   background: var(--vs-color-role-bg-app);
 }
@@ -717,9 +720,10 @@ input[type="range"]::-webkit-slider-thumb {
 .rail__item {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   align-items: center;
-  gap: var(--vs-space-1);
-  padding: var(--vs-space-2) 0;
+  gap: 2px;
+  padding: 6px 0;
   border-radius: var(--vs-radius-md);
   font-size: var(--vs-font-size-caption);
   font-weight: var(--vs-font-weight-semibold);
@@ -4639,4 +4643,41 @@ input[type="number"]::-webkit-inner-spin-button {
 .tpl-swap__hint {
   font-size: var(--vs-font-size-caption);
   color: var(--vs-color-role-text-muted);
+}
+
+/* ---------- Stickers ---------- */
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--vs-space-1);
+}
+
+.sticker-tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-raised);
+  border: 1px solid var(--vs-color-role-border);
+  transition: background var(--vs-motion-duration-fast) var(--vs-motion-easing-standard);
+}
+
+.sticker-tile:hover {
+  background: var(--vs-color-role-bg-surface);
+}
+
+.sticker-tile--emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.sticker-tile img {
+  width: 70%;
+  height: 70%;
+}
+
+.frame__sticker {
+  display: inline-block;
+  width: auto;
+  vertical-align: middle;
 }

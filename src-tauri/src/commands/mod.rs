@@ -10,6 +10,7 @@ pub mod export;
 pub mod media;
 pub mod projects;
 pub mod reframe;
+pub mod sfx;
 pub mod thumbnails;
 pub mod voice;
 pub mod waveform;

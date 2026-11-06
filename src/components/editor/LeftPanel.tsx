@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Icon, type IconName } from "../Icon";
 import { Button, Segmented, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
-import { audioTracks } from "../../data/placeholder";
 import { useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration, formatResolution, formatSize, type MediaInfo } from "../../lib/media";
 import type { Clip, Project, TextStyle } from "../../lib/project";
@@ -13,6 +12,10 @@ import { BoostPanel } from "../insights/BoostPanel";
 import { BrandKitPanel } from "../brand/BrandKitPanel";
 import { CaptionsPanel } from "./CaptionsPanel";
 import { transcribeFile } from "../../lib/transcriber";
+import { VoicePanel } from "../smart/VoicePanel";
+import { SoundsPanel } from "../smart/SoundsPanel";
+import { startMediaDrag } from "../../lib/mediaDrag";
+import { EMOJI, SHAPES, addSticker, type Sticker } from "../../lib/stickers";
 
 const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
   { id: "media", label: "Media", icon: "folder" },
@@ -23,9 +26,12 @@ const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
   { id: "text", label: "Text", icon: "text" },
   { id: "captions", label: "Captions", icon: "captions" },
   { id: "audio", label: "Audio", icon: "music" },
+  { id: "voice", label: "Voice", icon: "voiceover" },
 ];
 
 interface LeftPanelProps {
+  /** Playhead, in timeline seconds. */
+  time: number;
   tab: PanelTab;
   onTab: (t: PanelTab) => void;
   media: MediaInfo[];
@@ -45,6 +51,7 @@ interface LeftPanelProps {
 }
 
 export function LeftPanel({
+  time,
   tab,
   onTab,
   media,
@@ -121,7 +128,12 @@ export function LeftPanel({
             notify={notify}
           />
         )}
-        {tab === "text" && <TextTab onAdd={onAddText} />}
+        {tab === "text" && (
+          <TextTab
+            onAdd={onAddText}
+            onSticker={(s) => onApply(addSticker(project, time, s).project, `${s.label} sticker added.`)}
+          />
+        )}
         {tab === "captions" && (
           <CaptionsPanel
             clip={captionClip}
@@ -131,7 +143,16 @@ export function LeftPanel({
             notify={notify}
           />
         )}
-        {tab === "audio" && <AudioTab />}
+        {tab === "audio" && <AudioTab project={project} time={time} onApply={onApply} />}
+        {tab === "voice" && (
+          <VoicePanel
+            project={project}
+            playhead={time}
+            onApply={onApply}
+            onNeedCaptions={() => onTab("captions")}
+            notify={notify}
+          />
+        )}
       </aside>
     </>
   );
@@ -196,7 +217,7 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
   // Middle frame makes a better cover than the first, which is often black.
   const cover = frames[Math.floor(frames.length / 2)];
   return (
-    <li className="media-item" title={m.path}>
+    <li className="media-item" title={m.path} onPointerDown={(e) => startMediaDrag(e, m)}>
       <span className="media-item__thumb">
         {cover ? <img src={cover} alt="" /> : <Icon name={m.hasVideo ? "play" : "music"} size={20} />}
         <span className="media-item__dur">{formatDuration(m.durationSec)}</span>
@@ -224,7 +245,13 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
     </li>
   );
 }
-function TextTab({ onAdd }: { onAdd: (preset: TextStyle["preset"], text: string) => void }) {
+function TextTab({
+  onAdd,
+  onSticker,
+}: {
+  onAdd: (preset: TextStyle["preset"], text: string) => void;
+  onSticker: (s: Sticker) => void;
+}) {
   const presets: { label: string; cls: string; preset: TextStyle["preset"]; text: string }[] = [
     { label: "Add a title", cls: "text-preset--title", preset: "title", text: "Your big idea" },
     {
@@ -274,31 +301,50 @@ function TextTab({ onAdd }: { onAdd: (preset: TextStyle["preset"], text: string)
           </button>
         ))}
       </div>
+      <h3 className="section-label">Stickers</h3>
+      <div className="sticker-grid">
+        {EMOJI.map((e) => (
+          <button
+            key={e}
+            type="button"
+            className="sticker-tile sticker-tile--emoji"
+            onClick={() => onSticker({ id: e, label: e, emoji: e })}
+            aria-label={`Add ${e}`}
+          >
+            {e}
+          </button>
+        ))}
+        {SHAPES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className="sticker-tile"
+            onClick={() => onSticker(s)}
+            aria-label={`Add ${s.label}`}
+            title={s.label}
+          >
+            <img src={s.svg} alt="" draggable={false} />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
-function AudioTab() {
+function AudioTab({
+  project,
+  time,
+  onApply,
+}: {
+  project: Project;
+  time: number;
+  onApply: (next: Project, message: string) => void;
+}) {
   return (
     <div className="panel__body">
       <PanelHead icon="music" title="Audio">
-        Music that fits your reel. Beat-synced music lines cuts up with the beat.
+        Music and sound effects made for reels. Beat-synced music lines cuts up with the beat.
       </PanelHead>
-      <ul className="audio-list">
-        {audioTracks.map((a) => (
-          <li key={a.id}>
-            <button type="button" className="audio-item">
-              <span className="audio-item__play">
-                <Icon name="play" size={16} />
-              </span>
-              <span className="audio-item__text">
-                <span className="audio-item__name">{a.name}</span>
-                <span className="audio-item__meta">{a.mood}</span>
-              </span>
-              <span className="audio-item__dur">{a.duration}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <SoundsPanel project={project} time={time} onApply={onApply} />
     </div>
   );
 }

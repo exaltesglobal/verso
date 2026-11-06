@@ -29,7 +29,16 @@ import { useHistory } from "../lib/useHistory";
 import { replaceCaptions } from "../lib/captions";
 import type { CropPath } from "../lib/reframe";
 
-export type PanelTab = "media" | "autocut" | "magic" | "boost" | "templates" | "text" | "captions" | "audio";
+export type PanelTab =
+  | "media"
+  | "autocut"
+  | "magic"
+  | "boost"
+  | "templates"
+  | "text"
+  | "captions"
+  | "audio"
+  | "voice";
 
 interface EditorProps {
   initialTab: PanelTab;
@@ -337,6 +346,7 @@ export function Editor({
         onSave={() => void save(false)}
       />
       <LeftPanel
+        time={time}
         tab={tab}
         onTab={setTab}
         media={media}
