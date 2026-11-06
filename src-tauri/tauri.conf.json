@@ -27,20 +27,13 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$APPCACHE/**"
-        ]
+        "scope": ["$APPCACHE/**"]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "nsis",
-      "msi",
-      "app",
-      "dmg"
-    ],
+    "targets": ["nsis", "msi", "app", "dmg"],
     "publisher": "Agape Labs",
     "copyright": "© 2026 Exaltes Global Private Limited",
     "category": "Video",
@@ -56,9 +49,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": [
-          "English"
-        ],
+        "languages": ["English"],
         "installerIcon": "icons/icon.ico",
         "displayLanguageSelector": false
       },
@@ -76,9 +67,7 @@
   "plugins": {
     "updater": {
       "pubkey": "",
-      "endpoints": [
-        "https://api.example.com/updates/{{target}}/{{arch}}/{{current_version}}"
-      ],
+      "endpoints": ["https://api.example.com/updates/{{target}}/{{arch}}/{{current_version}}"],
       "windows": {
         "installMode": "passive"
       }
