@@ -1,5 +1,6 @@
 import logo from "../assets/brand/verso-logo-horizontal-dark-bg.svg";
 import { Icon, type IconName } from "../components/Icon";
+import { AgapeCredit } from "../components/AgapeCredit";
 import { IconButton } from "../components/ui";
 import { recentProjects } from "../data/placeholder";
 
@@ -8,6 +9,7 @@ interface WelcomeProps {
   onNewProject: () => void;
   onImport: () => void;
   onMakeClips: () => void;
+  onAbout: () => void;
 }
 
 interface Action {
@@ -19,7 +21,7 @@ interface Action {
   busy?: boolean;
 }
 
-export function Welcome({ importing, onNewProject, onImport, onMakeClips }: WelcomeProps) {
+export function Welcome({ importing, onNewProject, onImport, onMakeClips, onAbout }: WelcomeProps) {
   const actions: Action[] = [
     {
       icon: "auto-cut",
@@ -48,7 +50,7 @@ export function Welcome({ importing, onNewProject, onImport, onMakeClips }: Welc
       <header className="welcome__bar">
         <img src={logo} alt="Verso" className="welcome__logo" />
         <div className="welcome__bar-actions">
-          <IconButton icon="help" label="Help" />
+          <IconButton icon="help" label="About Verso" onClick={onAbout} />
           <IconButton icon="settings" label="Settings" />
         </div>
       </header>
@@ -101,7 +103,10 @@ export function Welcome({ importing, onNewProject, onImport, onMakeClips }: Welc
         </section>
       </main>
 
-      <footer className="welcome__foot">Verso 0.1 beta · by Agape Labs</footer>
+      <footer className="welcome__foot">
+        <span>Verso 0.1 beta</span>
+        <AgapeCredit />
+      </footer>
     </div>
   );
 }

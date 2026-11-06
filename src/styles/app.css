@@ -388,7 +388,7 @@ input[type="range"]::-webkit-slider-thumb {
   animation: splash-out var(--vs-motion-duration-slow) var(--vs-motion-easing-exit) 1180ms forwards;
 }
 
-.splash img {
+.splash .splash__art {
   width: min(720px, 70vw);
   height: auto;
   border-radius: var(--vs-radius-xl);
@@ -1644,4 +1644,114 @@ input[type="range"]::-webkit-slider-thumb {
 
 .ruler__tick:first-child .ruler__label {
   transform: none;
+}
+
+/* ---------- Agape Labs endorsement + About ---------- */
+.agape-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--vs-font-size-caption);
+  font-weight: var(--vs-font-weight-medium);
+  color: var(--vs-color-role-text-muted);
+}
+
+.agape-credit img {
+  opacity: 0.85;
+}
+
+.welcome__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.splash {
+  grid-template-rows: 1fr auto;
+}
+
+.splash__art {
+  align-self: center;
+}
+
+.splash__credit {
+  padding-bottom: var(--vs-space-8);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 5, 8, 0.66);
+  backdrop-filter: blur(6px);
+  animation: fade-in var(--vs-motion-duration-base) var(--vs-motion-easing-enter);
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 380px;
+  padding: var(--vs-space-8) var(--vs-space-8) var(--vs-space-6);
+  text-align: center;
+  border-radius: var(--vs-radius-xl);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+  box-shadow: var(--vs-shadow-lg);
+  animation: toast-in var(--vs-motion-duration-slow) var(--vs-motion-easing-enter);
+}
+
+.about__name {
+  margin-top: var(--vs-space-4);
+  font-size: var(--vs-font-size-headline);
+  font-weight: var(--vs-font-weight-extrabold);
+  letter-spacing: -0.04em;
+}
+
+.about__tagline {
+  color: var(--vs-color-role-text-secondary);
+}
+
+.about__version {
+  margin-top: var(--vs-space-2);
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-muted);
+}
+
+.about__divider {
+  width: 100%;
+  height: 1px;
+  margin: var(--vs-space-6) 0 var(--vs-space-5);
+  background: var(--vs-color-role-border);
+}
+
+.about__agape {
+  width: 96px;
+  height: auto;
+  opacity: 0.9;
+}
+
+.about__credit {
+  margin-top: var(--vs-space-3);
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.about__copy {
+  margin-top: var(--vs-space-1);
+  font-size: var(--vs-font-size-caption);
+  color: var(--vs-color-role-text-muted);
+}
+
+.about__close {
+  margin-top: var(--vs-space-6);
+  min-width: 120px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }

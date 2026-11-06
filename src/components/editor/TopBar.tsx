@@ -10,11 +10,21 @@ interface TopBarProps {
   aspect: AspectRatio;
   onAspect: (a: AspectRatio) => void;
   onHome: () => void;
+  onAbout: () => void;
   onExport: () => void;
   onShare: () => void;
 }
 
-export function TopBar({ projectName, onRename, aspect, onAspect, onHome, onExport, onShare }: TopBarProps) {
+export function TopBar({
+  projectName,
+  onRename,
+  aspect,
+  onAspect,
+  onHome,
+  onAbout,
+  onExport,
+  onShare,
+}: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar__left">
@@ -46,7 +56,7 @@ export function TopBar({ projectName, onRename, aspect, onAspect, onHome, onExpo
       <div className="topbar__right">
         <IconButton icon="undo" label="Undo (Ctrl+Z)" />
         <IconButton icon="redo" label="Redo (Ctrl+Shift+Z)" />
-        <IconButton icon="help" label="Help" />
+        <IconButton icon="help" label="About Verso" onClick={onAbout} />
         <Button icon="share" onClick={onShare}>
           Share
         </Button>

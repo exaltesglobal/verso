@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { About } from "./components/About";
 import { Splash } from "./components/Splash";
 import { Toast, type ToastMessage } from "./components/ui";
 import { pickAndProbe, type MediaInfo } from "./lib/media";
@@ -14,6 +15,9 @@ export default function App() {
   const [media, setMedia] = useState<MediaInfo[]>([]);
   const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [showAbout, setShowAbout] = useState(false);
+  const openAbout = useCallback(() => setShowAbout(true), []);
+  const closeAbout = useCallback(() => setShowAbout(false), []);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -66,6 +70,7 @@ export default function App() {
             if (await importMedia()) openEditor("media");
           }}
           onMakeClips={() => openEditor("autocut")}
+          onAbout={openAbout}
         />
       ) : (
         <Editor
@@ -75,9 +80,11 @@ export default function App() {
           importing={importing}
           onImport={importMedia}
           onHome={() => setScreen("welcome")}
+          onAbout={openAbout}
           notify={notify}
         />
       )}
+      {showAbout && <About onClose={closeAbout} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {showSplash && <Splash />}
     </>

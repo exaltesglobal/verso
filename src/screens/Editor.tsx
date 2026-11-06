@@ -16,10 +16,11 @@ interface EditorProps {
   importing: boolean;
   onImport: () => Promise<boolean>;
   onHome: () => void;
+  onAbout: () => void;
   notify: (m: ToastMessage) => void;
 }
 
-export function Editor({ initialTab, media, importing, onImport, onHome, notify }: EditorProps) {
+export function Editor({ initialTab, media, importing, onImport, onHome, onAbout, notify }: EditorProps) {
   const [tab, setTab] = useState<PanelTab>(initialTab);
   const [projectName, setProjectName] = useState("Podcast Ep. 42");
   const [aspect, setAspect] = useState<AspectRatio>("9:16");
@@ -72,6 +73,7 @@ export function Editor({ initialTab, media, importing, onImport, onHome, notify 
         aspect={aspect}
         onAspect={setAspect}
         onHome={onHome}
+        onAbout={onAbout}
         onExport={() => notify({ tone: "info", text: "Export is coming in the next beta build." })}
         onShare={() => notify({ tone: "info", text: "Sharing is coming soon." })}
       />
