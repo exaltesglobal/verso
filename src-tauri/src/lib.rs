@@ -1,3 +1,4 @@
+mod analysis;
 mod commands;
 mod export;
 mod tools;
@@ -21,6 +22,9 @@ pub fn run() {
             commands::export::detect_encoders,
             commands::export::start_export,
             commands::export::cancel_export,
+            commands::analysis::detect_silences,
+            commands::analysis::detect_emphasis,
+            commands::analysis::detect_beats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

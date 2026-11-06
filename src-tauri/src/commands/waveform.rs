@@ -26,7 +26,7 @@ pub struct Waveform {
     peaks: Vec<u8>,
 }
 
-fn cache_key(path: &Path) -> Option<String> {
+pub(crate) fn cache_key(path: &Path) -> Option<String> {
     let meta = std::fs::metadata(path).ok()?;
     let mut h = DefaultHasher::new();
     path.hash(&mut h);
