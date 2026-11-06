@@ -29,3 +29,35 @@ These are planned but not built yet. Everything stays on-device and permissively
   - whisper.cpp with Metal (`metal` cargo feature), ONNX Runtime with CoreML (`coreml` feature).
   - Apple Developer ID signing and notarization (secrets listed in `docs/RELEASE.md`).
 - **Polish:** native traffic-light window controls (keep `decorations: false` on Windows only; on macOS use `titleBarStyle: Overlay`), Mac shortcuts (⌘ instead of Ctrl in labels), VideoToolbox export.
+
+## Deferred from the spec audit (docs/specs/AUDIT.md)
+
+Each item lists what ships today (the fallback) and what comes later.
+
+- **Audio-master playback clock and preview proxies (audit 8).** Today: the playing `<video>` element drives
+  the clock (the timeline clock carries on through gaps and buffering), the preview plays the source file
+  scaled by CSS, and the filmstrip gives instant frames while scrubbing (scrub is silent). Later: a Web Audio
+  clock as master with video slaved to it, and low-res proxy files for 4K sources.
+- **Manual reframe override keyframes (audit 11).** Today: automatic follow / active speaker / split with spring
+  smoothing and a dead zone; the user can switch mode or pick the speaker. Later: drag the crop at the playhead
+  to add an override keyframe that the planner respects.
+- **Roll trim and ripple trim (audit 7).** Today: trims change one clip; ripple delete (Shift+Delete) closes
+  gaps. Later: roll (move a shared edit point) and ripple trim (shift everything after).
+- **Two-pass loudnorm on the export mix (audit 9).** Today: voice clean-up already normalises the voice to
+  -14 LUFS in two passes; the final mix is not normalised. Later: a measuring pass over the mixed audio, then
+  `loudnorm` with the measured values in the export graph.
+- **Quick content hash for media relinking (audit 6).** Today: `.verso` files store `relPath`, and open relinks
+  through it when a file of the same size is there. Later: add a hash of size + mtime + first/last MB for
+  stronger matching and a "find missing media" folder search.
+- **Face presence in auto-cut scoring (audit 12).** Today: scores use hook words, questions, numbers, speech
+  density, filler ratio and audio energy, with reasons shown. Later: feed YuNet face counts from the reframe
+  analysis into the score.
+- **Hinglish auto-detect (audit 10).** Today: "Detect automatically" lets Whisper pick EN/HI/MR; Hinglish
+  (Latin-script Hindi) is chosen manually. Later: detect code-mixing from a first-pass transcript and switch.
+- **Bundled Devanagari and serif fonts for burn-in (audit 2).** Today: libass loads only the bundled Manrope;
+  Hindi/Marathi glyphs fall back to the system font (Nirmala UI on Windows), and serif title cards export in
+  Manrope. Later: bundle Noto Sans Devanagari (OFL) and a static Fraunces TTF in `src-tauri/fonts/` and map the
+  serif style to it in `ass.rs`.
+- **Third-party notices bundle (audit 1).** Today: licences are listed in Settings, `docs/MODELS.md` and
+  `src-tauri/licenses/` (fonts). Later: generate `THIRD-PARTY-NOTICES.txt` (crate and npm licences, ONNX
+  Runtime, FFmpeg LGPL text, model MIT/Apache notices) at build time and ship it in `licenses/`.
