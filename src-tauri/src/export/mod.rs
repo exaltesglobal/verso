@@ -1,11 +1,14 @@
 //! Export: turns the timeline into one FFmpeg command.
 //!
-//! `build_args` is pure (no FFmpeg needed): every clip becomes its own input,
-//! is trimmed, moved to its timeline position with `setpts`, cropped and scaled
-//! to the canvas, then laid over a black base so gaps stay black. Audio clips
-//! are delayed to their position and mixed. Text, captions and the watermark
-//! are drawn last with `drawtext`.
+//! `build_args` is pure (no FFmpeg needed). Each video clip becomes its own
+//! input: trimmed, reframed (keyframed crop, one or two panels), sped up or
+//! slowed down, zoomed, then scaled to the canvas. Clips joined by a
+//! transition are chained with `xfade` into one run; runs are laid over a
+//! black base so gaps stay black. Audio clips are sped up, faded, delayed to
+//! their position and mixed. Text layers and captions are written to an ASS
+//! file (see `ass.rs`) and burned with libass; the watermark uses `drawtext`.
 
+pub mod ass;
 pub mod encoders;
 
 use serde::Deserialize;
@@ -29,6 +32,8 @@ pub enum Quality {
     Standard,
     /// 1080p at a higher bitrate.
     High,
+    /// 4K (Pro).
+    Ultra,
 }
 
 /// Part of the source frame to keep, normalized 0..1.
@@ -41,6 +46,52 @@ pub struct CropRect {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct CropKeyframe {
+    /// Source-file seconds.
+    pub t: f64,
+    pub rects: Vec<CropRect>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Layout {
+    #[default]
+    Single,
+    Stacked,
+    SideBySide,
+}
+
+/// Smart reframe path (src/lib/reframe.ts `CropPath`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct CropPath {
+    #[serde(default)]
+    pub layout: Layout,
+    pub keyframes: Vec<CropKeyframe>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct ZoomKey {
+    /// Seconds from the clip start (timeline).
+    pub t: f64,
+    pub zoom: f64,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum TransitionKind {
+    Fade,
+    Dissolve,
+    Slide,
+    Zoom,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct Transition {
+    pub kind: TransitionKind,
+    pub duration: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoClip {
     pub path: String,
@@ -48,9 +99,18 @@ pub struct VideoClip {
     pub in_point: f64,
     pub start: f64,
     pub end: f64,
-    /// None = centre crop to the canvas shape.
+    /// Source seconds per timeline second.
+    #[serde(default = "one")]
+    pub speed: f64,
     #[serde(default)]
-    pub crop: Option<CropRect>,
+    pub crop_path: Option<CropPath>,
+    /// 1 = fit. Ignored when there is a crop path (as in the preview).
+    #[serde(default = "one")]
+    pub zoom: f64,
+    #[serde(default)]
+    pub zoom_keys: Vec<ZoomKey>,
+    #[serde(default)]
+    pub transition_in: Option<Transition>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -61,27 +121,169 @@ pub struct AudioClip {
     pub in_point: f64,
     pub start: f64,
     pub end: f64,
+    /// 0..1.5
     #[serde(default = "one")]
     pub volume: f64,
+    #[serde(default = "one")]
+    pub speed: f64,
+    #[serde(default)]
+    pub fade_in: f64,
+    #[serde(default)]
+    pub fade_out: f64,
+    /// Seconds of sound before `start` (crossfade under a video transition).
+    #[serde(default)]
+    pub lead_in: f64,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum Align {
+    Left,
+    #[default]
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum TextPreset {
+    Title,
+    #[default]
+    Subtitle,
+    Body,
+    Boxed,
+    Outline,
+    Neon,
+}
+
+/// A text layer (src/lib/project.ts `TextStyle`, colours resolved).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextOverlay {
     pub text: String,
     pub start: f64,
     pub end: f64,
-    /// Centre of the text, normalized 0..1 across the canvas.
-    #[serde(default = "half")]
-    pub x: f64,
+    /// Vertical centre, 0 = top, 1 = bottom.
     #[serde(default = "half")]
     pub y: f64,
-    /// Pixels on a 1080-wide canvas; scaled for other sizes.
-    #[serde(default = "default_font_size")]
-    pub font_size: f64,
+    /// Font size as a fraction of canvas height.
+    #[serde(default = "default_text_size")]
+    pub size: f64,
     /// `#RRGGBB` or `#RRGGBBAA`.
     #[serde(default = "white")]
     pub color: String,
+    #[serde(default)]
+    pub align: Align,
+    #[serde(default)]
+    pub preset: TextPreset,
+    /// Box colour (boxed) or glow colour (neon).
+    #[serde(default)]
+    pub accent: Option<String>,
+    /// Text colour inside the box (boxed).
+    #[serde(default)]
+    pub box_text_color: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CaptionWord {
+    pub text: String,
+    pub start: f64,
+    pub end: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Caption {
+    pub text: String,
+    pub start: f64,
+    pub end: f64,
+    /// Word timings; empty = spread evenly over the clip.
+    #[serde(default)]
+    pub words: Vec<CaptionWord>,
+    #[serde(default)]
+    pub speaker: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum Highlight {
+    #[default]
+    Color,
+    Fill,
+    Box,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum CaptionBackground {
+    #[default]
+    None,
+    Box,
+    Pill,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum CaptionAnimation {
+    #[default]
+    Pop,
+    Fade,
+    Slide,
+    Typewriter,
+}
+
+/// src/lib/captionStyles.ts `CaptionStyle` with colours resolved to hex.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptionStyle {
+    #[serde(default = "default_weight")]
+    pub font_weight: u32,
+    #[serde(default)]
+    pub upper: bool,
+    #[serde(default = "one")]
+    pub scale: f64,
+    #[serde(default = "white")]
+    pub text_color: String,
+    #[serde(default)]
+    pub highlight: Highlight,
+    #[serde(default = "white")]
+    pub highlight_color: String,
+    #[serde(default)]
+    pub background: CaptionBackground,
+    #[serde(default)]
+    pub background_color: Option<String>,
+    #[serde(default)]
+    pub outline_color: Option<String>,
+    /// Stroke width in preview pixels (22 px base font).
+    #[serde(default)]
+    pub outline_width: f64,
+    #[serde(default)]
+    pub glow: Option<String>,
+    #[serde(default)]
+    pub animation: CaptionAnimation,
+    #[serde(default)]
+    pub reveal_words: bool,
+}
+
+impl Default for CaptionStyle {
+    fn default() -> Self {
+        Self {
+            font_weight: 800,
+            upper: false,
+            scale: 1.0,
+            text_color: white(),
+            highlight: Highlight::None,
+            highlight_color: white(),
+            background: CaptionBackground::None,
+            background_color: None,
+            outline_color: Some("#000000".into()),
+            outline_width: 2.0,
+            glow: None,
+            animation: CaptionAnimation::Fade,
+            reveal_words: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -98,12 +300,14 @@ pub struct ExportRequest {
     #[serde(default)]
     pub text_overlays: Vec<TextOverlay>,
     #[serde(default)]
-    pub captions: Vec<TextOverlay>,
-    /// Small "Made with Verso" mark, bottom right (Free plan).
+    pub captions: Vec<Caption>,
+    #[serde(default)]
+    pub caption_style: Option<CaptionStyle>,
+    /// Small "Made with Verso" mark, bottom right. Off by default (not tied to a plan).
     #[serde(default)]
     pub watermark: bool,
     pub output_path: String,
-    /// TTF/OTF used by drawtext. None = a system font.
+    /// TTF/OTF used by drawtext. None = the bundled or a system font.
     #[serde(default)]
     pub font_path: Option<String>,
 }
@@ -114,8 +318,11 @@ fn one() -> f64 {
 fn half() -> f64 {
     0.5
 }
-fn default_font_size() -> f64 {
-    64.0
+fn default_text_size() -> f64 {
+    0.045
+}
+fn default_weight() -> u32 {
+    800
 }
 fn white() -> String {
     "#FFFFFF".into()
@@ -133,6 +340,7 @@ pub fn canvas(aspect: Aspect, quality: Quality) -> (u32, u32) {
     };
     match quality {
         Quality::Draft => (w * 2 / 3, h * 2 / 3),
+        Quality::Ultra => (w * 2, h * 2),
         _ => (w, h),
     }
 }
@@ -152,7 +360,7 @@ pub fn total_duration(req: &ExportRequest) -> f64 {
 /// Escape a value for a filter option inside `-filter_complex`: once for the
 /// option parser, once for the graph parser (see ffmpeg-filters "Notes on
 /// filtergraph escaping").
-fn esc(s: &str) -> String {
+pub fn esc(s: &str) -> String {
     let mut lvl1 = String::with_capacity(s.len());
     for ch in s.chars() {
         if matches!(ch, '\\' | '\'' | ':') {
@@ -170,16 +378,6 @@ fn esc(s: &str) -> String {
     out
 }
 
-/// `#RRGGBB[AA]` to FFmpeg's `0xRRGGBB[AA]`; anything else is white.
-fn ffmpeg_color(c: &str) -> String {
-    let hex = c.trim().trim_start_matches('#');
-    if (hex.len() == 6 || hex.len() == 8) && hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        format!("0x{hex}")
-    } else {
-        "white".into()
-    }
-}
-
 /// Seconds with millisecond precision, no trailing noise.
 fn t(x: f64) -> String {
     let s = format!("{:.3}", x.max(0.0));
@@ -187,29 +385,171 @@ fn t(x: f64) -> String {
     if s.is_empty() { "0".into() } else { s.into() }
 }
 
-fn drawtext(o: &TextOverlay, font: &str, scale: f64, border: bool) -> String {
-    let size = (o.font_size * scale).round().max(8.0);
-    let mut f = format!(
-        "drawtext=fontfile={}:text={}:expansion=none:fontsize={size}:fontcolor={}",
-        esc(font),
-        esc(&o.text),
-        ffmpeg_color(&o.color)
-    );
-    if border {
-        f.push_str(&format!(
-            ":borderw={}:bordercolor=black@0.6",
-            (size / 16.0).round().max(1.0)
+/// A number for an expression (may be negative), 5 decimals.
+fn n(x: f64) -> String {
+    let s = format!("{x:.5}");
+    let s = s.trim_end_matches('0').trim_end_matches('.');
+    if s.is_empty() || s == "-" || s == "-0" {
+        "0".into()
+    } else {
+        s.into()
+    }
+}
+
+/// Speed clamped to what we support.
+fn speed(s: f64) -> f64 {
+    if s.is_finite() {
+        s.clamp(0.1, 16.0)
+    } else {
+        1.0
+    }
+}
+
+/// `atempo` only takes 0.5..2 per instance, so chain it.
+fn atempo(s: f64) -> Vec<String> {
+    let mut s = speed(s);
+    let mut out = Vec::new();
+    while s > 2.0 {
+        out.push("atempo=2".into());
+        s /= 2.0;
+    }
+    while s < 0.5 {
+        out.push("atempo=0.5".into());
+        s /= 0.5;
+    }
+    if (s - 1.0).abs() > 1e-4 {
+        out.push(format!("atempo={}", n(s)));
+    }
+    out
+}
+
+/// Piecewise-linear expression of `t` through `pts` (sorted by time):
+/// v0 + sum(slope_k * (clip(t, t_k, t_k+1) - t_k)). Flat, so no nesting limits.
+fn lerp_expr(pts: &[(f64, f64)]) -> String {
+    let mut s = n(pts[0].1);
+    for w in pts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let dt = b.0 - a.0;
+        let dv = b.1 - a.1;
+        if dt <= 1e-6 || dv.abs() < 1e-6 {
+            continue;
+        }
+        s.push_str(&format!(
+            "+{}*(clip(t,{},{})-{})",
+            n(dv / dt),
+            n(a.0),
+            n(b.0),
+            n(a.0)
         ));
     }
-    f.push_str(&format!(
-        ":x=w*{}-text_w/2:y=h*{}-text_h/2:enable='between(t,{},{})'",
-        o.x.clamp(0.0, 1.0),
-        o.y.clamp(0.0, 1.0),
-        t(o.start),
-        t(o.end)
-    ));
-    f
+    s
 }
+
+/// Drops keyframes a straight line already explains (keyframes come ~5/s) and
+/// caps the count so expressions stay small.
+fn simplify(pts: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
+    const TOL: f64 = 0.0015;
+    const MAX: usize = 400;
+    if pts.len() <= 2 {
+        return pts;
+    }
+    let mut out = vec![pts[0]];
+    for i in 1..pts.len() - 1 {
+        let a = *out.last().unwrap();
+        let (b, c) = (pts[i], pts[i + 1]);
+        let f = (b.0 - a.0) / (c.0 - a.0).max(1e-9);
+        let ex = a.1 + (c.1 - a.1) * f;
+        let ey = a.2 + (c.2 - a.2) * f;
+        if (ex - b.1).abs() > TOL || (ey - b.2).abs() > TOL {
+            out.push(b);
+        }
+    }
+    out.push(pts[pts.len() - 1]);
+    if out.len() > MAX {
+        // shortcut: uniform thinning can soften fast pans; only hit by very long reframed clips.
+        let step = out.len().div_ceil(MAX);
+        let last = *out.last().unwrap();
+        out = out.into_iter().step_by(step).collect();
+        out.push(last);
+    }
+    out
+}
+
+/// `crop` for panel `j` of a crop path. `t` inside the filter is seconds from
+/// `t0` (source time of the first decoded frame). Width and height come from
+/// the first keyframe; x/y follow the keyframes.
+fn path_crop(path: &CropPath, j: usize, t0: f64, span: f64) -> Option<String> {
+    let rect = |k: &CropKeyframe| k.rects.get(j).or(k.rects.last()).copied();
+    let keys: Vec<&CropKeyframe> = path
+        .keyframes
+        .iter()
+        .filter(|k| !k.rects.is_empty())
+        .collect();
+    let first = rect(keys.first()?)?;
+    // Keep one keyframe either side of the window so edges interpolate.
+    let lo = keys.iter().rposition(|k| k.t <= t0).unwrap_or(0);
+    let hi = keys
+        .iter()
+        .position(|k| k.t >= t0 + span)
+        .unwrap_or(keys.len() - 1);
+    let pts: Vec<(f64, f64, f64)> = keys[lo..=hi.max(lo)]
+        .iter()
+        .filter_map(|k| rect(k).map(|r| (k.t - t0, r.x, r.y)))
+        .collect();
+    let pts = simplify(pts);
+    let w = first.w.clamp(0.02, 1.0);
+    let h = first.h.clamp(0.02, 1.0);
+    let xs: Vec<(f64, f64)> = pts.iter().map(|p| (p.0, p.1.clamp(0.0, 1.0 - w))).collect();
+    let ys: Vec<(f64, f64)> = pts.iter().map(|p| (p.0, p.2.clamp(0.0, 1.0 - h))).collect();
+    Some(format!(
+        "crop=w=iw*{}:h=ih*{}:x='iw*({})':y='ih*({})'",
+        n(w),
+        n(h),
+        lerp_expr(&xs),
+        lerp_expr(&ys)
+    ))
+}
+
+const PUNCH_IN: f64 = 0.25;
+const PUNCH_HOLD: f64 = 1.0;
+const PUNCH_OUT: f64 = 0.35;
+
+/// Zoom at local time `T` (an expression), the same curve as `zoomAt` in
+/// src/lib/smart.ts: ease out over 0.25 s, hold 1 s, ease in-out back over 0.35 s.
+fn zoom_expr(base: f64, keys: &[ZoomKey], time: &str) -> String {
+    let mut punch = "1".to_string();
+    for k in keys {
+        let d = format!("({time}-{})", n(k.t));
+        let x_in = format!("({d}/{PUNCH_IN})");
+        let x_out = format!("(({d}-{})/{PUNCH_OUT})", n(PUNCH_IN + PUNCH_HOLD));
+        let ease_in_out = format!("if(lt({x_out},0.5),4*pow({x_out},3),1-pow(-2*{x_out}+2,3)/2)");
+        let env = format!(
+            "if(lt({d},{PUNCH_IN}),1-pow(1-{x_in},3),if(lt({d},{}),1,1-{ease_in_out}))",
+            n(PUNCH_IN + PUNCH_HOLD)
+        );
+        let one_key = format!(
+            "if(between({d},0,{}),1+{}*{env},1)",
+            n(PUNCH_IN + PUNCH_HOLD + PUNCH_OUT),
+            n(k.zoom - 1.0)
+        );
+        punch = format!("max({punch},{one_key})");
+    }
+    format!("{}*{punch}", n(base))
+}
+
+/// xfade transition name for a clip transition.
+fn xfade_name(k: TransitionKind) -> &'static str {
+    match k {
+        TransitionKind::Fade => "fade",
+        TransitionKind::Dissolve => "dissolve",
+        TransitionKind::Slide => "slideleft",
+        TransitionKind::Zoom => "zoomin",
+    }
+}
+
+/// Clips closer than this count as touching (joined by a transition).
+/// src/lib/export.ts uses the same value for the matching sound crossfade.
+pub const ADJACENT_EPS: f64 = 0.05;
 
 /// Everything after the inputs except the encoder settings.
 pub struct Plan {
@@ -218,9 +558,19 @@ pub struct Plan {
     pub duration: f64,
 }
 
+/// Burned subtitles: the ASS file and the folder libass loads fonts from.
+pub struct Subtitles<'a> {
+    pub ass_path: &'a str,
+    pub fonts_dir: &'a str,
+}
+
 /// Build inputs and the filter graph. Outputs are labelled `[vout]` and `[aout]`.
-/// `font` is only used when there is text to draw.
-pub fn build_plan(req: &ExportRequest, font: &str) -> Result<Plan, String> {
+/// `font` is only used for the watermark.
+pub fn build_plan(
+    req: &ExportRequest,
+    font: &str,
+    subs: Option<&Subtitles>,
+) -> Result<Plan, String> {
     let total = total_duration(req);
     if total <= 0.0 {
         return Err("Add a clip to your timeline before exporting.".into());
@@ -234,56 +584,162 @@ pub fn build_plan(req: &ExportRequest, font: &str) -> Result<Plan, String> {
     )];
     let mut idx = 0usize;
 
-    let mut last = "base".to_string();
-    for (i, c) in req.video_clips.iter().enumerate() {
-        let dur = c.end - c.start;
-        if dur <= 0.0 {
-            continue;
+    // Video: sort by start, then group clips joined by transitions into runs.
+    let mut clips: Vec<&VideoClip> = req.video_clips.iter().filter(|c| c.end > c.start).collect();
+    clips.sort_by(|a, b| a.start.total_cmp(&b.start));
+    // Per clip: transition seconds joining it to the previous clip (0 = new run).
+    let mut join = vec![0.0; clips.len()];
+    for i in 1..clips.len() {
+        if let Some(tr) = clips[i].transition_in {
+            let (prev, cur) = (clips[i - 1], clips[i]);
+            if (cur.start - prev.end).abs() < ADJACENT_EPS {
+                let d = tr
+                    .duration
+                    .min(0.9 * (prev.end - prev.start))
+                    .min(0.9 * (cur.end - cur.start))
+                    .min(3.0);
+                if d >= 0.04 {
+                    join[i] = d;
+                }
+            }
         }
+    }
+
+    for (i, c) in clips.iter().enumerate() {
+        let sp = speed(c.speed);
+        let len = c.end - c.start;
+        // Joined clips start `lead` early so the transition overlaps the previous clip.
+        let lead = join[i];
+        let lead_src = lead.min(c.in_point.max(0.0) / sp);
+        let t0 = (c.in_point - lead_src * sp).max(0.0);
+        let span = (len + lead_src) * sp;
         inputs.extend([
             "-ss".into(),
-            t(c.in_point),
+            t(t0),
             "-t".into(),
-            t(dur),
+            t(span),
             "-i".into(),
             c.path.clone(),
         ]);
-        let crop = match c.crop {
-            Some(r) => {
-                let x = r.x.clamp(0.0, 1.0);
-                let y = r.y.clamp(0.0, 1.0);
-                let cw = r.w.clamp(0.01, 1.0 - x);
-                let ch = r.h.clamp(0.01, 1.0 - y);
-                format!("crop=iw*{cw}:ih*{ch}:iw*{x}:ih*{y}")
-            }
-            None => format!("crop='min(iw,ih*{w}/{h})':'min(ih,iw*{h}/{w})'"),
+        let head = format!("[{idx}:v]trim=duration={},setpts=PTS-STARTPTS", t(span));
+        let retime = format!("setpts=PTS/{},fps={fps}", n(sp));
+        let fit = |pw: u32, ph: u32| {
+            format!("scale={pw}:{ph}:force_original_aspect_ratio=increase,crop={pw}:{ph},setsar=1")
         };
-        graph.push(format!(
-            "[{idx}:v]trim=duration={d},setpts=PTS-STARTPTS+{s}/TB,fps={fps},{crop},scale={w}:{h},setsar=1[v{i}]",
-            d = t(dur),
-            s = t(c.start),
-        ));
-        graph.push(format!(
-            "[{last}][v{i}]overlay=eof_action=pass:enable='between(t,{},{})'[o{i}]",
-            t(c.start),
-            t(c.end)
-        ));
-        last = format!("o{i}");
+        let layout = c.crop_path.as_ref().map(|p| p.layout).unwrap_or_default();
+        let crop = |j: usize| {
+            c.crop_path
+                .as_ref()
+                .and_then(|p| path_crop(p, j, t0, span))
+                .map(|s| format!("{s},"))
+                .unwrap_or_default()
+        };
+        let mut post = Vec::new();
+        match layout {
+            Layout::Stacked | Layout::SideBySide => {
+                let (pw, ph, stack) = if layout == Layout::Stacked {
+                    (w, h / 2, "vstack")
+                } else {
+                    (w / 2, h, "hstack")
+                };
+                graph.push(format!("{head},split=2[s{i}a][s{i}b]"));
+                for (j, tag) in ["a", "b"].iter().enumerate() {
+                    graph.push(format!(
+                        "[s{i}{tag}]{}{retime},{}[p{i}{tag}]",
+                        crop(j),
+                        fit(pw, ph)
+                    ));
+                }
+                graph.push(format!("[p{i}a][p{i}b]{stack}=inputs=2[g{i}]"));
+            }
+            Layout::Single => {
+                let mut chain = format!("{head},{}{retime},{}", crop(0), fit(w, h));
+                // The preview ignores zoom on reframed clips; so do we.
+                if c.crop_path.is_none() {
+                    let base = if c.zoom.is_finite() {
+                        c.zoom.clamp(1.0, 5.0)
+                    } else {
+                        1.0
+                    };
+                    if !c.zoom_keys.is_empty() {
+                        // `on` counts output frames from the first decoded frame.
+                        let time = format!("(on/{fps}-{})", n(lead_src));
+                        chain.push_str(&format!(
+                            ",zoompan=z='{}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={w}x{h}:fps={fps}",
+                            zoom_expr(base, &c.zoom_keys, &time)
+                        ));
+                    } else if base > 1.001 {
+                        chain.push_str(&format!(",crop=iw/{z}:ih/{z},scale={w}:{h}", z = n(base)));
+                    }
+                }
+                graph.push(format!("{chain}[g{i}]"));
+            }
+        }
+        post.push("format=yuv420p".to_string());
+        if lead - lead_src > 0.001 {
+            post.push(format!(
+                "tpad=start_duration={}:start_mode=clone",
+                t(lead - lead_src)
+            ));
+        }
+        if join[i] == 0.0
+            && let Some(tr) = c.transition_in
+        {
+            // No clip right before: fade in from black.
+            let d = tr.duration.clamp(0.0, len * 0.9);
+            if d >= 0.04 {
+                post.push(format!("fade=t=in:st=0:d={}", t(d)));
+            }
+        }
+        graph.push(format!("[g{i}]{}[v{i}]", post.join(",")));
         idx += 1;
     }
 
-    // Text sizes are given for a 1080-wide canvas.
-    let scale = w.min(h) as f64 / 1080.0;
-    let mut draws: Vec<String> = Vec::new();
-    for o in &req.text_overlays {
-        if o.end > o.start && !o.text.trim().is_empty() {
-            draws.push(drawtext(o, font, scale, false));
+    let mut last = "base".to_string();
+    let mut i = 0;
+    let mut run_no = 0;
+    while i < clips.len() {
+        let run_start = clips[i].start;
+        let mut cur = format!("v{i}");
+        let mut cum = clips[i].end - clips[i].start;
+        let mut j = i + 1;
+        while j < clips.len() && join[j] > 0.0 {
+            let d = join[j];
+            let kind = clips[j]
+                .transition_in
+                .map(|x| x.kind)
+                .unwrap_or(TransitionKind::Fade);
+            graph.push(format!(
+                "[{cur}][v{j}]xfade=transition={}:duration={}:offset={}[x{j}]",
+                xfade_name(kind),
+                t(d),
+                t(cum - d)
+            ));
+            cur = format!("x{j}");
+            cum += clips[j].end - clips[j].start;
+            j += 1;
         }
+        graph.push(format!(
+            "[{cur}]setpts=PTS-STARTPTS+{}/TB[r{run_no}]",
+            t(run_start)
+        ));
+        graph.push(format!(
+            "[{last}][r{run_no}]overlay=eof_action=pass:enable='between(t,{},{})'[o{run_no}]",
+            t(run_start),
+            t(run_start + cum)
+        ));
+        last = format!("o{run_no}");
+        run_no += 1;
+        i = j;
     }
-    for o in &req.captions {
-        if o.end > o.start && !o.text.trim().is_empty() {
-            draws.push(drawtext(o, font, scale, true));
-        }
+
+    let mut draws: Vec<String> = Vec::new();
+    if let Some(s) = subs {
+        draws.push(format!(
+            "ass=filename={}:fontsdir={}",
+            esc(s.ass_path),
+            esc(s.fonts_dir)
+        ));
     }
     if req.watermark {
         let size = (h.min(w) as f64 * 0.028).round();
@@ -302,24 +758,47 @@ pub fn build_plan(req: &ExportRequest, font: &str) -> Result<Plan, String> {
 
     let mut mixed = Vec::new();
     for (k, c) in req.audio_clips.iter().enumerate() {
-        let dur = c.end - c.start;
-        if dur <= 0.0 {
+        let len = c.end - c.start;
+        if len <= 0.0 {
             continue;
         }
+        let sp = speed(c.speed);
+        let lead = c
+            .lead_in
+            .clamp(0.0, c.start.max(0.0))
+            .min(c.in_point.max(0.0) / sp);
+        let t0 = c.in_point - lead * sp;
+        let span = (len + lead) * sp;
         inputs.extend([
             "-ss".into(),
-            t(c.in_point),
+            t(t0),
             "-t".into(),
-            t(dur),
+            t(span),
             "-i".into(),
             c.path.clone(),
         ]);
-        graph.push(format!(
-            "[{idx}:a]atrim=duration={d},asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={v},adelay={ms}:all=1[a{k}]",
-            d = t(dur),
-            v = c.volume.clamp(0.0, 1.0),
-            ms = (c.start.max(0.0) * 1000.0).round() as u64,
+        let mut chain = vec![
+            format!("atrim=duration={}", t(span)),
+            "asetpts=PTS-STARTPTS".into(),
+        ];
+        chain.extend(atempo(sp));
+        chain.push("aresample=48000".into());
+        chain.push("aformat=sample_fmts=fltp:channel_layouts=stereo".into());
+        chain.push(format!("volume={}", n(c.volume.clamp(0.0, 1.5))));
+        let whole = len + lead;
+        let fin = c.fade_in.max(0.0).min(whole);
+        if fin >= 0.01 {
+            chain.push(format!("afade=t=in:st=0:d={}", t(fin)));
+        }
+        let fout = c.fade_out.max(0.0).min(whole);
+        if fout >= 0.01 {
+            chain.push(format!("afade=t=out:st={}:d={}", t(whole - fout), t(fout)));
+        }
+        chain.push(format!(
+            "adelay={}:all=1",
+            ((c.start - lead).max(0.0) * 1000.0).round() as u64
         ));
+        graph.push(format!("[{idx}:a]{}[a{k}]", chain.join(",")));
         mixed.push(format!("[a{k}]"));
         idx += 1;
     }
@@ -349,9 +828,10 @@ pub fn build_args(
     req: &ExportRequest,
     encoder: &str,
     font: &str,
+    subs: Option<&Subtitles>,
     output: &str,
 ) -> Result<(Vec<String>, f64), String> {
-    let plan = build_plan(req, font)?;
+    let plan = build_plan(req, font, subs)?;
     let fps = req.fps.clamp(1, 120);
     let mut args: Vec<String> = [
         "-hide_banner",
@@ -397,7 +877,8 @@ pub fn build_args(
     Ok((args, plan.duration))
 }
 
-/// A font drawtext can use when the request names none.
+/// A system font for the watermark and as the subtitle fallback when the
+/// bundled Manrope is missing.
 pub fn default_font() -> Option<String> {
     let candidates: &[&str] = if cfg!(windows) {
         &[

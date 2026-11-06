@@ -412,7 +412,6 @@ export function Editor({
           project={project}
           aspect={aspect}
           notify={notify}
-          watermark={false}
           onClose={() => setExporting(false)}
         />
       )}

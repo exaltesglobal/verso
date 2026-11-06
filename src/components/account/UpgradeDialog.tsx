@@ -5,7 +5,6 @@ import { Dialog } from "./Dialog";
 
 const ROWS: [string, string, string][] = [
   ["Export quality", "Up to 1080p", "Up to 4K"],
-  ["Watermark", "Small Verso mark", "No watermark"],
   ["Auto clips", "10 a month", "Unlimited"],
   ["Caption styles", "The basics", "Every style"],
   ["Templates", "The basics", "Every template"],

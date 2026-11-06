@@ -14,7 +14,7 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::export::{self, ExportRequest, encoders};
 use crate::tools::{self, Tool};
@@ -74,6 +74,94 @@ fn same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
+/// Removes the export's scratch folder when the export ends, however it ends.
+struct Scratch(PathBuf);
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+impl Scratch {
+    /// Writes the ASS script; returns (script path, fonts folder for libass).
+    fn write_ass(&self, script: &str, fonts: &Fonts) -> Result<(String, String), String> {
+        let fail = |e: std::io::Error| format!("We couldn't prepare your captions ({e}).");
+        std::fs::create_dir_all(&self.0).map_err(fail)?;
+        let ass = self.0.join("text.ass");
+        std::fs::write(&ass, script).map_err(fail)?;
+        let dir = match &fonts.dir {
+            Some(d) => d.clone(),
+            None => {
+                // A lone system font: copy it so libass doesn't scan the whole system font folder.
+                let d = self.0.join("fonts");
+                std::fs::create_dir_all(&d).map_err(fail)?;
+                let src = Path::new(&fonts.file);
+                if let Some(name) = src.file_name() {
+                    let _ = std::fs::copy(src, d.join(name));
+                }
+                d
+            }
+        };
+        Ok((
+            ass.to_string_lossy().into_owned(),
+            dir.to_string_lossy().into_owned(),
+        ))
+    }
+}
+
+/// Fonts for burned text: the bundled Manrope (src-tauri/fonts, OFL) or a system fallback.
+struct Fonts {
+    /// Folder holding only our fonts, for libass. None = copy `file` into the scratch folder.
+    dir: Option<PathBuf>,
+    /// Family name the ASS script asks for.
+    family: String,
+    /// One TTF for drawtext (watermark).
+    file: String,
+}
+
+impl Fonts {
+    fn find(app: &AppHandle, req: &ExportRequest) -> Fonts {
+        let mut dirs: Vec<PathBuf> = app
+            .path()
+            .resource_dir()
+            .map(|d| vec![d.join("fonts")])
+            .unwrap_or_default();
+        if cfg!(debug_assertions) {
+            dirs.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts"));
+        }
+        if let Some(d) = dirs
+            .into_iter()
+            .find(|d| d.join("Manrope-800.ttf").is_file())
+        {
+            return Fonts {
+                file: d.join("Manrope-700.ttf").to_string_lossy().into_owned(),
+                dir: Some(d),
+                family: "Manrope".into(),
+            };
+        }
+        let file = match &req.font_path {
+            Some(f) if Path::new(f).is_file() => f.clone(),
+            _ => export::default_font().unwrap_or_default(),
+        };
+        let lower = file.to_lowercase();
+        let family = if lower.contains("segoe") {
+            "Segoe UI"
+        } else if lower.contains("arial") {
+            "Arial"
+        } else if lower.contains("helvetica") {
+            "Helvetica"
+        } else {
+            "DejaVu Sans"
+        };
+        Fonts {
+            dir: None,
+            family: family.into(),
+            file,
+        }
+    }
+}
+
 /// Runs one export to completion. Returns the error message, if any.
 fn run(app: &AppHandle, id: &str, req: &ExportRequest) -> Result<(), String> {
     let emit = |percent: f64, eta: Option<f64>, stage: &str| {
@@ -115,12 +203,8 @@ fn run(app: &AppHandle, id: &str, req: &ExportRequest) -> Result<(), String> {
     }
 
     let encoder = encoders::detect()?.remove(0);
-    let font = match &req.font_path {
-        Some(f) if Path::new(f).is_file() => f.clone(),
-        _ => export::default_font().unwrap_or_default(),
-    };
-    let needs_font = req.watermark || !req.text_overlays.is_empty() || !req.captions.is_empty();
-    if needs_font && font.is_empty() {
+    let fonts = Fonts::find(app, req);
+    if req.watermark && fonts.file.is_empty() {
         return Err(
             "We couldn't find a font for your text. Reinstalling Verso usually fixes this.".into(),
         );
@@ -131,7 +215,24 @@ fn run(app: &AppHandle, id: &str, req: &ExportRequest) -> Result<(), String> {
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "export".into());
     let tmp = dir.join(format!(".{stem}.verso-{id}.part.mp4"));
-    let (args, total) = export::build_args(req, &encoder, &font, &tmp.to_string_lossy())?;
+
+    // Text and captions go through an ASS script in a scratch folder (removed on drop).
+    let scratch = Scratch(std::env::temp_dir().join(format!("verso-{id}")));
+    let subs_paths = match export::ass::build_ass(req, &fonts.family) {
+        Some(script) => Some(scratch.write_ass(&script, &fonts)?),
+        None => None,
+    };
+    let subs = subs_paths.as_ref().map(|(a, f)| export::Subtitles {
+        ass_path: a,
+        fonts_dir: f,
+    });
+    let (args, total) = export::build_args(
+        req,
+        &encoder,
+        &fonts.file,
+        subs.as_ref(),
+        &tmp.to_string_lossy(),
+    )?;
 
     let mut child = tools::command(Tool::Ffmpeg)
         .args(&args)

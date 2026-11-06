@@ -92,6 +92,7 @@ pub fn video_args(encoder: &str, quality: Quality, fps: u32) -> Vec<String> {
         Quality::Draft => (4, 28),
         Quality::Standard => (10, 23),
         Quality::High => (16, 19),
+        Quality::Ultra => (40, 19),
     };
     let b = format!("{mbps}M");
     let max = format!("{}M", mbps * 3 / 2);
@@ -143,7 +144,7 @@ pub fn video_args(encoder: &str, quality: Quality, fps: u32) -> Vec<String> {
             let q = match quality {
                 Quality::Draft => "6",
                 Quality::Standard => "3",
-                Quality::High => "2",
+                Quality::High | Quality::Ultra => "2",
             };
             vec!["-q:v".into(), q.into()]
         }

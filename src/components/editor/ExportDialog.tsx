@@ -3,6 +3,8 @@ import { basename, dirname, join, videoDir } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Button } from "../ui";
+import { ProBadge } from "../account/ProBadge";
+import { useEntitlements } from "../../lib/entitlements";
 import type { ToastMessage } from "../ui";
 import type { AspectRatio, Project } from "../../lib/project";
 import {
@@ -21,6 +23,7 @@ const QUALITIES: { value: ExportQuality; title: string; hint: string }[] = [
     hint: "Sharp on every phone. Right for Reels, Shorts and TikTok.",
   },
   { value: "high", title: "Extra sharp", hint: "Bigger file. Best for keeping a master copy." },
+  { value: "ultra", title: "4K", hint: "Four times the detail. Big file, takes longer." },
 ];
 
 type Phase =
@@ -33,8 +36,6 @@ interface ExportDialogProps {
   aspect: AspectRatio;
   onClose: () => void;
   notify: (m: ToastMessage) => void;
-  /** Free plan adds a small "Made with Verso" mark. */
-  watermark?: boolean;
 }
 
 const cleanName = (s: string) => s.replace(/[<>:"/\\|?*]+/g, "").trim();
@@ -46,10 +47,12 @@ function formatEta(sec: number | null) {
   return m === 1 ? "About 1 minute left" : `About ${m} minutes left`;
 }
 
-export function ExportDialog({ project, aspect, onClose, notify, watermark = true }: ExportDialogProps) {
+export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogProps) {
+  const { can, openUpgrade } = useEntitlements();
   const [name, setName] = useState(() => cleanName(project.name) || "My reel");
   const [folder, setFolder] = useState("");
   const [quality, setQuality] = useState<ExportQuality>("standard");
+  const [fps, setFps] = useState(30);
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
   const jobId = useRef<string | null>(null);
   const running = phase.step === "running";
@@ -119,9 +122,7 @@ export function ExportDialog({ project, aspect, onClose, notify, watermark = tru
     try {
       const outputPath = await join(folder, `${file}.mp4`);
       setPhase({ step: "running", percent: 0, etaSec: null, preparing: true });
-      jobId.current = await startExport(
-        buildExportRequest(project, aspect, { quality, outputPath, watermark }),
-      );
+      jobId.current = await startExport(buildExportRequest(project, aspect, { quality, outputPath, fps }));
     } catch (err) {
       jobId.current = null;
       setPhase({ step: "setup", error: String(err) });
@@ -180,10 +181,38 @@ export function ExportDialog({ project, aspect, onClose, notify, watermark = tru
                   role="radio"
                   aria-checked={quality === q.value}
                   className={quality === q.value ? "export__quality is-active" : "export__quality"}
-                  onClick={() => setQuality(q.value)}
+                  onClick={() =>
+                    q.value === "ultra" && !can("export_4k")
+                      ? openUpgrade("4K export is part of Verso Pro.")
+                      : setQuality(q.value)
+                  }
                 >
-                  <span className="export__quality-title">{q.title}</span>
+                  <span className="export__quality-title">
+                    {q.title} {q.value === "ultra" && <ProBadge />}
+                  </span>
                   <span className="export__quality-hint">{q.hint}</span>
+                </button>
+              ))}
+            </div>
+
+            <span className="export__label" id="export-fps">
+              Smoothness
+            </span>
+            <div className="export__qualities" role="radiogroup" aria-labelledby="export-fps">
+              {[
+                { value: 30, title: "30 fps", hint: "Standard for Reels and Shorts." },
+                { value: 60, title: "60 fps", hint: "Smoother motion. Bigger file." },
+              ].map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={fps === f.value}
+                  className={fps === f.value ? "export__quality is-active" : "export__quality"}
+                  onClick={() => setFps(f.value)}
+                >
+                  <span className="export__quality-title">{f.title}</span>
+                  <span className="export__quality-hint">{f.hint}</span>
                 </button>
               ))}
             </div>
