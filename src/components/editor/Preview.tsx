@@ -69,8 +69,8 @@ export function Preview({
   // Reframe: one crop rect per panel (two when showing both speakers).
   const rects = clip?.cropPath ? sampleCropPath(clip.cropPath, sourceTimeFor(clip, time)) : [];
   const boxes = clip?.cropPath && rects.length ? panelBoxes(clip.cropPath) : [];
-  const punch = clip ? zoomAt(clip, time - clip.start) : 1;
-  const scale = (clip?.zoom ?? 1) * punch;
+  // zoomAt already includes the clip's own zoom.
+  const scale = clip ? zoomAt(clip, time - clip.start) : 1;
   const zoomStyle: CSSProperties | undefined = scale > 1.001 ? { transform: `scale(${scale})` } : undefined;
   const panels = boxes.length
     ? boxes.map((b, i) => ({ box: b, style: rects[i] ? cropStyle(rects[i]) : undefined }))
