@@ -69,7 +69,6 @@ pub fn run() {
             surecast::surecast_disconnect,
             surecast::surecast_status,
             surecast::surecast_clients,
-            surecast::surecast_make_cover,
             surecast::surecast_enqueue,
             surecast::surecast_jobs,
             surecast::surecast_retry,

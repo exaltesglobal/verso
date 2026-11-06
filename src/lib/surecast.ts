@@ -90,8 +90,6 @@ export const connectSurecast = (token: string) =>
   invoke<SurecastStatus>("surecast_connect", { base: getSurecastUrl(), token });
 export const disconnectSurecast = () => invoke<void>("surecast_disconnect");
 export const listClients = () => invoke<SurecastClient[]>("surecast_clients", { base: getSurecastUrl() });
-export const makeCover = (videoPath: string, timeSec: number, aspect: string) =>
-  invoke<string>("surecast_make_cover", { videoPath, timeSec, aspect });
 export const enqueueSend = (pkg: PostPackage) =>
   invoke<string>("surecast_enqueue", { base: getSurecastUrl(), package: pkg });
 export const listJobs = () => invoke<SendJob[]>("surecast_jobs");
@@ -123,7 +121,11 @@ export function useSentPosts(): { jobs: SendJob[]; reload: () => void } {
   const reload = useCallback(() => {
     refreshJobs()
       .then(setJobs)
-      .catch(() => listJobs().then(setJobs).catch(() => {}));
+      .catch(() =>
+        listJobs()
+          .then(setJobs)
+          .catch(() => {}),
+      );
   }, []);
 
   useEffect(() => {
@@ -206,7 +208,12 @@ export async function bestFrameIndex(urls: string[]): Promise<number> {
   if (urls.length < 3) return 0;
   const last = urls.length - 1;
   const scores = await Promise.all(
-    urls.map((u, i) => frameScore(u).then((s) => (i === 0 || i === last ? s * 0.6 : s), () => 0)),
+    urls.map((u, i) =>
+      frameScore(u).then(
+        (s) => (i === 0 || i === last ? s * 0.6 : s),
+        () => 0,
+      ),
+    ),
   );
   const best = scores.indexOf(Math.max(...scores));
   // Every frame unreadable (e.g. the canvas was blocked): a third of the way in is a safe guess.

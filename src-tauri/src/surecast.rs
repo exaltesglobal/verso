@@ -105,11 +105,15 @@ struct Progress {
 // ---------- helpers ----------
 
 fn now_ms() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 fn keyring() -> Result<keyring::Entry, String> {
-    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(|e| format!("We couldn't open the system keychain ({e})."))
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+        .map_err(|e| format!("We couldn't open the system keychain ({e})."))
 }
 
 fn token() -> Option<String> {
@@ -117,8 +121,12 @@ fn token() -> Option<String> {
 }
 
 fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app.path().app_data_dir().map_err(|e| format!("We couldn't find the app data folder ({e})."))?;
-    std::fs::create_dir_all(&dir).map_err(|e| format!("We couldn't create the app data folder ({e})."))?;
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("We couldn't find the app data folder ({e})."))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("We couldn't create the app data folder ({e})."))?;
     Ok(dir)
 }
 
@@ -155,7 +163,10 @@ fn update_job(app: &AppHandle, id: &str, f: impl FnOnce(&mut Job)) -> Option<Job
 
 fn url(base: &str, path: &str) -> Result<String, String> {
     let b = base.trim().trim_end_matches('/');
-    if !(b.starts_with("https://") || b.starts_with("http://localhost") || b.starts_with("http://127.0.0.1")) {
+    if !(b.starts_with("https://")
+        || b.starts_with("http://localhost")
+        || b.starts_with("http://127.0.0.1"))
+    {
         return Err("Add your Surecast address in Settings (it starts with https://).".into());
     }
     Ok(format!("{b}{path}"))
@@ -187,10 +198,17 @@ fn read(res: Result<ureq2::Response, ureq2::Error>) -> Result<Value, Fail> {
         Ok(r) => Ok(r.into_json().unwrap_or(Value::Null)),
         Err(ureq2::Error::Status(status, r)) => {
             let v: Value = r.into_json().unwrap_or_default();
-            let mut message = v["error"].as_str().unwrap_or("Surecast had a problem. Please try again.").to_string();
+            let mut message = v["error"]
+                .as_str()
+                .unwrap_or("Surecast had a problem. Please try again.")
+                .to_string();
             // Per-channel problems from POST /posts come back in `details`.
             if let Some(d) = v["details"].as_array() {
-                let issues: Vec<String> = d.iter().flat_map(|x| x["issues"].as_array().cloned().unwrap_or_default()).filter_map(|i| i.as_str().map(String::from)).collect();
+                let issues: Vec<String> = d
+                    .iter()
+                    .flat_map(|x| x["issues"].as_array().cloned().unwrap_or_default())
+                    .filter_map(|i| i.as_str().map(String::from))
+                    .collect();
                 if !issues.is_empty() {
                     message = format!("{message} {}", issues.join(" "));
                 }
@@ -200,21 +218,38 @@ fn read(res: Result<ureq2::Response, ureq2::Error>) -> Result<Value, Fail> {
             }
             Err(Fail { status, message })
         }
-        Err(_) => Err(Fail { status: 0, message: "We couldn't reach Surecast. We'll keep trying when you're back online.".into() }),
+        Err(_) => Err(Fail {
+            status: 0,
+            message: "We couldn't reach Surecast. We'll keep trying when you're back online."
+                .into(),
+        }),
     }
 }
 
 fn request(method: &str, base: &str, path: &str) -> Result<ureq2::Request, Fail> {
-    let key = token().ok_or(Fail { status: 401, message: "Connect Surecast in Settings first.".into() })?;
-    let u = url(base, path).map_err(|message| Fail { status: 400, message })?;
-    Ok(agent().request(method, &u).set("Authorization", &format!("Bearer {key}")))
+    let key = token().ok_or(Fail {
+        status: 401,
+        message: "Connect Surecast in Settings first.".into(),
+    })?;
+    let u = url(base, path).map_err(|message| Fail {
+        status: 400,
+        message,
+    })?;
+    Ok(agent()
+        .request(method, &u)
+        .set("Authorization", &format!("Bearer {key}")))
 }
 
 fn get(base: &str, path: &str) -> Result<Value, Fail> {
     read(request("GET", base, path)?.call())
 }
 
-fn post_json(base: &str, path: &str, body: Value, idempotency: Option<&str>) -> Result<Value, Fail> {
+fn post_json(
+    base: &str,
+    path: &str,
+    body: Value,
+    idempotency: Option<&str>,
+) -> Result<Value, Fail> {
     let mut req = request("POST", base, path)?;
     if let Some(k) = idempotency {
         // Proposed in SURECAST-API-NEEDS.md; ignored by Surecast today.
@@ -225,7 +260,9 @@ fn post_json(base: &str, path: &str, body: Value, idempotency: Option<&str>) -> 
 
 /// Paths Surecast lists in its OpenAPI document, for feature detection.
 fn has_path(base: &str, path: &str) -> bool {
-    let Ok(u) = url(base, "/v1/openapi.json") else { return false };
+    let Ok(u) = url(base, "/v1/openapi.json") else {
+        return false;
+    };
     agent()
         .get(&u)
         .call()
@@ -234,8 +271,12 @@ fn has_path(base: &str, path: &str) -> bool {
         .is_some_and(|v| v["paths"].get(path).is_some())
 }
 
-async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
-    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+async fn blocking<T: Send + 'static>(
+    f: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 // ---------- uploads ----------
@@ -277,12 +318,22 @@ fn mime_for(path: &str) -> &'static str {
 }
 
 fn file_name(path: &str) -> String {
-    std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().replace('"', "")).unwrap_or_else(|| "video.mp4".into())
+    std::path::Path::new(path)
+        .file_name()
+        .map(|n| n.to_string_lossy().replace('"', ""))
+        .unwrap_or_else(|| "video.mp4".into())
 }
 
 /// `POST /v1/media` (multipart), streamed from disk so large files never sit in memory.
-fn upload_direct(base: &str, path: &str, report: Box<dyn FnMut(u64, u64) + Send>) -> Result<String, Fail> {
-    let file = File::open(path).map_err(|e| Fail { status: 400, message: format!("We couldn't open the exported file ({e}).") })?;
+fn upload_direct(
+    base: &str,
+    path: &str,
+    report: Box<dyn FnMut(u64, u64) + Send>,
+) -> Result<String, Fail> {
+    let file = File::open(path).map_err(|e| Fail {
+        status: 400,
+        message: format!("We couldn't open the exported file ({e})."),
+    })?;
     let size = file.metadata().map(|m| m.len()).unwrap_or(0);
     if size > MAX_DIRECT_UPLOAD {
         return Err(Fail { status: 413, message: "Surecast takes videos up to 100 MB. Export at Standard quality or make the reel shorter.".into() });
@@ -295,55 +346,119 @@ fn upload_direct(base: &str, path: &str, report: Box<dyn FnMut(u64, u64) + Send>
     );
     let tail = format!("\r\n--{boundary}--\r\n");
     let total = head.len() as u64 + size + tail.len() as u64;
-    let body = Cursor::new(head.into_bytes()).chain(file).chain(Cursor::new(tail.into_bytes()));
-    let reader = Counting { inner: body, sent: 0, total, last: std::time::Instant::now(), report };
+    let body = Cursor::new(head.into_bytes())
+        .chain(file)
+        .chain(Cursor::new(tail.into_bytes()));
+    let reader = Counting {
+        inner: body,
+        sent: 0,
+        total,
+        last: std::time::Instant::now(),
+        report,
+    };
     let res = request("POST", base, "/v1/media")?
-        .set("Content-Type", &format!("multipart/form-data; boundary={boundary}"))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={boundary}"),
+        )
         .set("Content-Length", &total.to_string())
         .send(reader);
     let v = read(res)?;
-    v["media"]["id"].as_str().map(String::from).ok_or(Fail { status: 0, message: "Surecast didn't confirm the upload.".into() })
+    v["media"]["id"].as_str().map(String::from).ok_or(Fail {
+        status: 0,
+        message: "Surecast didn't confirm the upload.".into(),
+    })
 }
 
 /// Proposed resumable upload (`/v1/media/uploads`): start or resume, send chunks, complete.
-fn upload_chunked(app: &AppHandle, job_id: &str, base: &str, path: &str, resume: Option<Upload>) -> Result<String, Fail> {
-    let mut file = File::open(path).map_err(|e| Fail { status: 400, message: format!("We couldn't open the exported file ({e}).") })?;
+fn upload_chunked(
+    app: &AppHandle,
+    job_id: &str,
+    base: &str,
+    path: &str,
+    resume: Option<Upload>,
+) -> Result<String, Fail> {
+    let mut file = File::open(path).map_err(|e| Fail {
+        status: 400,
+        message: format!("We couldn't open the exported file ({e})."),
+    })?;
     let size = file.metadata().map(|m| m.len()).unwrap_or(0);
     let (id, mut offset, chunk) = match resume {
         Some(u) => {
             // Ask Surecast how much it already has; the local offset may be ahead of what it kept.
             let v = get(base, &format!("/v1/media/uploads/{}", u.id))?;
-            (u.id, v["upload"]["offset"].as_u64().unwrap_or(0), v["upload"]["chunkSize"].as_u64().unwrap_or(8_000_000))
+            (
+                u.id,
+                v["upload"]["offset"].as_u64().unwrap_or(0),
+                v["upload"]["chunkSize"].as_u64().unwrap_or(8_000_000),
+            )
         }
         None => {
-            let v = post_json(base, "/v1/media/uploads", json!({ "filename": file_name(path), "size": size, "mime": mime_for(path) }), Some(job_id))?;
+            let v = post_json(
+                base,
+                "/v1/media/uploads",
+                json!({ "filename": file_name(path), "size": size, "mime": mime_for(path) }),
+                Some(job_id),
+            )?;
             let id = v["upload"]["id"].as_str().unwrap_or_default().to_string();
-            (id, 0, v["upload"]["chunkSize"].as_u64().unwrap_or(8_000_000))
+            (
+                id,
+                0,
+                v["upload"]["chunkSize"].as_u64().unwrap_or(8_000_000),
+            )
         }
     };
     if id.is_empty() {
-        return Err(Fail { status: 0, message: "Surecast didn't start the upload.".into() });
+        return Err(Fail {
+            status: 0,
+            message: "Surecast didn't start the upload.".into(),
+        });
     }
     let chunk = chunk.clamp(256 * 1024, 64 * 1024 * 1024);
     use std::io::{Seek, SeekFrom};
     while offset < size {
         let len = chunk.min(size - offset);
-        file.seek(SeekFrom::Start(offset)).map_err(|e| Fail { status: 400, message: e.to_string() })?;
+        file.seek(SeekFrom::Start(offset)).map_err(|e| Fail {
+            status: 400,
+            message: e.to_string(),
+        })?;
         let mut buf = vec![0u8; len as usize];
-        file.read_exact(&mut buf).map_err(|e| Fail { status: 400, message: e.to_string() })?;
+        file.read_exact(&mut buf).map_err(|e| Fail {
+            status: 400,
+            message: e.to_string(),
+        })?;
         let v = read(
             request("PUT", base, &format!("/v1/media/uploads/{id}"))?
                 .set("Content-Type", "application/octet-stream")
-                .set("Content-Range", &format!("bytes {}-{}/{}", offset, offset + len - 1, size))
+                .set(
+                    "Content-Range",
+                    &format!("bytes {}-{}/{}", offset, offset + len - 1, size),
+                )
                 .send_bytes(&buf),
         )?;
         offset = v["upload"]["offset"].as_u64().unwrap_or(offset + len);
         let (jid, uid) = (job_id.to_string(), id.clone());
         update_job(app, &jid, |j| j.upload = Some(Upload { id: uid, offset }));
-        let _ = app.emit("publish://progress", Progress { job_id: job_id.into(), phase: "uploading".into(), sent: offset, total: size });
+        let _ = app.emit(
+            "publish://progress",
+            Progress {
+                job_id: job_id.into(),
+                phase: "uploading".into(),
+                sent: offset,
+                total: size,
+            },
+        );
     }
-    let v = post_json(base, &format!("/v1/media/uploads/{id}/complete"), json!({}), None)?;
-    v["media"]["id"].as_str().map(String::from).ok_or(Fail { status: 0, message: "Surecast didn't confirm the upload.".into() })
+    let v = post_json(
+        base,
+        &format!("/v1/media/uploads/{id}/complete"),
+        json!({}),
+        None,
+    )?;
+    v["media"]["id"].as_str().map(String::from).ok_or(Fail {
+        status: 0,
+        message: "Surecast didn't confirm the upload.".into(),
+    })
 }
 
 // ---------- cover ----------
@@ -356,12 +471,29 @@ fn make_cover(app: &AppHandle, video: &str, time_sec: f64, aspect: &str) -> Resu
         "4:5" => (1080, 1350),
         _ => (1080, 1920),
     };
-    let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("surecast-covers");
+    let dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("surecast-covers");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let out = dir.join(format!("cover-{:x}.jpg", rand::random::<u64>()));
     let status = tools::command(Tool::Ffmpeg)
-        .args(["-y", "-loglevel", "error", "-ss", &format!("{:.3}", time_sec.max(0.0)), "-i", video, "-frames:v", "1", "-vf"])
-        .arg(format!("scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"))
+        .args([
+            "-y",
+            "-loglevel",
+            "error",
+            "-ss",
+            &format!("{:.3}", time_sec.max(0.0)),
+            "-i",
+            video,
+            "-frames:v",
+            "1",
+            "-vf",
+        ])
+        .arg(format!(
+            "scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
+        ))
         .args(["-q:v", "3"])
         .arg(&out)
         .status()
@@ -377,7 +509,12 @@ fn make_cover(app: &AppHandle, video: &str, time_sec: f64, aspect: &str) -> Resu
 fn body_text(p: &Package) -> String {
     // YouTube uses the first line as the title, so the title always leads.
     let mut parts = vec![p.title.trim().to_string()];
-    let text = [p.hook.trim(), p.caption.trim()].iter().filter(|s| !s.is_empty()).cloned().collect::<Vec<_>>().join("\n");
+    let text = [p.hook.trim(), p.caption.trim()]
+        .iter()
+        .filter(|s| !s.is_empty())
+        .cloned()
+        .collect::<Vec<_>>()
+        .join("\n");
     if !text.is_empty() {
         parts.push(text);
     }
@@ -402,7 +539,10 @@ fn fail_job(app: &AppHandle, id: &str, f: Fail) {
         }
     });
     if job.is_some_and(|j| j.state == "failed") {
-        let _ = app.emit("publish://failed", json!({ "jobId": id, "error": f.message }));
+        let _ = app.emit(
+            "publish://failed",
+            json!({ "jobId": id, "error": f.message }),
+        );
     }
 }
 
@@ -411,13 +551,30 @@ fn process(app: &AppHandle, job: Job) {
     let base = job.base.clone();
     let p = job.package.clone();
     let emit = |phase: &str| {
-        let _ = app.emit("publish://progress", Progress { job_id: id.clone(), phase: phase.into(), sent: 0, total: 0 });
+        let _ = app.emit(
+            "publish://progress",
+            Progress {
+                job_id: id.clone(),
+                phase: phase.into(),
+                sent: 0,
+                total: 0,
+            },
+        );
     };
 
     // 1. Cover: make one now if the dialog didn't (failure here never blocks the video).
-    let mut cover = p.cover_path.clone().filter(|c| std::path::Path::new(c).is_file());
+    let mut cover = p
+        .cover_path
+        .clone()
+        .filter(|c| std::path::Path::new(c).is_file());
     if cover.is_none() {
-        cover = make_cover(app, &p.video_path, p.cover_time_sec.unwrap_or(0.0), &p.aspect).ok();
+        cover = make_cover(
+            app,
+            &p.video_path,
+            p.cover_time_sec.unwrap_or(0.0),
+            &p.aspect,
+        )
+        .ok();
         if let Some(c) = &cover {
             let c = c.clone();
             update_job(app, &id, |j| j.package.cover_path = Some(c));
@@ -437,7 +594,15 @@ fn process(app: &AppHandle, job: Job) {
                 &base,
                 &p.video_path,
                 Box::new(move |sent, total| {
-                    let _ = app2.emit("publish://progress", Progress { job_id: jid.clone(), phase: "uploading".into(), sent, total });
+                    let _ = app2.emit(
+                        "publish://progress",
+                        Progress {
+                            job_id: jid.clone(),
+                            phase: "uploading".into(),
+                            sent,
+                            total,
+                        },
+                    );
                 }),
             )
         };
@@ -518,14 +683,22 @@ fn kick(app: &AppHandle) {
             let next = {
                 let _g = QUEUE_LOCK.lock().unwrap();
                 let jobs = load_jobs(&app);
-                let pending: Vec<&Job> = jobs.iter().filter(|j| j.state != "sent" && j.state != "failed").collect();
+                let pending: Vec<&Job> = jobs
+                    .iter()
+                    .filter(|j| j.state != "sent" && j.state != "failed")
+                    .collect();
                 if pending.is_empty() {
                     None
                 } else {
                     let now = now_ms();
                     Some(match pending.iter().find(|j| j.next_attempt_at <= now) {
                         Some(j) => Ok((*j).clone()),
-                        None => Err(pending.iter().map(|j| j.next_attempt_at).min().unwrap_or(now).saturating_sub(now)),
+                        None => Err(pending
+                            .iter()
+                            .map(|j| j.next_attempt_at)
+                            .min()
+                            .unwrap_or(now)
+                            .saturating_sub(now)),
                     })
                 }
             };
@@ -572,7 +745,13 @@ pub async fn surecast_disconnect() -> Result<(), String> {
 }
 
 fn status_from(base: &str, me: Option<Value>) -> Status {
-    let mut s = Status { connected: token().is_some(), email: None, workspace: None, chunked_upload: false, error: None };
+    let mut s = Status {
+        connected: token().is_some(),
+        email: None,
+        workspace: None,
+        chunked_upload: false,
+        error: None,
+    };
     if !s.connected {
         return s;
     }
@@ -584,7 +763,11 @@ fn status_from(base: &str, me: Option<Value>) -> Status {
         Ok(v) => {
             s.email = v["user"]["email"].as_str().map(String::from);
             let ws = v["workspaceId"].as_str().unwrap_or_default();
-            s.workspace = v["workspaces"].as_array().and_then(|a| a.iter().find(|w| w["id"] == ws)).and_then(|w| w["name"].as_str()).map(String::from);
+            s.workspace = v["workspaces"]
+                .as_array()
+                .and_then(|a| a.iter().find(|w| w["id"] == ws))
+                .and_then(|w| w["name"].as_str())
+                .map(String::from);
             s.chunked_upload = has_path(base, "/media/uploads");
         }
         Err(f) => s.error = Some(f.message),
@@ -602,20 +785,25 @@ pub async fn surecast_status(base: String) -> Result<Status, String> {
 pub async fn surecast_clients(base: String) -> Result<Value, String> {
     blocking(move || {
         let v = get(&base, "/v1/clients").map_err(|f| f.message)?;
-        let list: Vec<Value> = v["clients"].as_array().cloned().unwrap_or_default().into_iter().filter(|c| c["archivedAt"].is_null()).collect();
+        let list: Vec<Value> = v["clients"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|c| c["archivedAt"].is_null())
+            .collect();
         Ok(Value::Array(list))
     })
     .await
 }
 
-#[tauri::command]
-pub async fn surecast_make_cover(app: AppHandle, video_path: String, time_sec: f64, aspect: String) -> Result<String, String> {
-    blocking(move || make_cover(&app, &video_path, time_sec, &aspect)).await
-}
-
 /// Adds a reel to the persistent queue and starts sending it.
 #[tauri::command]
-pub async fn surecast_enqueue(app: AppHandle, base: String, package: Package) -> Result<String, String> {
+pub async fn surecast_enqueue(
+    app: AppHandle,
+    base: String,
+    package: Package,
+) -> Result<String, String> {
     blocking(move || {
         if token().is_none() {
             return Err("Connect Surecast in Settings first.".into());
@@ -701,13 +889,23 @@ pub async fn surecast_remove(app: AppHandle, job_id: String) -> Result<(), Strin
 pub async fn surecast_refresh(app: AppHandle) -> Result<Vec<Job>, String> {
     blocking(move || {
         kick(&app);
-        let sent: Vec<Job> = load_jobs(&app).into_iter().filter(|j| j.state == "sent" && j.post_id.is_some()).take(20).collect();
+        let sent: Vec<Job> = load_jobs(&app)
+            .into_iter()
+            .filter(|j| j.state == "sent" && j.post_id.is_some())
+            .take(20)
+            .collect();
         for j in sent {
             let pid = j.post_id.clone().unwrap_or_default();
             match get(&j.base, &format!("/v1/posts/{pid}")) {
                 Ok(v) => {
                     let post = &v["post"];
-                    let links: Vec<String> = post["targets"].as_array().cloned().unwrap_or_default().iter().filter_map(|t| t["remoteUrl"].as_str().map(String::from)).collect();
+                    let links: Vec<String> = post["targets"]
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default()
+                        .iter()
+                        .filter_map(|t| t["remoteUrl"].as_str().map(String::from))
+                        .collect();
                     update_job(&app, &j.id, |x| {
                         x.remote_status = post["status"].as_str().map(String::from);
                         x.scheduled_at = post["scheduledAt"].as_str().map(String::from);
