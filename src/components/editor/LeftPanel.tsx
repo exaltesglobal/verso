@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Icon, type IconName } from "../Icon";
-import { Button, type ToastMessage } from "../ui";
+import { Button, Segmented, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
 import { audioTracks } from "../../data/placeholder";
 import { useFilmstrip } from "../../lib/filmstrip";
@@ -10,6 +10,7 @@ import { AutoCutPanel } from "./AutoCutPanel";
 import { TemplatesPanel } from "../smart/TemplatesPanel";
 import { SmartToolsPanel } from "../smart/SmartToolsPanel";
 import { BoostPanel } from "../insights/BoostPanel";
+import { BrandKitPanel } from "../brand/BrandKitPanel";
 import { CaptionsPanel } from "./CaptionsPanel";
 import { transcribeFile } from "../../lib/transcriber";
 
@@ -96,7 +97,7 @@ export function LeftPanel({
             onMakeAll={onMakeAll}
           />
         )}
-        {tab === "templates" && <TemplatesPanel media={media} project={project} onApply={onApply} />}
+        {tab === "templates" && <TemplatesTab media={media} project={project} onApply={onApply} />}
         {tab === "boost" && (
           <BoostPanel
             project={project}
@@ -299,5 +300,37 @@ function AudioTab() {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Templates and brand kits share one tab. */
+function TemplatesTab({
+  media,
+  project,
+  onApply,
+}: {
+  media: MediaInfo[];
+  project: Project;
+  onApply: (next: Project, message: string) => void;
+}) {
+  const [view, setView] = useState<"Templates" | "Brand kit">("Templates");
+  return (
+    <>
+      <div className="panel__switch">
+        <Segmented
+          label="Templates or brand kit"
+          options={["Templates", "Brand kit"] as const}
+          value={view}
+          onChange={setView}
+        />
+      </div>
+      {view === "Templates" ? (
+        <TemplatesPanel media={media} project={project} onApply={onApply} />
+      ) : (
+        <div className="panel__body">
+          <BrandKitPanel project={project} onApply={onApply} />
+        </div>
+      )}
+    </>
   );
 }

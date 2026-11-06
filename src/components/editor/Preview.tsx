@@ -1,7 +1,7 @@
 import type { MutableRefObject } from "react";
 import { Icon } from "../Icon";
 import { VideoLayer } from "./VideoLayer";
-import { MusicLayer, TextOverlays } from "./Overlays";
+import { BrandLogo, MusicLayer, TextOverlays } from "./Overlays";
 import { cropStyle, panelBoxes, sampleCropPath, sourceTimeFor } from "../../lib/reframe";
 import type { CSSProperties } from "react";
 import { CaptionText } from "./CaptionStylePreview";
@@ -109,6 +109,7 @@ export function Preview({
               </div>
             ))}
           <TextOverlays project={project} time={time} />
+          <BrandLogo project={project} />
           <MusicLayer project={project} time={time} playing={playing} />
           <div className="frame__safe" />
           {empty && (

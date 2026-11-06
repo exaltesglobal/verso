@@ -21,7 +21,9 @@ export function TextOverlays({ project, time }: { project: Project; time: number
         } as CSSProperties;
         return (
           <p key={c.id} className={`frame__text text-look--${s.preset}`} style={style}>
-            <span>{c.text ?? c.label}</span>
+            <span style={c.boxColor && s.preset === "boxed" ? { background: c.boxColor } : undefined}>
+              {c.text ?? c.label}
+            </span>
           </p>
         );
       })}
@@ -66,4 +68,20 @@ function AudioClip({ clip, time, playing }: { clip: Clip; time: number; playing:
   }, [playing, sourceTime, gain]);
 
   return src ? <audio ref={ref} src={src} preload="auto" /> : null;
+}
+
+/** The creator's own logo from their brand kit, in a corner of the frame. */
+export function BrandLogo({ project }: { project: Project }) {
+  const b = project.brand;
+  if (!b?.logo) return null;
+  const [v, h] = b.logoCorner.split("-");
+  const style: CSSProperties = {
+    position: "absolute",
+    width: `${b.logoSize * 100}%`,
+    opacity: b.logoOpacity,
+    [v]: "4%",
+    [h]: "5%",
+    pointerEvents: "none",
+  };
+  return <img className="frame__logo" src={convertFileSrc(b.logo.path)} alt="" style={style} />;
 }

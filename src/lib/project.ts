@@ -2,6 +2,7 @@
 // Project, which keeps undo/redo trivial (see useHistory).
 import type { MediaInfo } from "./media";
 import type { CropPath } from "./reframe";
+import type { ProjectBrand } from "./brandkit";
 
 export type TrackKind = "text" | "captions" | "video" | "audio" | "music";
 export type AspectRatio = "9:16" | "1:1" | "16:9";
@@ -53,6 +54,10 @@ export interface Clip {
   text?: string;
   style?: TextStyle;
   words?: CaptionWord[];
+  /** Text: box colour for the boxed look (brand accent). */
+  boxColor?: string;
+  /** Intro/outro clips added by a brand kit. */
+  brandRole?: "intro" | "outro";
   /** Video: smart reframe crop path (from the Reframe panel). */
   cropPath?: CropPath;
   /** Music: fade in/out seconds. */
@@ -84,6 +89,8 @@ export interface Project {
   /** Where the user saved it (.verso file), if they did. */
   filePath?: string;
   captionStyle?: string;
+  /** Brand kit snapshot (logo, colours) applied to this reel. */
+  brand?: ProjectBrand;
 }
 
 export const TRACK_ORDER: { kind: TrackKind; label: string }[] = [
@@ -118,6 +125,7 @@ export function normalizeProject(p: Partial<Project> & { tracks: Track[]; name: 
     updatedAt: p.updatedAt ?? now,
     filePath: p.filePath,
     captionStyle: p.captionStyle ?? "bold-pop",
+    brand: p.brand,
   };
 }
 

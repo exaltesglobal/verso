@@ -3438,3 +3438,84 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: var(--vs-font-size-small);
   color: var(--vs-color-semantic-danger);
 }
+
+/* ---------- Brand kit ---------- */
+.panel__switch {
+  padding: var(--vs-space-4) var(--vs-space-5) 0;
+}
+
+.brand-list,
+.brand-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-3);
+}
+
+.brand-card {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+  padding: var(--vs-space-3);
+  border-radius: var(--vs-radius-lg);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+}
+
+.brand-card.is-applied {
+  border-color: var(--vs-color-role-text-primary);
+}
+
+.brand-card__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.brand-card__name {
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.brand-logo-box {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--vs-radius-md);
+  border: 1px solid var(--vs-color-role-border-strong);
+  background: var(--vs-gradient-icon-bg);
+  font-weight: var(--vs-font-weight-extrabold);
+  font-size: var(--vs-font-size-title-sm);
+}
+
+.brand-logo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand-logo-row,
+.brand-clip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+}
+
+.brand-clip-row > span:first-child {
+  width: 52px;
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.brand-clip-row .muted {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frame__logo {
+  z-index: 2;
+  object-fit: contain;
+}
