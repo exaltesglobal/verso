@@ -50,6 +50,8 @@ const schema = z.object({
   RAZORPAY_PLAN_PRO_YEARLY: opt,
   PRICE_LABEL_PRO_MONTHLY: z.string().default('₹499 / month'),
   PRICE_LABEL_PRO_YEARLY: z.string().default('₹4,999 / year'),
+
+  UPDATES_MANIFEST: z.string().default('./updates/latest.json'),
 });
 
 export type Config = z.infer<typeof schema> & {

@@ -17,7 +17,8 @@
     "migrate:prod": "node dist/migrate.js",
     "razorpay:plans": "tsx src/razorpay-plans.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "invite:create": "tsx src/invite-create.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
