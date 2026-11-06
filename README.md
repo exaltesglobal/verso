@@ -238,6 +238,18 @@ pnpm test
 Copy `server/.env.example` to `server/.env` to change settings. Where each production key comes from, and how
 to deploy to Hostinger Cloud Economy with MySQL, is in [docs/SETUP-KEYS.md](docs/SETUP-KEYS.md).
 
+### Connecting the app
+
+Copy the root `.env.example` to `.env.local`. In dev the app talks to `http://localhost:8787` by default; set
+`VITE_VERSO_API_URL` for anything else. With no API URL the app runs offline on the Free plan and account screens
+say "Sign-in isn't set up yet". Sign-in stores the refresh token in the OS keychain; the plan is cached as a
+signed offline token in app data. `pnpm invite:create` (in `server/`) makes closed-beta invite codes for
+`VITE_VERSO_BETA_GATE=true` builds.
+
+## Releases
+
+Installers, auto-updates, code signing and CI are covered in [docs/RELEASE.md](docs/RELEASE.md).
+
 ---
 
 © 2026 Exaltes Global Private Limited. All rights reserved.

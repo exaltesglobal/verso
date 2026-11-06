@@ -32,3 +32,6 @@ src-tauri/binaries/
 
 # Agent worktrees
 .claude/
+
+# Generated in CI by .github/workflows/build.yml
+src-tauri/tauri.release.conf.json

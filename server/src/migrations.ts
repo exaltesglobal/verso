@@ -136,4 +136,35 @@ export const migrations: Record<string, Migration> = {
       }
     },
   },
+  '002_crash_reports_invites': {
+    async up(k) {
+      // Anonymous crash reports from the desktop app: version, OS and stack only, no user id.
+      await k.schema.createTable('crash_reports', (t) => {
+        id(t);
+        t.string('kind', 16).notNullable(); // panic | frontend
+        t.string('app_version', 32);
+        t.string('os', 16);
+        t.string('arch', 16);
+        t.text('message');
+        t.text('stack');
+        t.bigInteger('reported_at');
+        t.bigInteger('created_at').notNullable();
+        t.index(['app_version']);
+      });
+
+      // Closed beta invite codes, created with `pnpm invite:create`.
+      await k.schema.createTable('invite_codes', (t) => {
+        t.string('code', 32).primary();
+        t.string('note', 120);
+        t.integer('max_uses').notNullable().defaultTo(1);
+        t.integer('uses').notNullable().defaultTo(0);
+        t.bigInteger('expires_at');
+        t.bigInteger('created_at').notNullable();
+      });
+    },
+    async down(k) {
+      await k.schema.dropTableIfExists('invite_codes');
+      await k.schema.dropTableIfExists('crash_reports');
+    },
+  },
 };
