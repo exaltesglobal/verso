@@ -23,6 +23,8 @@ pub struct CaptionSegment {
 /// Reels read best in small bites.
 pub const MAX_WORDS: usize = 4;
 pub const MAX_SECONDS: f64 = 1.6;
+/// 9:16 safe text: at most 2 lines of 42 characters per caption.
+pub const MAX_CHARS: usize = 2 * 42;
 /// A silence longer than this always starts a new caption.
 pub const PAUSE_SECONDS: f64 = 0.45;
 
@@ -58,7 +60,9 @@ pub fn segment_words(words: &[CaptionWord]) -> Vec<CaptionSegment> {
             let too_many = cur.len() >= MAX_WORDS;
             let too_long = w.end - first.start > MAX_SECONDS;
             let paused = w.start - last.end > PAUSE_SECONDS;
-            if too_many || too_long || paused || ends_phrase(&last.text) {
+            let chars: usize = cur.iter().map(|c| c.text.chars().count() + 1).sum();
+            let too_wide = chars + w.text.trim().chars().count() > MAX_CHARS;
+            if too_many || too_long || paused || too_wide || ends_phrase(&last.text) {
                 flush(&mut cur, &mut out);
             }
         }

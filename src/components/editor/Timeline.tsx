@@ -21,6 +21,8 @@ const MAX_PX_PER_SEC = 34;
 const GUTTER = 12;
 const EDGE_PX = 8;
 const SNAP_PX = 8;
+/** Edit times land on whole frames of a 30 fps grid (also whole frames at 60 fps). */
+const FRAME_RATE = 30;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
@@ -71,12 +73,12 @@ export function Timeline(props: TimelineProps) {
     onSeek(Math.min(duration, Math.max(0, (e.clientX - rect.left) / pps)));
   };
 
-  /** Snaps `t` to a nearby clip edge or the playhead. */
+  /** Snaps `t` to a nearby clip edge or the playhead, otherwise to the nearest frame. */
   const snapper = (exclude: Set<string>) => {
     const pts = snapPoints(project, exclude, time);
     const tol = SNAP_PX / pps;
     return (t: number) => {
-      let best = t;
+      let best = Math.round(t * FRAME_RATE) / FRAME_RATE;
       let dist = tol;
       for (const p of pts) {
         const d = Math.abs(p - t);

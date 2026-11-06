@@ -9,6 +9,7 @@ import { formatDuration, pickAndProbe, probeMedia, type MediaInfo } from "../lib
 import { autosaveProject } from "../lib/persist";
 import { transcribeFile } from "../lib/transcriber";
 import { CreditsError, useCharged } from "../lib/credits";
+import { CostConfirm } from "../components/credits/CostConfirm";
 import { loadWaveform } from "../lib/waveform";
 
 /** One long video in the queue. Saved to localStorage so the queue survives restarts. */
@@ -135,7 +136,9 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
       });
   };
 
-  const waiting = jobs.filter((j) => j.status === "waiting").length;
+  const waitingJobs = jobs.filter((j) => j.status === "waiting");
+  const waiting = waitingJobs.length;
+  const waitingMinutes = waitingJobs.reduce((n, j) => n + j.durationSec / 60, 0);
   const totalReels = jobs.reduce((n, j) => n + j.reels.length, 0);
 
   return (
@@ -173,9 +176,13 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
           {running ? (
             <Button onClick={() => (stopRef.current = true)}>Stop after this video</Button>
           ) : (
-            <Button variant="primary" icon="auto-cut" onClick={() => void start()} disabled={!waiting}>
-              Make reels for {waiting} {waiting === 1 ? "video" : "videos"}
-            </Button>
+            <CostConfirm
+              action="auto_cut"
+              units={waitingMinutes}
+              continueLabel={`Make reels for ${waiting} ${waiting === 1 ? "video" : "videos"}`}
+              onContinue={() => void start()}
+              disabled={!waiting}
+            />
           )}
         </div>
 

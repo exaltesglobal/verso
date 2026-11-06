@@ -48,6 +48,13 @@ export function AutoCutPanel({
   const source = videos.find((m) => m.path === path) ?? videos[0];
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [picked, setPicked] = useState<string | undefined>();
+  /** Sensitivity: only moments with at least this hook score are shown. Changing it costs nothing. */
+  const [minScore, setMinScore] = useState(0);
+  const shown = phase.kind === "done" ? phase.moments.filter((m) => m.hookScore >= minScore) : [];
+  const reject = (id: string) =>
+    setPhase((p) =>
+      p.kind === "done" ? { kind: "done", moments: p.moments.filter((m) => m.id !== id) } : p,
+    );
 
   const run = async () => {
     if (!source || !transcribe) return;
@@ -89,7 +96,7 @@ export function AutoCutPanel({
         </h2>
         <p className="panel__lede">
           {phase.kind === "done"
-            ? `We found ${phase.moments.length} moments in your ${formatDuration(source?.durationSec ?? 0)} video that work as reels. Pick one to start editing.`
+            ? `We found ${shown.length} moments in your ${formatDuration(source?.durationSec ?? 0)} video that work as reels. Pick one to start editing.`
             : "Give us a long video. We'll find the moments that work best as reels."}
         </p>
       </div>
@@ -157,15 +164,30 @@ export function AutoCutPanel({
 
       {phase.kind === "done" && source && (
         <>
+          <label className="slider">
+            <span className="slider__top">
+              <span className="slider__label">Sensitivity (lowest hook score shown)</span>
+              <span className="slider__value">{minScore}</span>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={90}
+              step={5}
+              value={minScore}
+              onChange={(e) => setMinScore(Number(e.target.value))}
+            />
+          </label>
           <ul className="moment-list">
-            {phase.moments.map((m, i) => (
+            {shown.map((m, i) => (
               <li key={m.id}>
                 <MomentCard
                   moment={m}
                   media={source}
                   selected={m.id === picked}
                   onPick={() => setPicked(m.id)}
-                  onOpen={() => onOpenProject(projectForMoment(source, m, i, phase.moments.length))}
+                  onOpen={() => onOpenProject(projectForMoment(source, m, i, shown.length))}
+                  onReject={() => reject(m.id)}
                 />
               </li>
             ))}
@@ -174,9 +196,10 @@ export function AutoCutPanel({
             icon="one-click"
             size="lg"
             className="btn--block"
-            onClick={() => onMakeAll(projects(phase.moments))}
+            onClick={() => onMakeAll(projects(shown))}
+            disabled={!shown.length}
           >
-            Make all {phase.moments.length} reels
+            Make all {shown.length} reels
           </Button>
           <button type="button" className="btn btn--ghost" onClick={() => setPhase({ kind: "idle" })}>
             <span>Start over</span>
@@ -193,12 +216,14 @@ function MomentCard({
   selected,
   onPick,
   onOpen,
+  onReject,
 }: {
   moment: Moment;
   media: MediaInfo;
   selected: boolean;
   onPick: () => void;
   onOpen: () => void;
+  onReject: () => void;
 }) {
   const frames = useFilmstrip(media);
   const thumb = frameAt(frames, media.durationSec, (m.start + m.end) / 2);
@@ -226,6 +251,13 @@ function MomentCard({
               onClick={(e) => (e.stopPropagation(), onOpen())}
             >
               <span>Edit this reel</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost moment__open"
+              onClick={(e) => (e.stopPropagation(), onReject())}
+            >
+              <span>Not this one</span>
             </button>
           </>
         )}
