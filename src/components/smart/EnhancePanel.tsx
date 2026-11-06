@@ -14,6 +14,7 @@ import {
   type EnhanceStrength,
 } from "../../lib/enhance";
 import { Listening, SmartCard } from "./parts";
+import { useCharged } from "../../lib/credits";
 import { playbackRateAt, sourceTimeAt } from "../../lib/speed";
 
 export interface EnhancePanelProps {
@@ -51,12 +52,15 @@ export function EnhancePanel({ project, clipId, onApply }: EnhancePanelProps) {
   }, []);
 
   const busy = progress !== null;
+  const charge = useCharged();
   const run = async () => {
     if (!sound) return;
     setError(undefined);
     setProgress({ percent: 0, stage: "measure" });
     try {
-      const r = await enhanceAudio(sound, strength);
+      const r = await charge("enhance_audio", (sound.end - sound.start) / 60, () =>
+        enhanceAudio(sound, strength),
+      );
       setCleaned((m) => ({ ...m, [sound.id]: r.outputPath }));
       onApply(
         applyEnhanced(project, sound.id, r.outputPath),

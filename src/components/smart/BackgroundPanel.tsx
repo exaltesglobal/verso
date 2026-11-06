@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "../ui";
+import { newSpendKey, useCredits } from "../../lib/credits";
 import { ProBadge } from "../account/ProBadge";
 import { useEntitlements } from "../../lib/entitlements";
 import type { Clip } from "../../lib/project";
@@ -55,6 +56,7 @@ interface BackgroundPanelProps {
 /** Inspector section: blur, remove or replace the background of a talking-head clip. */
 export function BackgroundPanel({ clip, playhead, onChange }: BackgroundPanelProps) {
   const { can, openUpgrade } = useEntitlements();
+  const { spend, refund } = useCredits();
   const source = clip.source;
   const [mode, setMode] = useState<BackgroundMode>("blur");
   const [strength, setStrength] = useState(0.6);
@@ -137,7 +139,18 @@ export function BackgroundPanel({ clip, playhead, onChange }: BackgroundPanelPro
   }
 
   async function applyAll() {
+    // Gate first (run shows the upgrade), then credits.
+    const key = locked ? null : newSpendKey("background_removal");
+    if (key) {
+      try {
+        await spend("background_removal", (outPoint - inPoint) / 60, key);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        return;
+      }
+    }
     const r = await run([inPoint, outPoint], "Separating you from the background…");
+    if (!r && key) void refund(key);
     if (r) {
       setPreview(null);
       onChange(overridePatch(r));

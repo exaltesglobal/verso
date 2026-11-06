@@ -2,6 +2,8 @@ import { useEntitlements } from "../../lib/entitlements";
 import { useState } from "react";
 import { Icon } from "../Icon";
 import { Button } from "../ui";
+import { CostConfirm } from "../credits/CostConfirm";
+import { useCharged } from "../../lib/credits";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { loadWaveform } from "../../lib/waveform";
 import { formatDuration, type MediaInfo } from "../../lib/media";
@@ -40,6 +42,7 @@ export function AutoCutPanel({
   onMakeAll,
 }: AutoCutPanelProps) {
   const { can, openUpgrade } = useEntitlements();
+  const charge = useCharged();
   const videos = media.filter((m) => m.hasVideo && m.hasAudio);
   const [path, setPath] = useState<string | undefined>(videos[0]?.path);
   const source = videos.find((m) => m.path === path) ?? videos[0];
@@ -54,10 +57,12 @@ export function AutoCutPanel({
     }
     setPhase({ kind: "working", percent: 0, stage: "Listening to your video…" });
     try {
-      const [words, peaks] = await Promise.all([
-        transcribe(source, (percent, stage) => setPhase({ kind: "working", percent, stage })),
-        loadWaveform(source).catch(() => [] as number[]),
-      ]);
+      const [words, peaks] = await charge("auto_cut", source.durationSec / 60, () =>
+        Promise.all([
+          transcribe(source, (percent, stage) => setPhase({ kind: "working", percent, stage })),
+          loadWaveform(source).catch(() => [] as number[]),
+        ]),
+      );
       setPhase({ kind: "working", percent: 98, stage: "Picking the best moments…" });
       const count = Math.max(3, Math.min(10, Math.round(source.durationSec / 300)));
       const moments = findMoments(words, { peaks, durationSec: source.durationSec, count });
@@ -134,15 +139,13 @@ export function AutoCutPanel({
                 </span>
               </div>
             ) : (
-              <Button
-                icon="auto-cut"
-                size="lg"
-                className="btn--block"
-                onClick={() => void run()}
+              <CostConfirm
+                action="auto_cut"
+                units={(source?.durationSec ?? 0) / 60}
+                continueLabel="Find my best moments"
+                onContinue={() => void run()}
                 disabled={!transcribe}
-              >
-                Find my best moments
-              </Button>
+              />
             )}
             {!transcribe && (
               <p className="muted small">The on-device captions engine is still being set up.</p>

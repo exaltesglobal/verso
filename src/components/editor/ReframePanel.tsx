@@ -3,6 +3,7 @@ import { ProBadge } from "../account/ProBadge";
 import { useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Button } from "../ui";
+import { useCharged } from "../../lib/credits";
 import type { AspectRatio, Clip } from "../../lib/project";
 import {
   analyzeReframe,
@@ -34,6 +35,7 @@ interface ReframePanelProps {
 /** Inspector section: find speakers in the clip, pick how the camera follows them. */
 export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
   const { can, openUpgrade } = useEntitlements();
+  const charge = useCharged();
   const source = clip.source;
   const [mode, setMode] = useState<ReframeMode>("centre");
   const [speakerId, setSpeakerId] = useState<number | undefined>();
@@ -85,6 +87,7 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
     }
     setError(null);
     try {
+      // Model downloads are free; the analysis is charged per clip minute.
       for (const m of models.filter((x) => x.required && !x.installed)) {
         setBusy(`Getting the ${m.name.toLowerCase()}… 0%`);
         await downloadReframeModel(m.id, (p) =>
@@ -93,8 +96,10 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
       }
       setModels(await reframeModels());
       setBusy("Starting…");
-      const a = await analyzeReframe(source.path, inPoint, outPoint, (p, stage) =>
-        setBusy(`${stage.replace(/…$/, "")}… ${Math.round(p)}%`),
+      const a = await charge("speaker_reframe", (outPoint - inPoint) / 60, () =>
+        analyzeReframe(source.path, inPoint, outPoint, (p, stage) =>
+          setBusy(`${stage.replace(/…$/, "")}… ${Math.round(p)}%`),
+        ),
       );
       setAnalysis(a);
       if (a.speakers.length) {

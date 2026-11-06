@@ -3,6 +3,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { AgapeCredit } from "../components/AgapeCredit";
 import { IconButton } from "../components/ui";
 import { AccountButton } from "../components/account/AccountButton";
+import { CreditsBadge } from "../components/credits/CreditsBadge";
 import { SentToSurecast } from "../components/publish/SentToSurecast";
 import { WindowControls } from "../components/WindowControls";
 import { recentProjects } from "../data/placeholder";
@@ -76,6 +77,7 @@ export function Welcome({
         <div className="welcome__bar-actions" data-tauri-drag-region>
           <IconButton icon="help" label="About Verso" onClick={onAbout} />
           <IconButton icon="settings" label="Settings" onClick={onSettings} />
+          <CreditsBadge />
           <AccountButton />
           <span className="topbar__sep" />
           <WindowControls />

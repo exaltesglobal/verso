@@ -1,6 +1,7 @@
 import mark from "../../assets/brand/verso-mark.svg";
 import { Button, IconButton, Segmented } from "../ui";
 import { AccountButton } from "../account/AccountButton";
+import { CreditsBadge } from "../credits/CreditsBadge";
 import { WindowControls } from "../WindowControls";
 import type { AspectRatio } from "../../lib/project";
 
@@ -64,6 +65,7 @@ export function TopBar(props: TopBarProps) {
           disabled={!props.canRedo}
         />
         <IconButton icon="help" label="About Verso" onClick={props.onAbout} />
+        <CreditsBadge />
         <AccountButton />
         <Button icon="save" onClick={props.onSave} title="Save (Ctrl+S)">
           Save

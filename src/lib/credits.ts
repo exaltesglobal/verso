@@ -324,3 +324,21 @@ export function useCredits(): CreditsContext {
   if (!ctx) throw new Error("useCredits needs <CreditsProvider> (see src/main.tsx).");
   return ctx;
 }
+
+/** Charges for an AI job, runs it, and refunds the charge if the job throws. */
+export function useCharged() {
+  const { spend, refund } = useCredits();
+  return useCallback(
+    async <T>(action: CreditAction, units: number, job: () => Promise<T>): Promise<T> => {
+      const key = newSpendKey(action);
+      await spend(action, units, key);
+      try {
+        return await job();
+      } catch (e) {
+        void refund(key);
+        throw e;
+      }
+    },
+    [spend, refund],
+  );
+}

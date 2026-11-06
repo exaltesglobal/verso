@@ -1,4 +1,5 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCharged } from "../../lib/credits";
 import { Icon } from "../Icon";
 import { Button } from "../ui";
 import { useWaveform } from "../../lib/waveform";
@@ -18,6 +19,22 @@ export function BoostPanel({ project, onApply, onFix }: BoostPanelProps) {
   const peaks = useWaveform(sound);
   const report = useMemo(() => predictWatchTime(project, peaks.length ? peaks : undefined), [project, peaks]);
   const [seed, setSeed] = useState(0);
+  const charge = useCharged();
+  // One watch-time check per time the tab is opened; null while charging, string when it couldn't.
+  const [scoreError, setScoreError] = useState<string | null | undefined>(null);
+  useEffect(() => {
+    let alive = true;
+    charge("watch_time_predictor", 1, async () => {})
+      .then(() => alive && setScoreError(undefined))
+      .catch((e) => alive && setScoreError(e instanceof Error ? e.message : String(e)));
+    return () => {
+      alive = false;
+    };
+  }, [charge]);
+  const newIdeas = () =>
+    void charge("hook_generator", 1, async () => setSeed((s) => s + 1)).catch((e) =>
+      setScoreError(e instanceof Error ? e.message : String(e)),
+    );
   // `seed` lets people ask for fresh ideas after editing.
   const ideas = useMemo(() => hookIdeas(project), [project, seed]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -35,20 +52,23 @@ export function BoostPanel({ project, onApply, onFix }: BoostPanelProps) {
         </p>
       </div>
 
-      <section className={`watch-score watch-score--${tone}`} aria-label="Watch-time score">
-        <div className="watch-score__ring" style={{ "--p": `${report.score}%` } as CSSProperties}>
-          <span>{report.score}</span>
-        </div>
-        <div>
-          <strong>
-            {tone === "good" ? "Looking strong" : tone === "ok" ? "Almost there" : "Needs a stronger hook"}
-          </strong>
-          <p className="muted small">
-            We think viewers will watch about {report.predictedWatchPercent}% of it. This is an estimate from
-            what usually works, not a promise.
-          </p>
-        </div>
-      </section>
+      {scoreError && <p className="form-error">{scoreError}</p>}
+      {scoreError === undefined && (
+        <section className={`watch-score watch-score--${tone}`} aria-label="Watch-time score">
+          <div className="watch-score__ring" style={{ "--p": `${report.score}%` } as CSSProperties}>
+            <span>{report.score}</span>
+          </div>
+          <div>
+            <strong>
+              {tone === "good" ? "Looking strong" : tone === "ok" ? "Almost there" : "Needs a stronger hook"}
+            </strong>
+            <p className="muted small">
+              We think viewers will watch about {report.predictedWatchPercent}% of it. This is an estimate
+              from what usually works, not a promise.
+            </p>
+          </div>
+        </section>
+      )}
 
       <ul className="checks">
         {report.checks.map((c) => (
@@ -69,7 +89,7 @@ export function BoostPanel({ project, onApply, onFix }: BoostPanelProps) {
 
       <div className="section-label hooks__head">
         Hook ideas
-        <button type="button" className="btn btn--ghost" onClick={() => setSeed((s) => s + 1)}>
+        <button type="button" className="btn btn--ghost" onClick={newIdeas}>
           <span>New ideas</span>
         </button>
       </div>

@@ -8,6 +8,7 @@ import { useEntitlements } from "../lib/entitlements";
 import { formatDuration, pickAndProbe, probeMedia, type MediaInfo } from "../lib/media";
 import { autosaveProject } from "../lib/persist";
 import { transcribeFile } from "../lib/transcriber";
+import { CreditsError, useCharged } from "../lib/credits";
 import { loadWaveform } from "../lib/waveform";
 
 /** One long video in the queue. Saved to localStorage so the queue survives restarts. */
@@ -46,6 +47,7 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
   const [reelsPerVideo, setReelsPerVideo] = useState(5);
   const stopRef = useRef(false);
   const { can, openUpgrade } = useEntitlements();
+  const charge = useCharged();
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(jobs));
@@ -77,10 +79,12 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
     async (job: Job) => {
       patch(job.id, { status: "working", percent: 0, stage: "Opening…", error: undefined });
       const media: MediaInfo = await probeMedia(job.path);
-      const [words, peaks] = await Promise.all([
-        transcribeFile(media, (percent, stage) => patch(job.id, { percent, stage })),
-        loadWaveform(media).catch(() => [] as number[]),
-      ]);
+      const [words, peaks] = await charge("auto_cut", media.durationSec / 60, () =>
+        Promise.all([
+          transcribeFile(media, (percent, stage) => patch(job.id, { percent, stage })),
+          loadWaveform(media).catch(() => [] as number[]),
+        ]),
+      );
       patch(job.id, { percent: 98, stage: "Picking the best moments…" });
       const moments = findMoments(words, { peaks, durationSec: media.durationSec, count: reelsPerVideo });
       const projects = moments.map((m, i) => projectForMoment(media, m, i, moments.length));
@@ -92,7 +96,7 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
         reels: projects.map((p, i) => ({ id: p.id, title: p.name, hookScore: moments[i].hookScore })),
       });
     },
-    [reelsPerVideo],
+    [reelsPerVideo, charge],
   );
 
   const start = async () => {
@@ -114,7 +118,13 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
         await runOne(next);
         made += 1;
       } catch (err) {
-        patch(next.id, { status: "failed", stage: "", error: String(err) });
+        patch(next.id, {
+          status: "failed",
+          stage: "",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        // Out of credits or signed out: the rest would fail the same way.
+        if (err instanceof CreditsError && err.code !== "other") break;
       }
     }
     setRunning(false);

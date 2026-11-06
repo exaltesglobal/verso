@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Icon } from "../Icon";
 import { Button, IconButton, Segmented, type ToastMessage } from "../ui";
+import { useCharged } from "../../lib/credits";
 import { formatMegabytes } from "../../lib/captions";
 import { useEntitlements } from "../../lib/entitlements";
 import { formatDuration, probeMedia } from "../../lib/media";
@@ -259,6 +260,7 @@ const installed = (packs: VoicePack[], ids: string[]) =>
   ids.every((id) => packs.find((p) => p.id === id)?.installed);
 
 function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
+  const charge = useCharged();
   const [lang, setLang] = useState<VoiceLang>("en");
   const [voiceId, setVoiceId] = useState("hf_alpha");
   const [speed, setSpeed] = useState<SpeedName>("Normal");
@@ -280,8 +282,12 @@ function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
     setPercent(0);
     setBusy(true);
     try {
-      const path = await synthesize(script, voiceId, SPEEDS[speed]);
-      const { project: next } = addVoiceover(project, await probeMedia(path), playhead);
+      // Output length isn't known before synthesis: estimate ~150 spoken words a minute.
+      const minutes = script.trim().split(/\s+/).length / 150 / SPEEDS[speed];
+      const media = await charge("voiceover", minutes, async () =>
+        probeMedia(await synthesize(script, voiceId, SPEEDS[speed])),
+      );
+      const { project: next } = addVoiceover(project, media, playhead);
       onApply(next, `Voiceover added at ${formatDuration(playhead)}.`);
     } catch (e) {
       setError(String(e));
@@ -324,6 +330,7 @@ function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
 
 function DubTab({ project, onApply, onNeedCaptions, models }: TabProps) {
   const { can, openUpgrade } = useEntitlements();
+  const charge = useCharged();
   const [from, setFrom] = useState<SourceLang>("en");
   const [to, setTo] = useState<VoiceLang>("hi");
   const [voiceId, setVoiceId] = useState("hf_alpha");
@@ -357,20 +364,24 @@ function DubTab({ project, onApply, onNeedCaptions, models }: TabProps) {
     setTPercent(0);
     setDPercent(0);
     try {
-      setStage("translating");
-      const lines = await translate(
-        segments.map((s) => s.text),
-        from,
-        to,
-      );
-      setStage("speaking");
-      const path = await dub(
-        segments.map((s, i) => ({ start: s.start, end: s.end, text: lines[i] })),
-        to,
-        to,
-        voiceId,
-      );
-      const next = applyDub(project, await probeMedia(path), segments[0].start, lines, to);
+      const minutes = segments.length ? (segments[segments.length - 1].end - segments[0].start) / 60 : 0;
+      const { lines, media } = await charge("dubbing", minutes, async () => {
+        setStage("translating");
+        const lines = await translate(
+          segments.map((s) => s.text),
+          from,
+          to,
+        );
+        setStage("speaking");
+        const path = await dub(
+          segments.map((s, i) => ({ start: s.start, end: s.end, text: lines[i] })),
+          to,
+          to,
+          voiceId,
+        );
+        return { lines, media: await probeMedia(path) };
+      });
+      const next = applyDub(project, media, segments[0].start, lines, to);
       const name = VOICE_LANGUAGES.find((l) => l.id === to)?.label ?? to;
       onApply(next, `Dubbed into ${name}. The original sound is muted and captions show the translation.`);
     } catch (e) {

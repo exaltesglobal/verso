@@ -5,8 +5,10 @@ import { ProBadge } from "../account/ProBadge";
 const FREE_STYLE_COUNT = 3;
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../Icon";
-import { Button, type ToastMessage } from "../ui";
+import { type ToastMessage } from "../ui";
 import { CaptionStylePreview } from "./CaptionStylePreview";
+import { CostConfirm } from "../credits/CostConfirm";
+import { newSpendKey, useCredits } from "../../lib/credits";
 import { CAPTION_STYLES } from "../../lib/captionStyles";
 import {
   ACCURACY,
@@ -50,6 +52,7 @@ const fmt = (t: number) => {
 
 export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }: CaptionsPanelProps) {
   const { can, openUpgrade } = useEntitlements();
+  const { spend, refund } = useCredits();
   const [language, setLanguage] = useState<CaptionLanguage>("hinglish");
   const [accuracy, setAccuracy] = useState<Accuracy>("balanced");
   const [models, setModels] = useState<ModelStatus[]>([]);
@@ -106,6 +109,13 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
       }
     }
 
+    const key = newSpendKey("captions");
+    try {
+      await spend("captions", (target.end - target.start) / 60, key);
+    } catch (e) {
+      notify({ tone: "danger", text: e instanceof Error ? e.message : String(e) });
+      return;
+    }
     setPhase({ kind: "listening", jobId: null, percent: 0, stage: "loading" });
     const inPoint = target.inPoint ?? 0;
     try {
@@ -128,6 +138,7 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
             });
           },
           onError: (message, cancelled) => {
+            void refund(key);
             stopListening.current?.();
             setPhase({ kind: "idle" });
             notify({ tone: cancelled ? "info" : "danger", text: message });
@@ -137,6 +148,7 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
       stopListening.current = stop;
       setPhase((ph) => (ph.kind === "listening" ? { ...ph, jobId } : ph));
     } catch (e) {
+      void refund(key);
       setPhase({ kind: "idle" });
       notify({ tone: "danger", text: String(e) });
     }
@@ -243,9 +255,12 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
           </div>
         </div>
       ) : (
-        <Button variant="primary" icon="captions" size="lg" className="btn--block" onClick={write}>
-          Write captions
-        </Button>
+        <CostConfirm
+          action="captions"
+          units={clip ? (clip.end - clip.start) / 60 : 0}
+          continueLabel="Write captions"
+          onContinue={() => void write()}
+        />
       )}
 
       {segments.length > 0 && (

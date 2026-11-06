@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "../ui";
 import { writeCaptions, type CaptionDraft } from "../../lib/captionWriter";
+import { useCharged } from "../../lib/credits";
 import { useFilmstrip } from "../../lib/filmstrip";
 import { probeMedia, type MediaInfo } from "../../lib/media";
 import type { AspectRatio, Project } from "../../lib/project";
@@ -98,19 +99,23 @@ export function PublishDialog({ outputPath, project, aspect, transcript, onClose
   }, [frames]);
 
   // Offline caption ideas from the transcript.
+  const charge = useCharged();
   useEffect(() => {
     let alive = true;
-    void writeCaptions({ transcript: spoken, title: project.name }).then((d) => {
-      if (!alive) return;
-      setDraft(d);
-      setHook((h) => h || d.options[0].hook);
-      setCaption((c) => c || [d.options[0].summary, d.options[0].cta].filter(Boolean).join("\n\n"));
-      setTags((t) => t || d.hashtags.join(" "));
-    });
+    void charge("caption_writer", 1, () => writeCaptions({ transcript: spoken, title: project.name })).then(
+      (d) => {
+        if (!alive) return;
+        setDraft(d);
+        setHook((h) => h || d.options[0].hook);
+        setCaption((c) => c || [d.options[0].summary, d.options[0].cta].filter(Boolean).join("\n\n"));
+        setTags((t) => t || d.hashtags.join(" "));
+      },
+      () => {},
+    ); // no credits: the fields stay empty for the user to write
     return () => {
       alive = false;
     };
-  }, [spoken, project.name]);
+  }, [spoken, project.name, charge]);
 
   // Progress and result for the job this dialog started.
   const jobId = phase.step === "sending" ? phase.jobId : null;
