@@ -75,8 +75,16 @@ impl SpeechEngine for Whisper {
             p.set_initial_prompt(prompt);
         }
         p.set_progress_callback_safe(on_progress);
-        let abort = cancel.clone();
-        p.set_abort_callback_safe(move || abort.load(Ordering::Relaxed));
+        // whisper-rs 0.16's set_abort_callback_safe casts its boxed closure to the wrong type, so it
+        // reads garbage and aborts the encoder (error -6). Point the callback at the flag directly.
+        unsafe extern "C" fn should_abort(flag: *mut std::ffi::c_void) -> bool {
+            unsafe { (*(flag as *const AtomicBool)).load(Ordering::Relaxed) }
+        }
+        // SAFETY: `cancel` outlives `state.full` below, and the callback only reads the atomic.
+        unsafe {
+            p.set_abort_callback(Some(should_abort));
+            p.set_abort_callback_user_data(Arc::as_ptr(&cancel) as *mut std::ffi::c_void);
+        }
 
         let result = state.full(p, pcm);
         if cancel.load(Ordering::Relaxed) {
