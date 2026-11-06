@@ -8,12 +8,16 @@ import "./styles/credits.css";
 import App from "./App";
 import { AccountHost } from "./components/account/AccountHost";
 import { CreditsHost } from "./components/credits/CreditsHost";
+import { TooltipLayer } from "./components/Tooltip";
 import { installCrashHandlers } from "./lib/crash";
 import { CreditsProvider } from "./lib/credits";
 import { EntitlementsProvider } from "./lib/entitlements";
 import { BetaGate } from "./screens/BetaGate";
 
 installCrashHandlers();
+
+// macOS keeps its native traffic lights (tauri.macos.conf.json); CSS hides our window buttons there.
+if (/Mac/i.test(navigator.platform)) document.documentElement.classList.add("is-mac");
 
 // No browser context menu: text fields keep theirs, everything else uses Verso's own menus.
 window.addEventListener("contextmenu", (e) => {
@@ -29,6 +33,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <App />
           <AccountHost />
           <CreditsHost />
+          <TooltipLayer />
         </CreditsProvider>
       </EntitlementsProvider>
     </BetaGate>

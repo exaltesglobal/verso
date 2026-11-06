@@ -33,18 +33,23 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Accessible name and tooltip. Icon-only buttons always need one. */
   label: string;
   active?: boolean;
+  /** Shown as a key chip in the tooltip, e.g. "Ctrl+Z". */
+  shortcut?: string;
+  size?: 16 | 20;
 }
 
-export function IconButton({ icon, label, active, className, ...rest }: IconButtonProps) {
+export function IconButton({ icon, label, active, shortcut, size = 20, className, ...rest }: IconButtonProps) {
   return (
     <button
       type="button"
       className={["icon-btn", active && "is-active", className].filter(Boolean).join(" ")}
       aria-label={label}
+      aria-keyshortcuts={shortcut}
       data-tip={label}
+      data-kbd={shortcut}
       {...rest}
     >
-      <Icon name={icon} size={20} />
+      <Icon name={icon} size={size} />
     </button>
   );
 }

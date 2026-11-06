@@ -15,6 +15,7 @@ import {
 } from "../../lib/brandkit";
 import { probeMedia, type MediaInfo } from "../../lib/media";
 import type { Project } from "../../lib/project";
+import { Select } from "../Select";
 
 const ACCENTS = ["#FFB547", "#F472B6", "#5B8CFF", "#2FD4A3", "#C084FC", "#F5F4F0"];
 const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
@@ -127,18 +128,15 @@ export function BrandKitPanel({ project, onApply }: BrandKitPanelProps) {
 
         <label className="field">
           <span className="field__label">Caption look</span>
-          <select
+          <Select
             className="field__input"
             value={kit.captionStyleId ?? ""}
-            onChange={(e) => update(kit.id, { captionStyleId: e.target.value || undefined })}
-          >
-            <option value="">Keep the reel's choice</option>
-            {CAPTION_STYLES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => update(kit.id, { captionStyleId: v || undefined })}
+            options={[
+              { value: "", label: "Keep the reel's choice" },
+              ...CAPTION_STYLES.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
         </label>
 
         <h3 className="section-label">Intro and outro</h3>

@@ -761,7 +761,7 @@ input[type="range"]::-webkit-slider-thumb {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--vs-space-4);
-  padding: 0 var(--vs-space-3) 0 var(--vs-space-4);
+  padding: 0 calc(var(--winctl-space) + var(--vs-space-2)) 0 var(--vs-space-3);
   border-bottom: 1px solid var(--vs-color-role-border);
   background: var(--vs-color-role-bg-app);
 }
@@ -3701,54 +3701,88 @@ html.is-maximized #root {
 }
 
 .topbar__sep {
-  width: 1px;
-  height: 20px;
-  margin: 0 var(--vs-space-1) 0 var(--vs-space-2);
-  background: var(--vs-color-role-border);
+  display: none;
+}
+
+/* Windows caption buttons: 46px wide, full bar height, flush to the top-right
+   corner so the corner pixel closes the window (Fitts). Bars reserve the space. */
+:root {
+  --winctl-space: 138px;
 }
 
 .winctl {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: var(--ui-z-popover);
   display: flex;
-  align-items: center;
-  gap: 2px;
+  height: var(--ui-topbar);
 }
 
 .winctl__btn {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 30px;
-  border-radius: var(--ui-r-sm);
-  color: var(--vs-color-role-text-muted);
+  width: 46px;
+  height: 100%;
+  color: var(--ui-text-2);
   transition:
-    background var(--vs-motion-duration-fast) var(--vs-motion-easing-standard),
-    color var(--vs-motion-duration-fast) var(--vs-motion-easing-standard);
+    background var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
 }
 
 .winctl__btn svg {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
 }
 
 .winctl__btn:hover {
-  background: var(--vs-color-role-bg-raised);
-  color: var(--vs-color-role-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ui-text);
+}
+
+.winctl__btn:active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .winctl__btn--close:hover {
-  background: color-mix(in srgb, var(--vs-color-semantic-danger) 22%, transparent);
-  color: var(--vs-color-semantic-danger);
+  background: #c42b1c; /* Windows 11 close red */
+  color: #fff;
+}
+
+.winctl__btn--close:active {
+  background: #a52618;
+}
+
+.winctl__btn:focus-visible {
+  outline-offset: -2px;
+}
+
+/* macOS: native traffic lights (titleBarStyle Overlay), so no custom buttons; leave room on the left. */
+html.is-mac {
+  --winctl-space: 0px;
+}
+
+html.is-mac .winctl {
+  display: none;
+}
+
+html.is-mac .topbar,
+html.is-mac .welcome__bar,
+html.is-mac .batch__bar,
+html.is-mac .settings__bar {
+  padding-left: 80px;
 }
 
 .welcome__bar,
 .batch__bar {
-  padding-top: var(--vs-space-3);
-  padding-bottom: var(--vs-space-3);
+  min-height: var(--ui-topbar);
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: calc(var(--winctl-space) + var(--vs-space-4));
 }
 
 .welcome__bar-actions {
@@ -3756,20 +3790,9 @@ html.is-maximized #root {
 }
 
 /* ---------- Polish: controls ---------- */
-select.field__input,
-.field select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: var(--vs-space-8);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23B9B7BF' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  cursor: pointer;
-}
-
-select.field__input option {
-  background: var(--vs-color-role-bg-raised);
-  color: var(--vs-color-role-text-primary);
+.select.field__input {
+  height: var(--ui-control);
+  padding: 0 var(--vs-space-2) 0 var(--vs-space-3);
 }
 
 input[type="checkbox"] {
@@ -3815,89 +3838,157 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
 }
 
-/* Tooltips: shown on hover after a short pause, styled like the app. */
-[data-tip] {
-  position: relative;
-}
-
-[data-tip]:hover::after,
-[data-tip]:focus-visible::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 80;
-  padding: 4px 8px;
-  border-radius: var(--ui-r-sm);
-  background: var(--vs-color-neutral-800);
-  border: 1px solid var(--vs-color-role-border-strong);
-  box-shadow: var(--vs-shadow-md);
-  color: var(--vs-color-role-text-primary);
-  font-size: var(--vs-font-size-caption);
-  font-weight: var(--vs-font-weight-medium);
-  white-space: nowrap;
-  pointer-events: none;
-  animation: tip-in var(--vs-motion-duration-fast) var(--vs-motion-easing-enter) 450ms both;
-}
-
-.timeline [data-tip]:hover::after,
-.transport [data-tip]:hover::after {
-  top: auto;
-  bottom: calc(100% + 6px);
-}
-
-@keyframes tip-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -2px);
-  }
-}
-
-/* Context menu */
-.ctx-menu {
+/* ---------- Overlays: tooltip, kbd, menus, select ---------- */
+.tooltip {
   position: fixed;
-  z-index: 90;
-  min-width: 180px;
-  padding: 4px;
-  border-radius: var(--ui-r-sm);
-  background: var(--vs-color-neutral-800);
-  border: 1px solid var(--vs-color-role-border-strong);
-  box-shadow: var(--vs-shadow-lg);
+  z-index: var(--ui-z-tooltip);
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-2);
+  max-width: 240px;
+  padding: 4px 8px;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-overlay);
+  box-shadow: var(--ui-e2);
+  color: var(--ui-text);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--vs-font-weight-medium);
+  line-height: 16px;
+  pointer-events: none;
   animation: fade-in var(--vs-motion-duration-fast) var(--vs-motion-easing-enter);
 }
 
-.ctx-menu__item {
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--ui-r-xs);
+  background: var(--ui-bg-raised);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom-width: 2px;
+  font:
+    600 var(--ui-text-2xs) / 1 "Manrope Variable",
+    var(--vs-font-family-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-2);
+  white-space: nowrap;
+}
+
+.menu {
+  position: fixed;
+  z-index: var(--ui-z-tooltip);
+  min-width: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: var(--ui-r-lg);
+  background: var(--ui-bg-overlay);
+  box-shadow: var(--ui-e2);
+  animation: menu-in 120ms var(--vs-motion-easing-enter);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+.menu__item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--vs-space-4);
+  gap: var(--vs-space-2);
   width: 100%;
-  height: 30px;
-  padding: 0 var(--vs-space-3);
+  min-height: 28px;
+  padding: 0 var(--vs-space-2);
   border-radius: var(--ui-r-sm);
-  font-size: var(--vs-font-size-small);
-  color: var(--vs-color-role-text-primary);
+  font-size: var(--ui-text-sm);
+  color: var(--ui-text);
   text-align: left;
+  cursor: default;
 }
 
-.ctx-menu__item:hover:not(:disabled) {
-  background: var(--vs-color-neutral-700);
+.menu__item:hover:not(:disabled),
+.menu__item.is-active,
+.menu__item:focus-visible {
+  background: var(--ui-bg-pressed);
+  outline: none;
 }
 
-.ctx-menu__item:disabled {
+.menu__item:disabled {
   color: var(--ui-text-disabled);
 }
 
-.ctx-menu__key {
-  color: var(--vs-color-role-text-muted);
-  font-size: var(--vs-font-size-caption);
+.menu__item.is-danger {
+  color: var(--vs-color-semantic-danger);
 }
 
-.ctx-menu__sep {
+.menu__check {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  flex: none;
+  color: var(--ui-text-3);
+}
+
+.menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu__sep {
   height: 1px;
-  margin: 4px 2px;
-  background: var(--vs-color-role-border);
+  margin: 4px 0;
+  background: var(--ui-border-subtle);
+}
+
+/* Select: Verso's own dropdown button (no native <select>). */
+.select {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-2);
+  width: 100%;
+  height: var(--ui-control);
+  padding: 0 var(--vs-space-2) 0 var(--vs-space-3);
+  border-radius: var(--ui-r-sm);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-surface);
+  color: var(--ui-text);
+  font-size: var(--ui-text-sm);
+  text-align: left;
+  transition: border-color var(--ui-base) var(--ui-ease);
+}
+
+.select:hover:not(:disabled),
+.select[aria-expanded="true"] {
+  border-color: var(--ui-border-strong);
+}
+
+.select:disabled {
+  color: var(--ui-text-disabled);
+}
+
+.select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select__value.is-placeholder {
+  color: var(--ui-text-3);
+}
+
+.select__chevron {
+  color: var(--ui-text-3);
 }
 
 ::selection {

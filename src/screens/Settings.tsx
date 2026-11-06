@@ -5,6 +5,8 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { AccountDetails } from "../components/account/AccountPanel";
 import { SurecastSettings } from "../components/publish/SurecastSettings";
 import { Button, Segmented, Toggle } from "../components/ui";
+import { Select } from "../components/Select";
+import { WindowControls } from "../components/WindowControls";
 import type { ExportQuality } from "../lib/export";
 import { CAPTION_LANGUAGES } from "../lib/captions";
 import { updateSettings, useSettings } from "../lib/settings";
@@ -30,9 +32,11 @@ const LICENCES: [string, string, string][] = [
 
 const link = (url: string) => () => void openUrl(url).catch(() => {});
 
+const NAV = ["Account", "Exports", "Editing", "Captions", "Performance", "Updates", "About"] as const;
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="settings__section">
+    <section className="settings__section" id={`settings-${title.split(" ")[0].toLowerCase()}`}>
       <h2 className="settings__heading">{title}</h2>
       {children}
     </section>
@@ -87,13 +91,36 @@ export function Settings({ onClose }: { onClose: () => void }) {
   };
 
   const qualityLabel = QUALITY_LABELS.find((k) => QUALITY[k] === s.exportQuality) ?? "High";
+  const [section, setSection] = useState<(typeof NAV)[number]>("Account");
+  const go = (n: (typeof NAV)[number]) => {
+    setSection(n);
+    document.getElementById(`settings-${n.toLowerCase()}`)?.scrollIntoView({ block: "start" });
+  };
 
   return (
     <div className="settings" role="dialog" aria-modal="true" aria-label="Settings">
-      <header className="settings__bar">
-        <h1 className="settings__title">Settings</h1>
+      {/* Frameless window: the bar must keep a drag region and the window buttons. */}
+      <header className="settings__bar" data-tauri-drag-region>
+        <h1 className="settings__title" data-tauri-drag-region>
+          Settings
+        </h1>
         <Button onClick={onClose}>Done</Button>
+        <WindowControls />
       </header>
+
+      <nav className="settings__nav" aria-label="Settings sections">
+        {NAV.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={n === section ? "settings__nav-item is-active" : "settings__nav-item"}
+            aria-current={n === section ? "true" : undefined}
+            onClick={() => go(n)}
+          >
+            {n}
+          </button>
+        ))}
+      </nav>
 
       <div className="settings__body">
         <Section title="Account">
@@ -123,20 +150,26 @@ export function Settings({ onClose }: { onClose: () => void }) {
           </Row>
         </Section>
 
+        <Section title="Editing">
+          <Row label="Show time as" hint="Timecode counts frames, like pro editors. Seconds is simpler.">
+            <Segmented
+              label="Show time as"
+              options={["Timecode", "Seconds"] as const}
+              value={s.timeFormat === "seconds" ? "Seconds" : "Timecode"}
+              onChange={(v) => updateSettings({ timeFormat: v === "Seconds" ? "seconds" : "timecode" })}
+            />
+          </Row>
+        </Section>
+
         <Section title="Captions">
           <Row label="Default language" hint="The language people speak in your videos.">
-            <select
+            <Select
               className="field__input settings__select"
               value={s.captionLanguage}
-              onChange={(e) => updateSettings({ captionLanguage: e.target.value })}
-              aria-label="Default caption language"
-            >
-              {LANGUAGES.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
+              onChange={(captionLanguage) => updateSettings({ captionLanguage })}
+              label="Default caption language"
+              options={LANGUAGES.map(([value, label]) => ({ value, label }))}
+            />
           </Row>
         </Section>
 

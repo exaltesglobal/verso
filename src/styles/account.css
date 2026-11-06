@@ -211,70 +211,118 @@
   bottom: calc(var(--vs-space-6) + 210px);
 }
 
-/* Settings */
+/* Settings: Lightroom-style preferences, a 200px section nav and a 640px column. */
 .settings {
   position: fixed;
   inset: 0;
   z-index: 55;
-  display: flex;
-  flex-direction: column;
-  background: var(--vs-color-role-bg-app);
-  animation: fade-in var(--vs-motion-duration-base) var(--vs-motion-easing-enter);
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-rows: var(--ui-topbar) minmax(0, 1fr);
+  background: var(--ui-bg-app);
+  animation: fade-in var(--ui-base) var(--vs-motion-easing-enter);
 }
 
 .settings__bar {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--vs-space-4) var(--vs-space-8);
-  border-bottom: 1px solid var(--vs-color-role-border);
-  background: var(--vs-color-role-bg-panel);
+  gap: var(--vs-space-3);
+  padding: 0 var(--winctl-space, 0) 0 var(--vs-space-4);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-bg-app);
 }
 
 .settings__title {
-  font-size: var(--vs-font-size-title);
-  font-weight: var(--vs-font-weight-bold);
-  letter-spacing: -0.02em;
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  font-size: var(--ui-text-sm);
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.settings__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--vs-space-3) var(--vs-space-2);
+  border-right: 1px solid var(--ui-border);
+  background: var(--ui-bg-panel);
+}
+
+.settings__nav-item {
+  position: relative;
+  height: var(--ui-control);
+  padding: 0 var(--vs-space-3);
+  border-radius: var(--ui-r-sm);
+  text-align: left;
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--ui-text-3);
+  transition:
+    background var(--ui-base) var(--ui-ease),
+    color var(--ui-base) var(--ui-ease);
+}
+
+.settings__nav-item:hover {
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+
+.settings__nav-item.is-active {
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+
+.settings__nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--ui-text);
 }
 
 .settings__body {
-  flex: 1;
   overflow-y: auto;
-  padding: var(--vs-space-6) var(--vs-space-8) var(--vs-space-12);
+  scrollbar-gutter: stable;
+  padding: var(--vs-space-6) var(--vs-space-8) 50vh;
 }
 
 .settings__section {
-  max-width: 720px;
-  margin: 0 auto var(--vs-space-6);
-  padding: var(--vs-space-5) var(--vs-space-6);
-  border-radius: var(--ui-r-md);
-  background: var(--vs-color-role-bg-panel);
-  border: 1px solid var(--vs-color-role-border);
+  max-width: 640px;
+  margin: 0 0 var(--vs-space-6);
+  padding: 0 0 var(--vs-space-4);
+  border-bottom: 1px solid var(--ui-border-subtle);
+  scroll-margin-top: var(--vs-space-6);
 }
 
 .settings__heading {
-  margin-bottom: var(--vs-space-3);
-  font-size: var(--vs-font-size-body-lg);
+  margin-bottom: var(--vs-space-2);
+  font-size: var(--ui-text-lg);
   font-weight: var(--vs-font-weight-bold);
 }
 
 .settings__subheading {
   margin: var(--vs-space-4) 0 var(--vs-space-2);
-  font-size: var(--vs-font-size-small);
+  font-size: var(--ui-text-sm);
   font-weight: var(--vs-font-weight-semibold);
-  color: var(--vs-color-role-text-secondary);
+  color: var(--ui-text-2);
 }
 
+/* Label and hint on the left, controls right-aligned on a shared 240px column. */
 .settings__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
   align-items: center;
-  justify-content: space-between;
   gap: var(--vs-space-6);
   padding: var(--vs-space-3) 0;
 }
 
 .settings__row + .settings__row {
-  border-top: 1px solid var(--vs-color-role-border);
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 .settings__label {
@@ -291,12 +339,13 @@
 .settings__control {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--vs-space-2);
-  flex-shrink: 0;
 }
 
 .settings__select {
-  width: 220px;
+  width: 240px;
 }
 
 .settings__text {

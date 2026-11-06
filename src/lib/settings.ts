@@ -9,6 +9,8 @@ export interface Settings {
   captionLanguage: string;
   gpu: boolean;
   autoUpdate: boolean;
+  /** How the transport, ruler and inspector show time. */
+  timeFormat: "timecode" | "seconds";
 }
 
 const KEY = "verso.settings";
@@ -18,6 +20,7 @@ const DEFAULTS: Settings = {
   captionLanguage: "auto",
   gpu: true,
   autoUpdate: true,
+  timeFormat: "timecode",
 };
 
 const listeners = new Set<() => void>();

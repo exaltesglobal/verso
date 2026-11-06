@@ -9,6 +9,7 @@ import { loadWaveform } from "../../lib/waveform";
 import { formatDuration, type MediaInfo } from "../../lib/media";
 import { findMoments, projectForMoment, type Moment, type TranscriptWord } from "../../lib/autoclips";
 import type { Project } from "../../lib/project";
+import { Select } from "../Select";
 
 export type Transcriber = (
   media: MediaInfo,
@@ -123,17 +124,15 @@ export function AutoCutPanel({
             {videos.length > 1 && (
               <label className="field">
                 <span className="field__label">Video</span>
-                <select
+                <Select
                   className="field__input"
-                  value={source?.path}
-                  onChange={(e) => setPath(e.target.value)}
-                >
-                  {videos.map((v) => (
-                    <option key={v.path} value={v.path}>
-                      {v.fileName} · {formatDuration(v.durationSec)}
-                    </option>
-                  ))}
-                </select>
+                  value={source?.path ?? ""}
+                  onChange={setPath}
+                  options={videos.map((v) => ({
+                    value: v.path,
+                    label: `${v.fileName} · ${formatDuration(v.durationSec)}`,
+                  }))}
+                />
               </label>
             )}
             {phase.kind === "working" ? (

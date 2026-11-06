@@ -25,6 +25,7 @@ import {
   type TemplateSlot,
 } from "../../templates";
 import type { PackId } from "../../templates/types";
+import { Select } from "../Select";
 
 export interface TemplatesPanelProps {
   /** Imported media; video files can fill slots. */
@@ -431,22 +432,20 @@ function SlotRow({
         </span>
         {trim && <SlotTrim key={trim.value} {...trim} />}
         {options.length > 0 ? (
-          <select
+          <Select
             className="slot-row__select"
-            aria-label={`Clip for ${slot.hint}`}
+            label={`Clip for ${slot.hint}`}
             value={value?.path ?? ""}
-            onChange={(e) => {
-              const m = options.find((x) => x.path === e.target.value);
+            placeholder="Drop a clip here"
+            onChange={(path) => {
+              const m = options.find((x) => x.path === path);
               if (m) onChange(m);
             }}
-          >
-            {!value && <option value="">Drop a clip here</option>}
-            {options.map((m) => (
-              <option key={m.path} value={m.path}>
-                {m.fileName} ({isImage(m) ? "photo" : formatDuration(m.durationSec)})
-              </option>
-            ))}
-          </select>
+            options={options.map((m) => ({
+              value: m.path,
+              label: `${m.fileName} (${isImage(m) ? "photo" : formatDuration(m.durationSec)})`,
+            }))}
+          />
         ) : (
           <span className="slot-row__drop">Drop a clip here</span>
         )}

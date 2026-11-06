@@ -20,6 +20,7 @@ import {
   type SendProgress,
   type SurecastClient,
 } from "../../lib/surecast";
+import { Select } from "../Select";
 
 interface PublishDialogProps {
   /** The exported MP4. */
@@ -212,18 +213,13 @@ export function PublishDialog({ outputPath, project, aspect, transcript, onClose
             {clients.length > 1 && (
               <>
                 <span className="export__label">Brand</span>
-                <select
+                <Select
                   className="export__input"
                   value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  aria-label="Surecast brand"
-                >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setClientId}
+                  label="Surecast brand"
+                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                />
               </>
             )}
 

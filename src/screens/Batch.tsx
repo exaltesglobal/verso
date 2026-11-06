@@ -12,6 +12,7 @@ import { transcribeFile } from "../lib/transcriber";
 import { CreditsError, useCharged } from "../lib/credits";
 import { CostConfirm } from "../components/credits/CostConfirm";
 import { loadWaveform } from "../lib/waveform";
+import { Select } from "../components/Select";
 
 /** One long video in the queue. Saved to localStorage so the queue survives restarts. */
 interface Job {
@@ -162,17 +163,12 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
           </Button>
           <label className="batch__count">
             Reels per video
-            <select
+            <Select
               className="field__input"
               value={reelsPerVideo}
-              onChange={(e) => setReelsPerVideo(Number(e.target.value))}
-            >
-              {[3, 5, 8, 10].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+              onChange={setReelsPerVideo}
+              options={[3, 5, 8, 10].map((n) => ({ value: n, label: String(n) }))}
+            />
           </label>
           <span className="batch__spacer" />
           {running ? (
