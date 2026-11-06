@@ -14,8 +14,11 @@ export interface ProjectSummary {
 
 const FILE_FILTER = [{ name: "Verso project", extensions: ["verso"] }];
 
+/** Schema version of the .verso JSON. Unknown keys are kept on load and written back on save. */
+export const PROJECT_VERSION = 1;
+
 export function serializeProject(p: Project): string {
-  return JSON.stringify({ format: "verso-project", version: 1, ...p });
+  return JSON.stringify({ ...p, format: "verso-project", version: PROJECT_VERSION });
 }
 
 export function parseProject(json: string): Project {

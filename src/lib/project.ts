@@ -181,9 +181,11 @@ export function normalizeProject(p: Partial<Project> & { tracks: Track[]; name: 
   const now = Date.now();
   const tracks = TRACK_ORDER.map(({ kind, label }) => {
     const found = p.tracks.find((t) => t.kind === kind);
-    return { kind, label, clips: found ? [...found.clips].sort((a, b) => a.start - b.start) : [] };
+    return { ...found, kind, label, clips: found ? [...found.clips].sort((a, b) => a.start - b.start) : [] };
   });
   return {
+    // Keys this version doesn't know (from a newer Verso) ride along and are saved back unchanged.
+    ...p,
     id: p.id ?? uid("p"),
     name: p.name,
     subtitle: p.subtitle,

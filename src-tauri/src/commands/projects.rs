@@ -2,12 +2,19 @@
 //!
 //! Projects are JSON produced by the frontend. Every project is autosaved to
 //! `<app data>/projects/<id>.json`; "Save as" also writes a `.verso` file the
-//! user can keep anywhere. Writes go to a temp file first, then rename, so a
-//! crash never leaves a half-written project.
+//! user can keep anywhere. Writes go to a temp file first (flushed to disk),
+//! then rename, so a crash never leaves a half-written project.
+//!
+//! A `.verso` file also stores each media file's path relative to the project
+//! (`source.relPath`), so a project folder can be moved or copied to another PC:
+//! on open, a missing absolute path is relinked through `relPath` when a file of
+//! the same size is there.
 
-use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use tauri::Manager;
 
 fn projects_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -26,9 +33,110 @@ fn write_atomic(path: &Path, contents: &str) -> Result<(), String> {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("We couldn't create that folder ({e})."))?;
     }
+    let fail = |e: std::io::Error| format!("We couldn't save the project ({e}).");
     let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, contents).map_err(|e| format!("We couldn't save the project ({e})."))?;
-    std::fs::rename(&tmp, path).map_err(|e| format!("We couldn't save the project ({e})."))
+    let mut f = std::fs::File::create(&tmp).map_err(fail)?;
+    f.write_all(contents.as_bytes()).map_err(fail)?;
+    f.sync_all().map_err(fail)?;
+    drop(f);
+    std::fs::rename(&tmp, path).map_err(fail)
+}
+
+/// Calls `f` on every clip's `source` object.
+fn for_each_source(v: &mut Value, mut f: impl FnMut(&mut Map<String, Value>)) {
+    let Some(tracks) = v.get_mut("tracks").and_then(Value::as_array_mut) else {
+        return;
+    };
+    for t in tracks {
+        let Some(clips) = t.get_mut("clips").and_then(Value::as_array_mut) else {
+            continue;
+        };
+        for c in clips {
+            if let Some(src) = c.get_mut("source").and_then(Value::as_object_mut) {
+                f(src);
+            }
+        }
+    }
+}
+
+/// `to` relative to the folder `from`, with forward slashes. None across drives.
+fn relative(from: &Path, to: &Path) -> Option<String> {
+    let a: Vec<Component> = from.components().collect();
+    let b: Vec<Component> = to.components().collect();
+    if a.first() != b.first() {
+        return None;
+    }
+    let common = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    let mut out = PathBuf::new();
+    for _ in common..a.len() {
+        out.push("..");
+    }
+    for c in &b[common..] {
+        out.push(c);
+    }
+    Some(out.to_string_lossy().replace('\\', "/"))
+}
+
+/// Adds `relPath` to every media source, relative to the `.verso` file's folder.
+fn with_rel_paths(project_file: &Path, json: &str) -> String {
+    let (Some(dir), Ok(mut v)) = (project_file.parent(), serde_json::from_str::<Value>(json))
+    else {
+        return json.to_string();
+    };
+    for_each_source(&mut v, |src| {
+        match src
+            .get("path")
+            .and_then(Value::as_str)
+            .and_then(|p| relative(dir, Path::new(p)))
+        {
+            Some(rel) => src.insert("relPath".into(), rel.into()),
+            None => src.remove("relPath"),
+        };
+    });
+    serde_json::to_string(&v).unwrap_or_else(|_| json.to_string())
+}
+
+/// Points missing media back at the copy next to the project (same relative path, same size).
+fn relink(project_file: &Path, json: String) -> String {
+    let (Some(dir), Ok(mut v)) = (project_file.parent(), serde_json::from_str::<Value>(&json))
+    else {
+        return json;
+    };
+    let mut changed = false;
+    for_each_source(&mut v, |src| {
+        let missing = src
+            .get("path")
+            .and_then(Value::as_str)
+            .is_some_and(|p| !Path::new(p).is_file());
+        let Some(rel) = src
+            .get("relPath")
+            .and_then(Value::as_str)
+            .filter(|_| missing)
+        else {
+            return;
+        };
+        let candidate = dir.join(rel);
+        let size_ok = match (
+            src.get("sizeBytes").and_then(Value::as_u64),
+            std::fs::metadata(&candidate),
+        ) {
+            (_, Err(_)) => false,
+            (Some(want), Ok(m)) => m.len() == want,
+            (None, Ok(m)) => m.is_file(),
+        };
+        if size_ok {
+            src.insert(
+                "path".into(),
+                candidate.to_string_lossy().into_owned().into(),
+            );
+            changed = true;
+        }
+    });
+    if changed {
+        serde_json::to_string(&v).unwrap_or(json)
+    } else {
+        json
+    }
 }
 
 fn safe_id(id: &str) -> Result<&str, String> {
@@ -84,7 +192,8 @@ pub fn autosave_project(app: tauri::AppHandle, id: String, json: String) -> Resu
 
 #[tauri::command]
 pub fn save_project_as(path: String, json: String) -> Result<(), String> {
-    write_atomic(Path::new(&path), &json)
+    let file = Path::new(&path);
+    write_atomic(file, &with_rel_paths(file, &json))
 }
 
 #[tauri::command]
@@ -92,6 +201,7 @@ pub fn open_project(app: tauri::AppHandle, path: String) -> Result<String, Strin
     let json = std::fs::read_to_string(&path).map_err(|_| {
         "We couldn't open that project. It may have been moved or deleted.".to_string()
     })?;
+    let json = relink(Path::new(&path), json);
     allow_sources(&app, &json);
     Ok(json)
 }
