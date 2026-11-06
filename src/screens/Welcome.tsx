@@ -3,6 +3,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { AgapeCredit } from "../components/AgapeCredit";
 import { IconButton } from "../components/ui";
 import { AccountButton } from "../components/account/AccountButton";
+import { SentToSurecast } from "../components/publish/SentToSurecast";
 import { WindowControls } from "../components/WindowControls";
 import { recentProjects } from "../data/placeholder";
 import { useFilmstrip } from "../lib/filmstrip";
@@ -138,6 +139,7 @@ export function Welcome({
               ))}
           </div>
         </section>
+        <SentToSurecast />
       </main>
 
       <footer className="welcome__foot">
@@ -157,7 +159,7 @@ function RecentCard({ project: p, onOpen }: { project: ProjectSummary; onOpen: (
       <span className="recent-card__text">
         <span className="recent-card__name">{p.name}</span>
         <span className="recent-card__detail">
-          {formatDuration(p.durationSec)} � edited {timeAgo(p.updatedAt)}
+          {formatDuration(p.durationSec)} · edited {timeAgo(p.updatedAt)}
         </span>
       </span>
     </button>

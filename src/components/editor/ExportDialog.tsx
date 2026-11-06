@@ -4,6 +4,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Button } from "../ui";
 import { ProBadge } from "../account/ProBadge";
+import { PublishDialog } from "../publish/PublishDialog";
 import { useEntitlements } from "../../lib/entitlements";
 import { getSettings } from "../../lib/settings";
 import type { ToastMessage } from "../ui";
@@ -58,6 +59,7 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
   });
   const [fps, setFps] = useState(30);
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
+  const [publishing, setPublishing] = useState(false);
   const jobId = useRef<string | null>(null);
   const running = phase.step === "running";
 
@@ -102,10 +104,10 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
 
   // Escape closes, except mid-export (Cancel is explicit).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !running && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !running && !publishing && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [running, onClose]);
+  }, [running, publishing, onClose]);
 
   const chooseLocation = async () => {
     const picked = await save({
@@ -139,7 +141,7 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={() => !running && onClose()}>
+    <div className="modal-backdrop" onMouseDown={() => !running && !publishing && onClose()}>
       <div
         className="export"
         role="dialog"
@@ -274,6 +276,9 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
               <Button variant="ghost" onClick={onClose}>
                 Done
               </Button>
+              <Button icon="share" onClick={() => setPublishing(true)}>
+                Send to Surecast
+              </Button>
               <Button
                 variant="primary"
                 icon="folder"
@@ -289,6 +294,14 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
           </>
         )}
       </div>
+      {publishing && phase.step === "done" && (
+        <PublishDialog
+          outputPath={phase.outputPath}
+          project={project}
+          aspect={aspect}
+          onClose={() => setPublishing(false)}
+        />
+      )}
     </div>
   );
 }
