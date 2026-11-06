@@ -62,6 +62,8 @@ interface EntitlementsContext {
   signingIn: boolean;
   /** Last network problem, in plain words. Cleared on the next success. */
   error: string | null;
+  /** The server said an admin paused this account. The app is signed out and on Free. */
+  blocked: boolean;
   can: (feature: Feature) => boolean;
   signIn: () => Promise<void>;
   cancelSignIn: () => void;
@@ -78,7 +80,10 @@ interface EntitlementsContext {
 }
 
 const Ctx = createContext<EntitlementsContext | null>(null);
-const REFRESH_EVERY_MS = 30_000;
+/** Window focus re-checks the plan at most this often. */
+const REFRESH_EVERY_MS = 60_000;
+/** Exact message the server sends with 403 account_blocked (ACCOUNT_PAUSED in server/src/auth.ts). */
+export const ACCOUNT_PAUSED = "Your account is paused. Contact support.";
 
 export function EntitlementsProvider({ children }: { children: ReactNode }) {
   const [ent, setEnt] = useState<Entitlements>(FREE);
@@ -168,6 +173,7 @@ export function EntitlementsProvider({ children }: { children: ReactNode }) {
       configured: accountsConfigured,
       signingIn,
       error,
+      blocked: error === ACCOUNT_PAUSED,
       can: (f) => ent.features[f] === true,
       signIn,
       cancelSignIn,
