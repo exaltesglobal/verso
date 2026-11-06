@@ -149,6 +149,26 @@ back to PATH (development only).
 4. Captions, templates and one-click edits.
 5. Export, freemium licensing, auto-update, macOS build and signing.
 
+## Backend
+
+Accounts, entitlements and payments live in [`server/`](server/), a standalone Node.js 20+ package
+(Fastify, TypeScript, Knex). It serves the hosted sign-in, account and pricing pages, the desktop
+sign-in flow (system browser to `127.0.0.1` loopback with PKCE), `GET /v1/me/entitlements` with a signed
+offline token, and Razorpay subscription webhooks.
+
+```bash
+cd server
+pnpm install
+pnpm dev        # http://localhost:8787, SQLite, emails printed to the console, no keys needed
+pnpm build      # compile to dist/
+pnpm start      # run dist/index.js
+pnpm migrate    # apply database migrations (dev auto-migrates SQLite on start)
+pnpm test
+```
+
+Copy `server/.env.example` to `server/.env` to change settings. Where each production key comes from, and how
+to deploy to Hostinger Cloud Economy with MySQL, is in [docs/SETUP-KEYS.md](docs/SETUP-KEYS.md).
+
 ---
 
 © 2026 Exaltes Global Private Limited. All rights reserved.
