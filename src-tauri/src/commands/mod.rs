@@ -2,4 +2,5 @@
 //! One file per area (media, project, export, ...). Register new commands in `lib.rs`.
 
 pub mod media;
+pub mod reframe;
 pub mod thumbnails;
