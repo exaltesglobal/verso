@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
+  assertActive,
   authenticate,
   createUser,
   exchangeAuthCode,
@@ -41,11 +42,14 @@ const tokenBody = z.discriminatedUnion('grant_type', [
 export async function requireBearer(ctx: Ctx, req: FastifyRequest) {
   const h = req.headers.authorization;
   if (!h?.startsWith('Bearer ')) throw new ApiError(401, 'unauthorized', 'Sign in required.');
+  let claims;
   try {
-    return await verifyAccessToken(ctx.keys, h.slice(7));
+    claims = await verifyAccessToken(ctx.keys, h.slice(7));
   } catch {
     throw new ApiError(401, 'invalid_token', 'Your session expired. Refresh your token.');
   }
+  await assertActive(ctx, claims.userId);
+  return claims;
 }
 
 export function apiRoutes(ctx: Ctx) {

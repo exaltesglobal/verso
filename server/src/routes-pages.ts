@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
+  assertNotBlocked,
   authenticate,
   createAuthCode,
   createSession,
@@ -22,6 +23,7 @@ import { ApiError, type Ctx } from './ctx.js';
 import { googleAuthUrl, googleProfileFromCode } from './google.js';
 import { getEntitlements, latestSubscription } from './plans.js';
 import { emailSchema, passwordSchema } from './routes-api.js';
+import { adminRoutes } from './routes-admin.js';
 import * as v from './views.js';
 
 const SID = 'verso_sid';
@@ -67,7 +69,9 @@ export function pageRoutes(ctx: Ctx) {
       }
       req.csrf = token;
       req.user = await getSessionUser(ctx, req.cookies[SID]);
-      if (req.method === 'POST') {
+      // Bearer-token calls to the admin API can't be forged cross-site, so they skip the form token.
+      const bearerApi = req.url.startsWith('/admin/api/') && req.headers.authorization?.startsWith('Bearer ');
+      if (req.method === 'POST' && !bearerApi) {
         const sent = (req.body as Record<string, unknown> | undefined)?._csrf;
         if (typeof sent !== 'string' || !req.cookies[CSRF] || !safeEqual(sent, req.cookies[CSRF]!)) {
           return reply
@@ -228,6 +232,7 @@ export function pageRoutes(ctx: Ctx) {
       try {
         const profile = await googleProfileFromCode(config, q.code);
         const user = await findOrCreateOAuthUser(ctx, 'google', profile);
+        assertNotBlocked(user);
         await startSession(reply, user.id);
         return reply.redirect(safeNext(saved.next) ?? '/account');
       } catch (e) {
@@ -411,5 +416,7 @@ export function pageRoutes(ctx: Ctx) {
         return html(reply, req, 'Something went wrong', v.messagePage({ title: "We couldn't cancel that", body: errMsg(e), link: { href: '/account', label: 'Back to your account' } }), { status: 400 });
       }
     });
+
+    await app.register(adminRoutes(ctx, html));
   };
 }

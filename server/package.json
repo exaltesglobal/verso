@@ -20,7 +20,9 @@
     "test": "vitest run --passWithNoTests",
     "invite:create": "tsx src/invite-create.ts",
     "credits:grant": "tsx src/credits-grant.ts",
-    "credits:reset": "tsx src/credits-reset.ts"
+    "credits:reset": "tsx src/credits-reset.ts",
+    "admin:grant-pro": "tsx src/admin-grant-pro.ts",
+    "admin:block": "tsx src/admin-block.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
