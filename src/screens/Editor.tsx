@@ -24,6 +24,8 @@ import {
 } from "../lib/project";
 import { autosaveProject, saveProject, saveProjectAs } from "../lib/persist";
 import { useHistory } from "../lib/useHistory";
+import { replaceCaptions } from "../lib/captions";
+import type { CropPath } from "../lib/reframe";
 
 export type PanelTab = "media" | "autocut" | "templates" | "text" | "captions" | "audio";
 
@@ -36,6 +38,8 @@ interface EditorProps {
   onImport: () => Promise<MediaInfo[]>;
   onHome: () => void;
   onAbout: () => void;
+  /** Opens another project (e.g. a reel picked in Auto-cut) in a fresh editor. */
+  onOpenProject: (p: Project) => void;
   notify: (m: ToastMessage) => void;
 }
 
@@ -47,6 +51,7 @@ export function Editor({
   onImport,
   onHome,
   onAbout,
+  onOpenProject,
   notify,
 }: EditorProps) {
   const [tab, setTab] = useState<PanelTab>(initialTab);
@@ -247,6 +252,31 @@ export function Editor({
   }, [onImport, addToTimeline]);
 
   const selected = findClip(project, selectedClip);
+  // Captions go on the selected video clip, or the first one with a real file.
+  const captionClip =
+    (selected?.kind === "video" && selected.source ? selected : undefined) ??
+    project.tracks.find((t) => t.kind === "video")?.clips.find((c) => c.source);
+
+  const makeAll = useCallback(
+    async (projects: Project[]) => {
+      await Promise.all(projects.map((p) => autosaveProject(p).catch(() => undefined)));
+      notify({ tone: "success", text: `${projects.length} reels are ready. Opening the first one.` });
+      if (projects[0]) onOpenProject(projects[0]);
+    },
+    [notify, onOpenProject],
+  );
+
+  const setCropPath = useCallback(
+    (path: CropPath | null) => {
+      if (!selectedClip) return;
+      setProject((p) => {
+        const c = findClip(p, selectedClip);
+        if (!c || c.kind !== "video" || (path ?? undefined) === c.cropPath) return p;
+        return updateClip(p, selectedClip, { cropPath: path ?? undefined });
+      });
+    },
+    [selectedClip, setProject],
+  );
 
   return (
     <div className="editor">
@@ -278,6 +308,12 @@ export function Editor({
         onImport={importAndAdd}
         onAddToTimeline={(m) => addToTimeline([m])}
         onAddText={addText}
+        captionClip={captionClip}
+        captionStyleId={project.captionStyle ?? "bold-pop"}
+        onCaptionStyle={(id) => setProject((p) => ({ ...p, captionStyle: id }))}
+        onCaptions={(caps, clip) => setProject((p) => replaceCaptions(p, clip, caps))}
+        onOpenProject={onOpenProject}
+        onMakeAll={(ps) => void makeAll(ps)}
         notify={notify}
       />
       <Preview
@@ -297,6 +333,7 @@ export function Editor({
         aspect={aspect}
         onChange={(patch) => selected && patchClip(selected.id, patch)}
         onDelete={() => remove(false)}
+        onCropPath={setCropPath}
       />
       <Timeline
         project={project}

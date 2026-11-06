@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Clip } from "../../lib/project";
 
@@ -9,6 +9,10 @@ interface VideoLayerProps {
   playing: boolean;
   /** Written while playing so the editor clock follows the video exactly. */
   mediaClockRef: MutableRefObject<number | null>;
+  /** Positioning for reframe crops or zoom. */
+  mediaStyle?: CSSProperties;
+  /** A second view of the same clip (split screen): muted, never drives the clock. */
+  secondary?: boolean;
 }
 
 /** Seek tolerance while paused (about one frame at 30 fps). */
@@ -19,7 +23,7 @@ const SEEK_EPSILON = 0.03;
  * While playing, the video drives the timeline clock; while paused, the
  * timeline drives the video (scrubbing).
  */
-export function VideoLayer({ clip, time, playing, mediaClockRef }: VideoLayerProps) {
+export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, secondary }: VideoLayerProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const src = clip?.source?.hasVideo ? convertFileSrc(clip.source.path) : undefined;
   const [readySrc, setReadySrc] = useState<string | undefined>();
@@ -36,6 +40,7 @@ export function VideoLayer({ clip, time, playing, mediaClockRef }: VideoLayerPro
   useEffect(() => {
     const v = ref.current;
     if (!v || !src) return;
+    v.volume = Math.max(0, Math.min(1, clip?.volume ?? 1));
     if (playing) {
       if (Math.abs(v.currentTime - sourceTime) > 0.25) v.currentTime = sourceTime;
       if (v.paused) void v.play().catch(() => {});
@@ -43,10 +48,11 @@ export function VideoLayer({ clip, time, playing, mediaClockRef }: VideoLayerPro
       if (!v.paused) v.pause();
       if (Math.abs(v.currentTime - sourceTime) > SEEK_EPSILON) v.currentTime = sourceTime;
     }
-  }, [src, playing, sourceTime]);
+  }, [src, playing, sourceTime, clip?.volume]);
 
   // While playing, report the video's position as timeline time.
   useEffect(() => {
+    if (secondary) return;
     if (!playing || !src) {
       mediaClockRef.current = null;
       return;
@@ -69,7 +75,7 @@ export function VideoLayer({ clip, time, playing, mediaClockRef }: VideoLayerPro
       cancelAnimationFrame(raf);
       mediaClockRef.current = null;
     };
-  }, [playing, src, mediaClockRef]);
+  }, [playing, src, mediaClockRef, secondary]);
 
   if (!src) return null;
   return (
@@ -78,6 +84,8 @@ export function VideoLayer({ clip, time, playing, mediaClockRef }: VideoLayerPro
       key={src}
       className={readySrc === src ? "frame__video is-ready" : "frame__video"}
       src={src}
+      style={mediaStyle}
+      muted={secondary || (clip?.volume ?? 1) === 0}
       preload="auto"
       playsInline
       disablePictureInPicture

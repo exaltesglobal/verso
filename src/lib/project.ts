@@ -1,6 +1,7 @@
 // Project model and pure editing operations. Every operation returns a new
 // Project, which keeps undo/redo trivial (see useHistory).
 import type { MediaInfo } from "./media";
+import type { CropPath } from "./reframe";
 
 export type TrackKind = "text" | "captions" | "video" | "audio" | "music";
 export type AspectRatio = "9:16" | "1:1" | "16:9";
@@ -52,6 +53,8 @@ export interface Clip {
   text?: string;
   style?: TextStyle;
   words?: CaptionWord[];
+  /** Video: smart reframe crop path (from the Reframe panel). */
+  cropPath?: CropPath;
   /** Music: fade in/out seconds. */
   fadeIn?: number;
   fadeOut?: number;

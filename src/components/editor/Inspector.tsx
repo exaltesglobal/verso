@@ -1,6 +1,8 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties } from "react";
 import { Icon, type IconName } from "../Icon";
-import { Button, Toggle } from "../ui";
+import { Button } from "../ui";
+import { ReframePanel } from "./ReframePanel";
+import type { CropPath } from "../../lib/reframe";
 import type { AspectRatio, Clip, TextStyle, TrackKind, TransitionKind } from "../../lib/project";
 import { formatDuration } from "../../lib/media";
 
@@ -9,6 +11,7 @@ interface InspectorProps {
   aspect: AspectRatio;
   onChange: (patch: Partial<Clip>) => void;
   onDelete: () => void;
+  onCropPath: (path: CropPath | null) => void;
 }
 
 const KIND_LABEL: Record<TrackKind, string> = {
@@ -38,7 +41,7 @@ const TEXT_PRESETS: { id: TextStyle["preset"]; label: string }[] = [
 
 const SWATCHES = ["#F5F4F0", "#FFB547", "#F472B6", "#5B8CFF", "#2FD4A3", "#0B0B0F"];
 
-export function Inspector({ clip, aspect, onChange, onDelete }: InspectorProps) {
+export function Inspector({ clip, aspect, onChange, onDelete, onCropPath }: InspectorProps) {
   return (
     <aside className="inspector" aria-label="Properties">
       <div className="inspector__head">
@@ -53,7 +56,9 @@ export function Inspector({ clip, aspect, onChange, onDelete }: InspectorProps) 
         )}
       </div>
 
-      {clip?.kind === "video" && <VideoProps key={clip.id} clip={clip} aspect={aspect} onChange={onChange} />}
+      {clip?.kind === "video" && (
+        <VideoProps key={clip.id} clip={clip} aspect={aspect} onChange={onChange} onCropPath={onCropPath} />
+      )}
       {(clip?.kind === "audio" || clip?.kind === "music") && <AudioProps clip={clip} onChange={onChange} />}
       {(clip?.kind === "text" || clip?.kind === "captions") && <TextProps clip={clip} onChange={onChange} />}
 
@@ -77,20 +82,22 @@ function VideoProps({
   clip,
   aspect,
   onChange,
+  onCropPath,
 }: {
   clip: Clip;
   aspect: AspectRatio;
   onChange: (p: Partial<Clip>) => void;
+  onCropPath: (path: CropPath | null) => void;
 }) {
-  const [follow, setFollow] = useState(true);
   const transition = clip.transitionIn?.kind ?? "none";
   return (
     <>
+      {clip.source ? (
+        <section className="inspector__section">
+          <ReframePanel clip={clip} aspect={aspect} onCropPath={onCropPath} />
+        </section>
+      ) : null}
       <section className="inspector__section">
-        <h3 className="section-label">Reframe for {aspect}</h3>
-        <Row icon="subject-track" label="Follow the speaker">
-          <Toggle label="Follow the speaker" checked={follow} onChange={setFollow} />
-        </Row>
         <Slider
           icon="zoom-in"
           label="Zoom"
@@ -100,7 +107,7 @@ function VideoProps({
           unit="%"
           onChange={(v) => onChange({ zoom: v / 100 })}
         />
-      </section>
+      </section>{" "}
       <section className="inspector__section">
         <h3 className="section-label">
           <Icon name="speed" size={16} /> Speed
@@ -265,16 +272,6 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
         />
       </section>
     </>
-  );
-}
-
-function Row({ icon, label, children }: { icon: IconName; label: string; children: ReactNode }) {
-  return (
-    <div className="prop-row">
-      <Icon name={icon} size={20} />
-      <span className="prop-row__label">{label}</span>
-      {children}
-    </div>
   );
 }
 

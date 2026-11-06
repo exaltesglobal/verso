@@ -1,11 +1,14 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Icon, type IconName } from "../Icon";
 import { Button, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
-import { audioTracks, moments, templates } from "../../data/placeholder";
+import { audioTracks, templates } from "../../data/placeholder";
 import { useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration, formatResolution, formatSize, type MediaInfo } from "../../lib/media";
-import type { TextStyle } from "../../lib/project";
+import type { Clip, Project, TextStyle } from "../../lib/project";
+import { AutoCutPanel } from "./AutoCutPanel";
+import { CaptionsPanel } from "./CaptionsPanel";
+import { transcribeFile } from "../../lib/transcriber";
 
 const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
   { id: "media", label: "Media", icon: "folder" },
@@ -24,6 +27,12 @@ interface LeftPanelProps {
   onImport: () => Promise<void>;
   onAddToTimeline: (m: MediaInfo) => void;
   onAddText: (preset: TextStyle["preset"], text: string) => void;
+  captionClip: Clip | undefined;
+  captionStyleId: string;
+  onCaptionStyle: (id: string) => void;
+  onCaptions: (captions: Clip[], clip: Clip) => void;
+  onOpenProject: (p: Project) => void;
+  onMakeAll: (projects: Project[]) => void;
   notify: (m: ToastMessage) => void;
 }
 
@@ -35,6 +44,12 @@ export function LeftPanel({
   onImport,
   onAddToTimeline,
   onAddText,
+  captionClip,
+  captionStyleId,
+  onCaptionStyle,
+  onCaptions,
+  onOpenProject,
+  onMakeAll,
   notify,
 }: LeftPanelProps) {
   return (
@@ -62,10 +77,27 @@ export function LeftPanel({
             onAddToTimeline={onAddToTimeline}
           />
         )}
-        {tab === "autocut" && <AutoCutTab notify={notify} />}
+        {tab === "autocut" && (
+          <AutoCutPanel
+            media={media}
+            importing={importing}
+            onImport={onImport}
+            transcribe={transcribeFile}
+            onOpenProject={onOpenProject}
+            onMakeAll={onMakeAll}
+          />
+        )}
         {tab === "templates" && <TemplatesTab />}
         {tab === "text" && <TextTab onAdd={onAddText} />}
-        {tab === "captions" && <CaptionsTab />}
+        {tab === "captions" && (
+          <CaptionsPanel
+            clip={captionClip}
+            styleId={captionStyleId}
+            onStyleChange={onCaptionStyle}
+            onApply={onCaptions}
+            notify={notify}
+          />
+        )}
         {tab === "audio" && <AudioTab />}
       </aside>
     </>
@@ -159,49 +191,6 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
     </li>
   );
 }
-function AutoCutTab({ notify }: { notify: (m: ToastMessage) => void }) {
-  const [picked, setPicked] = useState(moments[0].id);
-  return (
-    <div className="panel__body">
-      <PanelHead icon="auto-cut" title="Auto-cut">
-        We found 4 moments in your 42-minute video that work as reels. Pick one to start editing.
-      </PanelHead>
-      <ul className="moment-list">
-        {moments.map((m) => (
-          <li key={m.id}>
-            <button
-              type="button"
-              className={m.id === picked ? "moment is-selected" : "moment"}
-              onClick={() => setPicked(m.id)}
-              aria-pressed={m.id === picked}
-            >
-              <span
-                className="moment__thumb"
-                style={{ background: `linear-gradient(160deg, ${m.tint[0]}, ${m.tint[1]})` }}
-              />
-              <span className="moment__text">
-                <span className="moment__title">{m.title}</span>
-                <span className="moment__meta">
-                  <span className="score">{m.hookScore}</span>
-                  Hook score · {m.duration}
-                </span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <Button
-        icon="one-click"
-        size="lg"
-        className="btn--block"
-        onClick={() => notify({ tone: "info", text: "Making all 4 reels arrives with the auto-cut engine." })}
-      >
-        Make all 4 reels
-      </Button>
-    </div>
-  );
-}
-
 function TemplatesTab() {
   return (
     <div className="panel__body">
@@ -280,42 +269,6 @@ function TextTab({ onAdd }: { onAdd: (preset: TextStyle["preset"], text: string)
     </div>
   );
 }
-function CaptionsTab() {
-  const [style, setStyle] = useState("Bold");
-  return (
-    <div className="panel__body">
-      <PanelHead icon="captions" title="Captions">
-        Words appear as you speak. Most people watch reels with the sound off.
-      </PanelHead>
-      <div className="callout">
-        <Icon name="voiceover" size={20} />
-        <div>
-          <strong>Auto captions are on</strong>
-          <p>We'll write them from your voice when you import a video.</p>
-        </div>
-      </div>
-      <h3 className="section-label">Caption style</h3>
-      <div className="caption-styles">
-        {["Bold", "Clean", "Pop"].map((s) => (
-          <button
-            key={s}
-            type="button"
-            className={
-              s === style
-                ? `caption-style caption-style--${s.toLowerCase()} is-selected`
-                : `caption-style caption-style--${s.toLowerCase()}`
-            }
-            onClick={() => setStyle(s)}
-            aria-pressed={s === style}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function AudioTab() {
   return (
     <div className="panel__body">

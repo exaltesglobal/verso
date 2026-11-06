@@ -2658,3 +2658,35 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: var(--vs-font-size-small);
   color: var(--vs-color-semantic-danger);
 }
+
+.frame__panel {
+  position: absolute;
+  overflow: hidden;
+}
+
+.frame__panel + .frame__panel {
+  box-shadow: 0 -2px 0 var(--vs-color-role-bg-app);
+}
+
+.frame__panel .frame__image,
+.frame__panel .frame__video {
+  transform-origin: center;
+}
+
+.frame__caption-wrap {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 18%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  pointer-events: none;
+  font-size: clamp(14px, 3.2cqh, 34px);
+}
+
+.frame__caption-wrap .frame__speaker {
+  font-size: 0.55em;
+}

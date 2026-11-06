@@ -152,6 +152,7 @@ export default function App() {
           onImport={importMedia}
           onHome={() => setScreen("welcome")}
           onAbout={openAbout}
+          onOpenProject={openExisting}
           notify={notify}
         />
       )}
