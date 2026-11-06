@@ -25,6 +25,16 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
+tauri-plugin-log = "2"
+log = "0.4"
+# Accounts: OS keychain for the refresh token, HTTPS client, offline token check (all MIT/Apache).
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+ureq = { version = "2", features = ["json"] }
+jsonwebtoken = "9"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+tauri-plugin-updater = "2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
