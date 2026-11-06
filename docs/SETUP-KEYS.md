@@ -108,7 +108,8 @@ Plans are per mode: test-mode plan ids don't work with live keys. Also update `P
 3. **Secret**: make up a long random string (`openssl rand -hex 32`) and put the same value in
    `RAZORPAY_WEBHOOK_SECRET`.
 4. **Active events**: `subscription.activated`, `subscription.charged`, `subscription.cancelled`,
-   `subscription.halted`, `payment.failed`.
+   `subscription.halted`, `payment.failed`, and for credit top-ups `payment.captured` and `order.paid`
+   (see section 8).
 5. Save. Repeat in live mode with the live URL and secret.
 
 The server checks the `X-Razorpay-Signature` HMAC on the raw body, and records each `X-Razorpay-Event-Id` so a
@@ -279,3 +280,83 @@ fall back to Free.
 
 Other JSON endpoints: `POST /v1/auth/signup`, `/v1/auth/login`, `/v1/auth/forgot-password`,
 `/v1/auth/reset-password`, `/v1/auth/verify-email`, `GET /v1/me`, `GET /.well-known/jwks.json`.
+
+---
+
+## 8. Credits
+
+AI tools (auto-cut, captions, speaker reframe, dubbing, voiceover, background removal, enhance audio, hook
+ideas, caption writer, watch time check) cost credits. Editing and export are always free. Every number below
+is server config: the app reads it from `GET /v1/credits/pricing`, so changing an env var and restarting the
+server is enough. No app release needed.
+
+### How it works
+
+- **Monthly credits**: Free gets `CREDITS_FREE_MONTHLY` (30), Pro gets `CREDITS_PRO_MONTHLY` (1000). They
+  refill every month: Pro on the subscription's renewal day, Free on the signup day. Unused monthly credits
+  don't roll over.
+- **Bought credits** (top-up packs) never expire. Monthly credits are spent first.
+- **Ledger**: every change is a row in `credit_ledger` (append-only); `credit_balances` holds the running
+  totals and is updated in the same transaction. Debits are idempotent per `idempotencyKey`.
+- **Offline**: `GET /v1/credits/balance` returns a signed `offlineGrant` (same Ed25519 key as entitlements)
+  allowing up to `CREDITS_OFFLINE_BUFFER` credits (never more than the balance). The app queues offline spends
+  and sends them to `POST /v1/credits/reconcile` when it's back online. The balance may dip below zero by at
+  most the buffer; the next top-up or refill covers it.
+
+### Env vars
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `CREDITS_FREE_MONTHLY` | `30` | Monthly credits on Free |
+| `CREDITS_PRO_MONTHLY` | `1000` | Monthly credits on Pro |
+| `CREDITS_COSTS` | empty | Cost overrides, `action=credits` comma-separated, e.g. `auto_cut=5,dubbing=12` |
+| `CREDITS_PACKS` | `300:19900:299,1000:54900:799,3000:144900:1999` | Packs as `credits:inrPaise[:usdCents]` |
+| `CREDITS_TOPUP_FOR_FREE` | `true` | Let Free users buy packs. `false` = Pro only |
+| `CREDITS_OFFLINE_BUFFER` | `50` | Credits the app may spend offline before syncing |
+| `CREDITS_RESET_INTERVAL_MINUTES` | `60` | In-process refill check. `0` turns it off (use the cron below) |
+
+Default costs (per minute of media unless noted): `auto_cut` 4 (per source minute), `captions` 2,
+`speaker_reframe` 3, `dubbing` 10 and `voiceover` 6 (per output minute), `background_removal` 5,
+`enhance_audio` 1, `hook_generator` 2, `caption_writer` 1 and `watch_time_predictor` 2 (per run). Minute
+actions round up and any use costs at least 1 credit. A bad `CREDITS_COSTS` or `CREDITS_PACKS` stops the
+server at startup with a clear error.
+
+### Razorpay setup for top-ups
+
+Top-ups use one-time **Orders** with the same `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` as subscriptions
+(plan ids aren't needed).
+
+1. **Account & Settings > Payment capture**: set automatic capture on, so paid orders are captured right away.
+2. Add `payment.captured` and `order.paid` to the existing webhook (section 3). Either one grants the credits;
+   the other is a no-op.
+3. To charge in US dollars, enable **International payments** in Razorpay and give each pack a USD price in
+   `CREDITS_PACKS`. Without it, leave the third field off and only rupees are offered.
+
+Flow: the app opens `<PUBLIC_URL>/credits/buy?pack=pack_1000` in the browser. After sign-in, the page creates a
+Razorpay order (`credit_orders` row) and opens Razorpay Checkout. On success the page verifies the checkout
+signature and the captured payment and adds the credits at once; the webhook does the same as a backup. The app
+refreshes the balance when its window regains focus.
+
+### Admin and cron
+
+- Give or take back credits: `pnpm credits:grant someone@example.com 500 "Sorry about the outage"` (a negative
+  amount removes credits). In production: `node dist/credits-grant.js <email> <amount> <note>`.
+- Refills also happen lazily on each balance check. For a cron job on Hostinger (hPanel > Advanced > Cron Jobs),
+  hourly: `cd ~/verso-server && node dist/credits-reset.js`, and set `CREDITS_RESET_INTERVAL_MINUTES=0`.
+
+### API
+
+All except pricing need `Authorization: Bearer <access_token>`.
+
+- `GET /v1/credits/pricing` → `{ costs: { auto_cut: { unit: "minute", credits: 4 }, ... }, packs: [{ id,
+  credits, amountInr, amountUsd, priceInr, priceUsd }], allowances: { free, pro }, topUpsForFree,
+  offlineBuffer, paymentsConfigured }`
+- `GET /v1/credits/balance` → `{ allowance, purchased, total, plan, resetsAt, offlineBuffer, offlineGrant }`
+- `POST /v1/credits/debit` `{ action, units, idempotencyKey, meta? }` → `{ charged, duplicate, balance }`.
+  `402 insufficient_credits` with a plain message when there aren't enough.
+- `POST /v1/credits/refund` `{ idempotencyKey, reason? }` → `{ refunded, duplicate, balance }` (for failed jobs)
+- `POST /v1/credits/reconcile` `{ items: [{ action, units, idempotencyKey, at? }] }` → per-item
+  `applied | duplicate | rejected`
+- `GET /v1/credits/history?cursor=&limit=` → `{ items, nextCursor }`
+- `POST /v1/credits/orders` `{ packId, currency? }` → `{ orderId, keyId, amount, currency, credits, packId,
+  checkoutUrl }` for an in-app Razorpay Checkout
