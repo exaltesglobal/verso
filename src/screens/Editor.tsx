@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ToastMessage } from "../components/ui";
 import { TopBar } from "../components/editor/TopBar";
 import { LeftPanel } from "../components/editor/LeftPanel";
 import { Preview } from "../components/editor/Preview";
 import { Inspector } from "../components/editor/Inspector";
 import { Timeline, type TimelineEdit } from "../components/editor/Timeline";
+import { ShortcutSheet } from "../components/ShortcutSheet";
+import { IconButton } from "../components/ui";
+import { clampZoom, useLayout } from "../lib/layout";
+import { FPS } from "../lib/timecode";
 import { ExportDialog } from "../components/editor/ExportDialog";
 import { ContextMenu } from "../components/ContextMenu";
 import type { MediaInfo } from "../lib/media";
@@ -23,6 +27,7 @@ import {
   type Clip,
   type Project,
   type TextStyle,
+  type TrackKind,
 } from "../lib/project";
 import { autosaveProject, saveProject, saveProjectAs } from "../lib/persist";
 import { useHistory } from "../lib/useHistory";
@@ -75,8 +80,21 @@ export function Editor({
     () => initialProject.tracks.find((t) => t.kind === "video")?.clips[0]?.id ?? "",
   );
   const [zoom, setZoom] = useState(1);
+  const [fitSignal, setFitSignal] = useState(0);
+  const [snapping, setSnapping] = useState(() => localStorage.getItem("verso.snap") !== "0");
+  const toggleSnap = useCallback(
+    () =>
+      setSnapping((s) => {
+        localStorage.setItem("verso.snap", s ? "0" : "1");
+        return !s;
+      }),
+    [],
+  );
   const [exporting, setExporting] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [trackMenu, setTrackMenu] = useState<{ kind: TrackKind; x: number; y: number } | null>(null);
+  const { layout, startDrag, reset: resetSplit, toggle: togglePanel, toggleFocus } = useLayout();
   const last = useRef<number | null>(null);
   /**
    * Timeline time reported by the playing <video>, or null when no real media
@@ -127,18 +145,29 @@ export function Editor({
   const firstSave = useRef(true);
   /** Edit not yet autosaved; flushed when the editor closes (Home, opening a reel). */
   const unsaved = useRef<Project | null>(null);
+  /** The last project autosave finished with; the top bar shows "Saving…" until it catches up. */
+  const [savedProject, setSavedProject] = useState<Project>(initialProject);
+  const [saveFailed, setSaveFailed] = useState(false);
   useEffect(() => {
     if (firstSave.current) {
       firstSave.current = false;
       return;
     }
-    if (project.tracks.every((t) => t.clips.length === 0)) return;
-    unsaved.current = project;
+    const empty = project.tracks.every((tr) => tr.clips.length === 0);
+    if (!empty) unsaved.current = project;
     const t = window.setTimeout(() => {
+      if (empty) return setSavedProject(project);
       unsaved.current = null;
-      autosaveProject(project).catch(() => {
-        /* plain browser: nowhere to save */
-      });
+      autosaveProject(project)
+        .then(() => {
+          setSaveFailed(false);
+          setSavedProject(project);
+        })
+        .catch(() => {
+          /* plain browser: nowhere to save */
+          setSaveFailed(!!(window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__);
+          setSavedProject(project);
+        });
     }, 800);
     return () => window.clearTimeout(t);
   }, [project]);
@@ -183,6 +212,12 @@ export function Editor({
     },
     [project, setProject, notify],
   );
+
+  const startExport = useCallback(() => {
+    setPlaying(false);
+    if (duration > 0) setExporting(true);
+    else notify({ tone: "info", text: "Add a video before exporting." });
+  }, [duration, notify]);
 
   const onTimelineEdit = useCallback(
     (edit: TimelineEdit) => {
@@ -239,6 +274,30 @@ export function Editor({
       if (e.code === "Space") {
         e.preventDefault();
         togglePlay();
+      } else if (!mod && key === "k") {
+        setPlaying(false);
+      } else if (!mod && key === "l") {
+        if (!playing) togglePlay();
+      } else if (!mod && key === "j") {
+        // No reverse playback yet: J pauses and steps back a second per press (hold to repeat).
+        setPlaying(false);
+        setTime((t) => Math.max(0, Math.round((t - 1) * FPS) / FPS));
+      } else if (mod && key === "e") {
+        e.preventDefault();
+        startExport();
+      } else if (mod && e.code === "Backslash") {
+        e.preventDefault();
+        toggleFocus();
+      } else if (!mod && e.code === "Backslash") {
+        setFitSignal((n) => n + 1);
+      } else if (!mod && (e.key === "=" || e.key === "+")) {
+        setZoom((z) => clampZoom(z * 1.5));
+      } else if (!mod && (e.key === "-" || e.key === "_")) {
+        setZoom((z) => clampZoom(z / 1.5));
+      } else if (!mod && key === "n") {
+        toggleSnap();
+      } else if (e.key === "?") {
+        setShowShortcuts(true);
       } else if (mod && key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -255,8 +314,11 @@ export function Editor({
         remove(e.shiftKey);
       } else if (key === "arrowleft" || key === "arrowright") {
         e.preventDefault();
-        const step = e.shiftKey ? 1 : 1 / 30;
-        setTime((t) => Math.min(duration, Math.max(0, t + (key === "arrowleft" ? -step : step))));
+        // One frame, or a second with Shift; always land on the frame grid.
+        const step = e.shiftKey ? 1 : 1 / FPS;
+        setTime((t) =>
+          Math.min(duration, Math.max(0, Math.round((t + (key === "arrowleft" ? -step : step)) * FPS) / FPS)),
+        );
       } else if (key === "home") {
         setTime(0);
       } else if (key === "end") {
@@ -265,7 +327,7 @@ export function Editor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePlay, undo, redo, save, split, remove, duration]);
+  }, [togglePlay, undo, redo, save, split, remove, duration, playing, startExport, toggleFocus, toggleSnap]);
 
   const addToTimeline = useCallback(
     (items: MediaInfo[]) => {
@@ -292,9 +354,10 @@ export function Editor({
   const applySmart = useCallback(
     (next: Project, message: string) => {
       setProject(next);
-      notify({ tone: "success", text: message });
+      // Every smart edit is one undo step; the toast makes "undo everything" visible.
+      notify({ tone: "success", text: message, action: { label: "Undo", run: undo } });
     },
-    [setProject, notify],
+    [setProject, notify, undo],
   );
   // Captions go on the selected video clip, or the first one with a real file.
   const captionClip =
@@ -324,32 +387,38 @@ export function Editor({
     [selectedClip, setProject],
   );
 
+  const editorStyle = {
+    "--left-w": layout.leftOpen ? `${layout.left}px` : "0px",
+    "--insp-w": layout.inspOpen ? `${layout.insp}px` : "0px",
+    "--tl-h": `${layout.tl}px`,
+  } as CSSProperties;
+
+  const clipMenu = menu ? findClip(project, menu.id) : undefined;
+
   return (
-    <div className="editor">
+    <div className="editor" style={editorStyle}>
       <TopBar
         projectName={project.name}
         subtitle={project.subtitle}
         onRename={(name) => livePatch((p) => ({ ...p, name }))}
         onRenameDone={commit}
-        aspect={aspect}
-        onAspect={(a: AspectRatio) => setProject((p) => ({ ...p, aspect: a }))}
         canUndo={history.canUndo}
         canRedo={history.canRedo}
         onUndo={undo}
         onRedo={redo}
         onHome={onHome}
         onAbout={onAbout}
-        onExport={() => {
-          setPlaying(false);
-          if (duration > 0) setExporting(true);
-          else notify({ tone: "info", text: "Add a video before exporting." });
-        }}
+        onShortcuts={() => setShowShortcuts(true)}
+        onExport={startExport}
+        saveState={saveFailed ? "error" : savedProject === project ? "saved" : "saving"}
         onSave={() => void save(false)}
       />
       <LeftPanel
         time={time}
         tab={tab}
         onTab={setTab}
+        panelOpen={layout.leftOpen}
+        onTogglePanel={() => togglePanel("leftOpen")}
         media={media}
         importing={importing}
         onImport={importAndAdd}
@@ -369,6 +438,7 @@ export function Editor({
         project={project}
         duration={duration}
         aspect={aspect}
+        onAspect={(a: AspectRatio) => setProject((p) => ({ ...p, aspect: a }))}
         time={time}
         playing={playing}
         onTogglePlay={togglePlay}
@@ -377,56 +447,150 @@ export function Editor({
         onImport={importAndAdd}
         importing={importing}
       />
-      <Inspector
-        clip={selected}
-        aspect={aspect}
-        onChange={(patch) => selected && patchClip(selected.id, patch)}
-        onDelete={() => remove(false)}
-        onCropPath={setCropPath}
-        project={project}
-        onApply={applySmart}
-        time={time}
-      />
+      {layout.inspOpen && (
+        <Inspector
+          clip={selected}
+          aspect={aspect}
+          onChange={(patch) => selected && patchClip(selected.id, patch)}
+          onDelete={() => remove(false)}
+          onCropPath={setCropPath}
+          project={project}
+          onApply={applySmart}
+          time={time}
+          onCollapse={() => togglePanel("inspOpen", false)}
+        />
+      )}
       <Timeline
         project={project}
         duration={duration}
         time={time}
+        playing={playing}
         onSeek={setTime}
         zoom={zoom}
         onZoom={setZoom}
+        fitSignal={fitSignal}
         selectedClip={selectedClip}
         onSelectClip={setSelectedClip}
         onEdit={onTimelineEdit}
         onSplit={split}
         onDelete={() => remove(false)}
+        snapping={snapping}
+        onToggleSnap={toggleSnap}
         onClipMenu={(id, x, y) => setMenu({ id, x, y })}
+        onTrackMenu={(kind, x, y) => setTrackMenu({ kind, x, y })}
+        onEmptyTrack={(kind) => {
+          if (kind === "text") addText("title", "Your big idea");
+          else {
+            setTab(kind === "captions" ? "captions" : "audio");
+            togglePanel("leftOpen", true);
+          }
+        }}
       />
+
+      {/* Drag handles between panels: 1px line, 6px hit area; double-click resets. */}
+      {layout.leftOpen && (
+        <div
+          className="splitter splitter--v splitter--left"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize tools panel"
+          onPointerDown={(e) => startDrag("left", e)}
+          onDoubleClick={() => resetSplit("left")}
+        />
+      )}
+      {layout.inspOpen ? (
+        <div
+          className="splitter splitter--v splitter--insp"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize properties panel"
+          onPointerDown={(e) => startDrag("insp", e)}
+          onDoubleClick={() => resetSplit("insp")}
+        />
+      ) : (
+        <IconButton
+          icon="chevron-right"
+          label="Show properties"
+          shortcut="Ctrl+\"
+          className="inspector-reopen"
+          onClick={() => togglePanel("inspOpen", true)}
+        />
+      )}
+      <div
+        className="splitter splitter--h splitter--tl"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize timeline"
+        onPointerDown={(e) => startDrag("tl", e)}
+        onDoubleClick={() => resetSplit("tl")}
+      />
+
       {menu && (
         <ContextMenu
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            { label: "Split at playhead", shortcut: "S", onSelect: split },
+            { label: "Split at playhead", icon: "split", shortcut: "S", onSelect: split },
             {
               label: "Add fade in",
-              disabled: findClip(project, menu.id)?.kind !== "video",
+              icon: "transitions",
+              disabled: clipMenu?.kind !== "video",
               onSelect: () => patchClip(menu.id, { transitionIn: { kind: "fade", duration: 0.5 } }),
             },
             { separator: true },
-            { label: "Delete", shortcut: "Del", onSelect: () => remove(false) },
-            { label: "Delete and close the gap", shortcut: "Shift+Del", onSelect: () => remove(true) },
+            { label: "Delete", icon: "delete", shortcut: "Del", danger: true, onSelect: () => remove(false) },
+            {
+              label: "Delete and close the gap",
+              shortcut: "Shift+Del",
+              danger: true,
+              onSelect: () => remove(true),
+            },
+          ]}
+        />
+      )}
+      {trackMenu && (
+        <ContextMenu
+          x={trackMenu.x}
+          y={trackMenu.y}
+          onClose={() => setTrackMenu(null)}
+          items={[
+            trackMenu.kind === "text"
+              ? { label: "Add text at playhead", icon: "text", onSelect: () => addText("title", "Your big idea") }
+              : trackMenu.kind === "captions"
+                ? {
+                    label: "Make captions",
+                    icon: "captions",
+                    onSelect: () => {
+                      setTab("captions");
+                      togglePanel("leftOpen", true);
+                    },
+                  }
+                : trackMenu.kind === "music"
+                  ? {
+                      label: "Browse music",
+                      icon: "music",
+                      onSelect: () => {
+                        setTab("audio");
+                        togglePanel("leftOpen", true);
+                      },
+                    }
+                  : { label: "Import media", icon: "import", onSelect: () => void importAndAdd() },
+            { separator: true },
+            { label: "Zoom to fit", icon: "zoom-fit", shortcut: "\\", onSelect: () => setFitSignal((n) => n + 1) },
+            {
+              label: snapping ? "Turn snapping off" : "Turn snapping on",
+              icon: "magnet",
+              shortcut: "N",
+              onSelect: toggleSnap,
+            },
           ]}
         />
       )}
       {exporting && (
-        <ExportDialog
-          project={project}
-          aspect={aspect}
-          notify={notify}
-          onClose={() => setExporting(false)}
-        />
+        <ExportDialog project={project} aspect={aspect} notify={notify} onClose={() => setExporting(false)} />
       )}
+      {showShortcuts && <ShortcutSheet onClose={() => setShowShortcuts(false)} />}
     </div>
   );
 }

@@ -2,7 +2,13 @@ import type { CSSProperties } from "react";
 import "@fontsource-variable/fraunces"; // SIL OFL serif for title cards, bundled locally
 import { clipsAt, type Clip, type Project, type TextStyle } from "../../lib/project";
 
-const DEFAULT_STYLE: TextStyle = { preset: "subtitle", y: 0.7, size: 0.045, color: "#F5F4F0", align: "center" };
+const DEFAULT_STYLE: TextStyle = {
+  preset: "subtitle",
+  y: 0.7,
+  size: 0.045,
+  color: "#F5F4F0",
+  align: "center",
+};
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const easeOut = (x: number) => 1 - (1 - x) ** 3;

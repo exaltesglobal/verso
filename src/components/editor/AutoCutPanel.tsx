@@ -1,7 +1,7 @@
 import { useEntitlements } from "../../lib/entitlements";
 import { useState } from "react";
 import { Icon } from "../Icon";
-import { Button } from "../ui";
+import { Button, Progress } from "../ui";
 import { CostConfirm } from "../credits/CostConfirm";
 import { useCharged } from "../../lib/credits";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
@@ -136,14 +136,7 @@ export function AutoCutPanel({
               </label>
             )}
             {phase.kind === "working" ? (
-              <div className="progress-card" role="status">
-                <span className="progress-card__stage">
-                  {phase.stage} {Math.round(phase.percent)}%
-                </span>
-                <span className="progress-bar">
-                  <span style={{ width: `${phase.percent}%` }} />
-                </span>
-              </div>
+              <Progress value={phase.percent} label={phase.stage} />
             ) : (
               <CostConfirm
                 action="auto_cut"

@@ -70,6 +70,7 @@ export type IconName =
   | "step-back"
   | "step-forward"
   | "unlock"
+  | "user"
   | "volume-off"
   | "zoom-fit"
   | "zoom-out";

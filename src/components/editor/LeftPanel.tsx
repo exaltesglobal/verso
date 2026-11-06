@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { ContextMenu } from "../ContextMenu";
 import { Icon, type IconName } from "../Icon";
 import { Button, Segmented, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
 import { useFilmstrip } from "../../lib/filmstrip";
-import { formatDuration, formatResolution, formatSize, type MediaInfo } from "../../lib/media";
+import { formatDuration, formatSize, type MediaInfo } from "../../lib/media";
 import type { Clip, Project, TextStyle } from "../../lib/project";
 import { AutoCutPanel } from "./AutoCutPanel";
 import { TemplatesPanel } from "../smart/TemplatesPanel";
@@ -17,23 +19,35 @@ import { SoundsPanel } from "../smart/SoundsPanel";
 import { startMediaDrag } from "../../lib/mediaDrag";
 import { EMOJI, SHAPES, addSticker, type Sticker } from "../../lib/stickers";
 
-const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
+/** Make tools first; the Smart group (tools that spend credits) after a divider. */
+const TABS: { id: PanelTab; label: string; icon: IconName; smart?: boolean }[] = [
   { id: "media", label: "Media", icon: "folder" },
-  { id: "autocut", label: "Auto-cut", icon: "auto-cut" },
-  { id: "magic", label: "Magic", icon: "one-click" },
-  { id: "boost", label: "Boost", icon: "auto-reel" },
   { id: "templates", label: "Templates", icon: "templates" },
   { id: "text", label: "Text", icon: "text" },
   { id: "captions", label: "Captions", icon: "captions" },
   { id: "audio", label: "Audio", icon: "music" },
   { id: "voice", label: "Voice", icon: "voiceover" },
+  { id: "autocut", label: "Auto-cut", icon: "auto-cut", smart: true },
+  { id: "magic", label: "Magic", icon: "one-click", smart: true },
+  { id: "boost", label: "Boost", icon: "auto-reel", smart: true },
 ];
+
+/** Plain-language picture size for the media list: no codecs on the surface. */
+function sizeLabel(m: MediaInfo): string | null {
+  if (!m.width || !m.height) return null;
+  const short = Math.min(m.width, m.height);
+  const q = short >= 2160 ? "4K" : short >= 1440 ? "2K" : short >= 720 ? "HD" : "SD";
+  return m.height > m.width ? `${q} vertical` : q;
+}
 
 interface LeftPanelProps {
   /** Playhead, in timeline seconds. */
   time: number;
   tab: PanelTab;
   onTab: (t: PanelTab) => void;
+  /** Clicking the active tool collapses or opens the panel (Premiere/Figma pattern). */
+  panelOpen: boolean;
+  onTogglePanel: () => void;
   media: MediaInfo[];
   importing: boolean;
   onImport: () => Promise<void>;
@@ -54,6 +68,8 @@ export function LeftPanel({
   time,
   tab,
   onTab,
+  panelOpen,
+  onTogglePanel,
   media,
   importing,
   onImport,
@@ -72,20 +88,30 @@ export function LeftPanel({
   return (
     <>
       <nav className="rail" aria-label="Tools">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={t.id === tab ? "rail__item is-active" : "rail__item"}
-            aria-current={t.id === tab ? "page" : undefined}
-            onClick={() => onTab(t.id)}
-          >
-            <Icon name={t.icon} size={24} />
-            <span>{t.label}</span>
-          </button>
+        {TABS.map((t, i) => (
+          <Fragment key={t.id}>
+            {t.smart && !TABS[i - 1]?.smart && <span className="rail__sep" role="separator" />}
+            <button
+              type="button"
+              className={t.id === tab && panelOpen ? "rail__item is-active" : "rail__item"}
+              aria-current={t.id === tab ? "page" : undefined}
+              aria-expanded={t.id === tab ? panelOpen : undefined}
+              data-tip={t.id === tab && panelOpen ? `Hide ${t.label}` : t.label}
+              onClick={() => {
+                if (t.id === tab) onTogglePanel();
+                else {
+                  onTab(t.id);
+                  if (!panelOpen) onTogglePanel();
+                }
+              }}
+            >
+              <Icon name={t.icon} size={20} />
+              <span>{t.label}</span>
+            </button>
+          </Fragment>
         ))}
       </nav>
-      <aside className="panel" aria-label={TABS.find((t) => t.id === tab)?.label}>
+      <aside className="panel" aria-label={TABS.find((t) => t.id === tab)?.label} hidden={!panelOpen}>
         {tab === "media" && (
           <MediaTab
             media={media}
@@ -199,7 +225,8 @@ function MediaTab({
       {media.length === 0 ? (
         <div className="empty">
           <Icon name="import" size={32} />
-          <p>Import a video to get started. We'll put it on your timeline.</p>
+          <p className="empty__title">No media yet</p>
+          <p>Imported videos and sounds show up here.</p>
         </div>
       ) : (
         <ul className="media-list">
@@ -214,34 +241,68 @@ function MediaTab({
 
 function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void }) {
   const frames = useFilmstrip(m);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   // Middle frame makes a better cover than the first, which is often black.
   const cover = frames[Math.floor(frames.length / 2)];
+  const meta = [
+    sizeLabel(m) ?? (m.hasVideo ? null : "Audio"),
+    m.fps ? `${Math.round(m.fps)} fps` : null,
+    formatSize(m.sizeBytes),
+  ];
+  // Codecs stay off the surface (brand rule); the tooltip has them for the curious.
+  const details = [
+    m.fileName,
+    m.width && m.height ? `${m.width}×${m.height}` : null,
+    m.videoCodec?.toUpperCase(),
+    m.audioCodec?.toUpperCase(),
+  ];
   return (
-    <li className="media-item" title={m.path} onPointerDown={(e) => startMediaDrag(e, m)}>
+    <li
+      className="media-item"
+      data-tip={details.filter(Boolean).join(" · ")}
+      onPointerDown={(e) => startMediaDrag(e, m)}
+      onDoubleClick={onAdd}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}
+    >
       <span className="media-item__thumb">
         {cover ? <img src={cover} alt="" /> : <Icon name={m.hasVideo ? "play" : "music"} size={20} />}
-        <span className="media-item__dur">{formatDuration(m.durationSec)}</span>
+        <span className="media-item__dur tc">{formatDuration(m.durationSec)}</span>
       </span>
       <span className="media-item__text">
         <span className="media-item__name">{m.fileName}</span>
-        <span className="media-item__meta">
-          {[formatResolution(m), m.fps ? `${m.fps} fps` : null].filter(Boolean).join(" · ") || "Audio"}
-        </span>
-        <span className="media-item__meta muted">
-          {[m.videoCodec?.toUpperCase(), m.audioCodec?.toUpperCase(), formatSize(m.sizeBytes)]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
+        <span className="media-item__meta">{meta.filter(Boolean).join(" · ")}</span>
       </span>
       <button
         type="button"
         className="media-item__add"
         onClick={onAdd}
         aria-label={`Add ${m.fileName} to timeline`}
-        title="Add to timeline"
       >
-        <Icon name="add" size={20} />
+        <Icon name="add" size={16} />
+        Add
       </button>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Add to timeline", icon: "add", onSelect: onAdd },
+            {
+              label: "Show in folder",
+              icon: "folder",
+              onSelect: () => void revealItemInDir(m.path).catch(() => undefined),
+            },
+            {
+              label: "Copy file path",
+              onSelect: () => void navigator.clipboard?.writeText(m.path).catch(() => undefined),
+            },
+          ]}
+        />
+      )}
     </li>
   );
 }

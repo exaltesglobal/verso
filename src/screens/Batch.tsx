@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import versoMark from "../assets/brand/verso-mark-small.svg";
 import { Icon } from "../components/Icon";
-import { Button, IconButton } from "../components/ui";
+import { Button, IconButton, Progress } from "../components/ui";
 import { WindowControls } from "../components/WindowControls";
 import type { ToastMessage } from "../components/ui";
 import { findMoments, projectForMoment } from "../lib/autoclips";
@@ -213,9 +213,7 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
                   )}
                 </div>
                 {j.status === "working" && (
-                  <span className="progress-bar">
-                    <span style={{ width: `${j.percent}%` }} />
-                  </span>
+                  <Progress value={j.percent} label="Picking the best moments…" />
                 )}
                 {j.error && <p className="form-error">{j.error}</p>}
                 {j.reels.length > 0 && (

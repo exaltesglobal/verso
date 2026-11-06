@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Button } from "../ui";
+import { Button, Progress } from "../ui";
 import { writeCaptions, type CaptionDraft } from "../../lib/captionWriter";
 import { useCharged } from "../../lib/credits";
 import { useFilmstrip } from "../../lib/filmstrip";
@@ -318,15 +318,10 @@ export function PublishDialog({ outputPath, project, aspect, transcript, onClose
             <h2 id="publish-title" className="export__title">
               {phase.progress?.phase === "creating" ? "Creating the post…" : `Sending… ${pct}%`}
             </h2>
-            <div
-              className="export__bar"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={pct}
-            >
-              <span className="export__bar-fill" style={{ width: `${pct}%` }} />
-            </div>
+            <Progress
+              value={phase.progress?.phase === "creating" ? undefined : pct}
+              label={phase.progress?.phase === "creating" ? "Creating the post…" : "Sending your reel"}
+            />
             <p className="export__hint">
               {phase.waiting ?? "You can close this. Sending carries on in the background."}
             </p>

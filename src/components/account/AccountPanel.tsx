@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { API_URL } from "../../lib/config";
@@ -20,8 +21,18 @@ const dateFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "sho
 
 /** Account summary and actions. Used in the account dialog and in Settings. */
 export function AccountDetails() {
-  const { ent, configured, signingIn, error, blocked, signIn, cancelSignIn, signOut, openUpgrade, openServerPage } =
-    useEntitlements();
+  const {
+    ent,
+    configured,
+    signingIn,
+    error,
+    blocked,
+    signIn,
+    cancelSignIn,
+    signOut,
+    openUpgrade,
+    openServerPage,
+  } = useEntitlements();
   const credits = useCredits();
   const [devices, setDevices] = useState<Device[] | null>(null);
 
@@ -91,7 +102,9 @@ export function AccountDetails() {
   return (
     <div className="acct-section">
       <div className="acct-row">
-        <span className="acct-avatar acct-avatar--lg">{(ent.email ?? "?").charAt(0).toUpperCase()}</span>
+        <span className="acct-avatar acct-avatar--lg">
+          {ent.email?.charAt(0).toUpperCase() || <Icon name="user" size={20} />}
+        </span>
         <div>
           <p className="acct-lead">{ent.email ?? "Signed in"}</p>
           <p className="acct-muted">

@@ -249,7 +249,11 @@ export function VoicePanel(props: VoicePanelProps) {
       </div>
       <Segmented label="Voice tool" options={["Voiceover", "Dub"] as const} value={tab} onChange={setTab} />
       {models.error && <p className="smart-note smart-note--error">{models.error}</p>}
-      {tab === "Voiceover" ? <VoiceoverTab {...props} models={models} /> : <DubTab {...props} models={models} />}
+      {tab === "Voiceover" ? (
+        <VoiceoverTab {...props} models={models} />
+      ) : (
+        <DubTab {...props} models={models} />
+      )}
     </div>
   );
 }
@@ -297,7 +301,11 @@ function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
   };
 
   return (
-    <SmartCard icon="voiceover" title="Voiceover" lede="Type or paste a script. We add the voice at the playhead.">
+    <SmartCard
+      icon="voiceover"
+      title="Voiceover"
+      lede="Type or paste a script. We add the voice at the playhead."
+    >
       <Downloads packs={models.packs} need={packsFor(lang, lang)} onDone={() => void models.reload()} />
       <LanguageChips label="Language" options={VOICE_LANGUAGES} value={lang} onChange={pickLang} />
       <VoicePicker voices={models.voices} lang={lang} value={voiceId} onChange={setVoiceId} ready={ready} />
@@ -316,7 +324,12 @@ function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
           Use my caption text
         </button>
       )}
-      <Segmented label="Speed" options={Object.keys(SPEEDS) as SpeedName[]} value={speed} onChange={setSpeed} />
+      <Segmented
+        label="Speed"
+        options={Object.keys(SPEEDS) as SpeedName[]}
+        value={speed}
+        onChange={setSpeed}
+      />
       {busy && <Listening percent={percent} label="Making the voice…" />}
       {error && <p className="smart-note smart-note--error">{error}</p>}
       <div className="smart-actions">
@@ -410,12 +423,17 @@ function DubTab({ project, onApply, onNeedCaptions, models }: TabProps) {
       ) : (
         <>
           {pro && <Downloads packs={models.packs} need={need} onDone={() => void models.reload()} />}
-          <LanguageChips label="My captions are in" options={SOURCE_LANGUAGES} value={from} onChange={pickFrom} />
+          <LanguageChips
+            label="My captions are in"
+            options={SOURCE_LANGUAGES}
+            value={from}
+            onChange={pickFrom}
+          />
           <LanguageChips label="Dub into" options={targets} value={to} onChange={pickTo} />
           <VoicePicker voices={models.voices} lang={to} value={voiceId} onChange={setVoiceId} ready={ready} />
           <p className="smart-note">
-            {segments.length} caption {segments.length === 1 ? "line" : "lines"}. Check the translation in Captions
-            afterwards: machine translation can miss slang.
+            {segments.length} caption {segments.length === 1 ? "line" : "lines"}. Check the translation in
+            Captions afterwards: machine translation can miss slang.
           </p>
           {stage === "translating" && <Listening percent={tPercent} label="Translating…" />}
           {stage === "speaking" && <Listening percent={dPercent} label="Making the voice…" />}

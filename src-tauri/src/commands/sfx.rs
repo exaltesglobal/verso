@@ -153,16 +153,36 @@ fn sounds_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|e| format!("We couldn't find the app data folder ({e})."))?
         .join("sounds");
-    std::fs::create_dir_all(&dir).map_err(|e| format!("We couldn't create the sounds folder ({e})."))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("We couldn't create the sounds folder ({e})."))?;
     Ok(dir)
 }
 
 fn render(recipe: &Recipe, out: &PathBuf) -> Result<(), String> {
     let tmp = out.with_extension("part.m4a");
     let status = tools::command(Tool::Ffmpeg)
-        .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i"])
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+        ])
         .arg(recipe.graph)
-        .args(["-t", &recipe.seconds.to_string(), "-ac", "2", "-ar", "44100", "-c:a", "aac", "-b:a", "160k"])
+        .args([
+            "-t",
+            &recipe.seconds.to_string(),
+            "-ac",
+            "2",
+            "-ar",
+            "44100",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "160k",
+        ])
         .arg(&tmp)
         .status()
         .map_err(|_| tools::missing_message())?;

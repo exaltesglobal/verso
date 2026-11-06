@@ -2,7 +2,8 @@ import { useEntitlements } from "../../lib/entitlements";
 import { ProBadge } from "../account/ProBadge";
 import { useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Button } from "../ui";
+import { Button, Progress } from "../ui";
+import { Icon } from "../Icon";
 import { useCharged } from "../../lib/credits";
 import type { AspectRatio, Clip } from "../../lib/project";
 import {
@@ -16,7 +17,10 @@ import {
   type ReframeModel,
 } from "../../lib/reframe";
 
-const MODES: { mode: ReframeMode; label: string; needsSpeakers: number }[] = [
+/** "auto" is the default: centred until speakers are found, then it follows whoever is talking. */
+type Choice = ReframeMode | "auto";
+const MODES: { mode: Choice; label: string; needsSpeakers: number }[] = [
+  { mode: "auto", label: "Auto", needsSpeakers: 0 },
   { mode: "centre", label: "Keep it centred", needsSpeakers: 0 },
   { mode: "follow_speaker", label: "Follow the speaker", needsSpeakers: 1 },
   { mode: "active_speaker", label: "Switch to whoever's talking", needsSpeakers: 1 },
@@ -37,7 +41,7 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
   const { can, openUpgrade } = useEntitlements();
   const charge = useCharged();
   const source = clip.source;
-  const [mode, setMode] = useState<ReframeMode>("centre");
+  const [choice, setMode] = useState<Choice>("auto");
   const [speakerId, setSpeakerId] = useState<number | undefined>();
   const [found, setAnalysis] = useState<ReframeAnalysis | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -61,6 +65,16 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
     Math.abs(found.outPoint - Math.min(outPoint, source.durationSec)) < 1e-3
       ? found
       : null;
+
+  const speakerCount = analysis?.speakers.length ?? 0;
+  const mode: ReframeMode =
+    choice !== "auto"
+      ? choice
+      : speakerCount > 1
+        ? "active_speaker"
+        : speakerCount === 1
+          ? "follow_speaker"
+          : "centre";
 
   useEffect(() => {
     if (!analysis && mode !== "centre") return;
@@ -102,10 +116,7 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
         ),
       );
       setAnalysis(a);
-      if (a.speakers.length) {
-        setSpeakerId((id) => id ?? a.speakers[0].id);
-        setMode((m) => (m === "centre" ? (a.speakers.length > 1 ? "active_speaker" : "follow_speaker") : m));
-      }
+      if (a.speakers.length) setSpeakerId((id) => id ?? a.speakers[0].id);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -132,9 +143,7 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
   const matcher = models.find((m) => !m.required && !m.installed);
 
   return (
-    <section className="inspector__section reframe" aria-label="Reframe">
-      <h3 className="section-label">Reframe for {aspect}</h3>
-
+    <div className="reframe" aria-label="Reframe">
       <div className="reframe__modes" role="radiogroup" aria-label="How the camera follows">
         {MODES.map((m) => {
           const disabled = speakers.length < m.needsSpeakers;
@@ -143,17 +152,29 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
               key={m.mode}
               type="button"
               role="radio"
-              aria-checked={mode === m.mode}
-              className={mode === m.mode ? "reframe__mode is-active" : "reframe__mode"}
+              aria-checked={choice === m.mode}
+              className={choice === m.mode ? "reframe__mode is-active" : "reframe__mode"}
               disabled={disabled || !!busy}
-              title={disabled ? "Find speakers first" : undefined}
               onClick={() => setMode(m.mode)}
             >
               {m.label}
+              {m.mode === "auto" && (
+                <span className="reframe__mode-hint">
+                  {speakers.length > 1
+                    ? "Switches to whoever's talking"
+                    : speakers.length === 1
+                      ? "Follows the speaker"
+                      : "Centred until speakers are found"}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+
+      {speakers.length === 0 && !busy && (
+        <p className="insp-hint">Find speakers first to follow them or show both.</p>
+      )}
 
       {speakers.length > 0 && (
         <div className="reframe__speakers" role="radiogroup" aria-label="Who to follow">
@@ -186,12 +207,10 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
       )}
 
       {busy ? (
-        <div className="reframe__progress" role="status" aria-live="polite">
-          <span>{busy}</span>
-          <span className="reframe__bar">
-            <span style={{ width: `${Number(/(\d+)%/.exec(busy)?.[1] ?? 0)}%` }} />
-          </span>
-        </div>
+        <Progress
+          value={/(\d+)%/.test(busy) ? Number(/(\d+)%/.exec(busy)?.[1]) : undefined}
+          label={busy.replace(/\s*\d+%$/, "")}
+        />
       ) : (
         <Button icon="subject-track" onClick={findSpeakers}>
           {analysis ? "Find speakers again" : "Find speakers"}
@@ -200,8 +219,14 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
       )}
 
       {matcher && !busy && (
-        <button type="button" className="reframe__link" onClick={() => getMatcher(matcher)}>
-          Recognise people after camera cuts ({mb(matcher.sizeBytes)} download)
+        <button
+          type="button"
+          className="reframe__link"
+          onClick={() => getMatcher(matcher)}
+          data-tip={`${mb(matcher.sizeBytes)} download`}
+        >
+          <Icon name="import" size={16} />
+          Recognise people after camera cuts
         </button>
       )}
 
@@ -210,6 +235,6 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
           {error}
         </p>
       )}
-    </section>
+    </div>
   );
 }

@@ -64,7 +64,9 @@ export function ContextMenu({
   }, [x, y]);
 
   const onKey = (e: KeyboardEvent) => {
-    const buttons = [...(ref.current?.querySelectorAll<HTMLButtonElement>(".menu__item:not(:disabled)") ?? [])];
+    const buttons = [
+      ...(ref.current?.querySelectorAll<HTMLButtonElement>(".menu__item:not(:disabled)") ?? []),
+    ];
     const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
     const focus = (n: number) => buttons[(n + buttons.length) % buttons.length]?.focus();
     e.stopPropagation();

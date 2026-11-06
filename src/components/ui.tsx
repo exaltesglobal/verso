@@ -1,4 +1,4 @@
-import { useEffect, type ButtonHTMLAttributes, type ReactNode } from "react";
+import React, { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Icon, type IconName } from "./Icon";
 
 type Variant = "primary" | "secondary" | "ghost";
@@ -22,7 +22,7 @@ export function Button({
   const cls = ["btn", `btn--${variant}`, size === "lg" && "btn--lg", className].filter(Boolean).join(" ");
   return (
     <button type="button" className={cls} {...rest}>
-      {icon && <Icon name={icon} size={20} />}
+      {icon && <Icon name={icon} size={16} />}
       {children && <span>{children}</span>}
     </button>
   );
@@ -38,7 +38,15 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 16 | 20;
 }
 
-export function IconButton({ icon, label, active, shortcut, size = 20, className, ...rest }: IconButtonProps) {
+export function IconButton({
+  icon,
+  label,
+  active,
+  shortcut,
+  size = 20,
+  className,
+  ...rest
+}: IconButtonProps) {
   return (
     <button
       type="button"
@@ -109,21 +117,270 @@ export function Segmented<T extends string>({
 export interface ToastMessage {
   tone: "success" | "danger" | "info";
   text: string;
+  /** One action, e.g. Undo after a smart edit or Open folder after an export. */
+  action?: { label: string; run: () => void };
 }
 
+const TOAST_ICON: Record<ToastMessage["tone"], IconName> = {
+  success: "check-circle",
+  danger: "alert",
+  info: "info",
+};
+
 export function Toast({ message, onDone }: { message: ToastMessage; onDone: () => void }) {
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
-    const t = window.setTimeout(onDone, message.tone === "danger" ? 6000 : 3500);
+    // Errors stay until dismissed; hovering pauses the timer.
+    if (paused || message.tone === "danger") return;
+    const t = window.setTimeout(onDone, message.action ? 6000 : 3500);
     return () => window.clearTimeout(t);
-  }, [message, onDone]);
+  }, [message, onDone, paused]);
 
   return (
-    <div className={`toast toast--${message.tone}`} role={message.tone === "danger" ? "alert" : "status"}>
-      <span className="toast__dot" />
-      <span>{message.text}</span>
-      <button type="button" className="toast__close" onClick={onDone} aria-label="Dismiss">
-        ×
-      </button>
+    <div
+      className={`toast toast--${message.tone}`}
+      role={message.tone === "danger" ? "alert" : "status"}
+      onPointerEnter={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+    >
+      <Icon name={TOAST_ICON[message.tone]} size={16} className="toast__icon" />
+      <span className="toast__text">{message.text}</span>
+      {message.action && (
+        <button
+          type="button"
+          className="toast__action"
+          onClick={() => {
+            message.action?.run();
+            onDone();
+          }}
+        >
+          {message.action.label}
+        </button>
+      )}
+      <IconButton icon="close" label="Dismiss" size={16} className="toast__close" onClick={onDone} />
     </div>
+  );
+}
+
+/**
+ * The one progress bar: Paper fill on a 4px track, a step label with percent,
+ * and an ETA line. Without a value it shows a sliding indeterminate segment.
+ */
+export function Progress({
+  value,
+  label,
+  eta,
+  onCancel,
+}: {
+  /** 0..100, or undefined while the engine gives no percentage yet. */
+  value?: number;
+  label: string;
+  eta?: string;
+  onCancel?: () => void;
+}) {
+  const pct = value === undefined ? undefined : Math.max(0, Math.min(100, Math.floor(value)));
+  return (
+    <div className="progress">
+      <div className="progress__row">
+        <span className="progress__label" aria-live="polite">
+          {label}
+        </span>
+        {pct !== undefined && <span className="progress__pct tc">{pct}%</span>}
+      </div>
+      <div
+        className={pct === undefined ? "progress__track is-indeterminate" : "progress__track"}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-valuetext={pct === undefined ? label : `${label}, ${pct}%`}
+      >
+        <span className="progress__fill" style={pct === undefined ? undefined : { width: `${pct}%` }} />
+      </div>
+      {(eta || onCancel) && (
+        <div className="progress__row">
+          <span className="progress__eta">{eta}</span>
+          {onCancel && (
+            <Button variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Premiere-style number field: drag the label to scrub (1 step per 2px; Shift x10,
+ * Alt x0.1), type a value (Enter commits, Esc reverts), arrows step, double-click
+ * the label to reset. Changed values show the label in Paper.
+ */
+export function ScrubNumber({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  unit = "",
+  defaultValue,
+  disabled,
+  slider,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  defaultValue: number;
+  disabled?: boolean;
+  /** Also show a slider under the row (beginner-friendly fields). */
+  slider?: boolean;
+  onChange: (v: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const decimals = step < 1 ? Math.max(0, -Math.floor(Math.log10(step))) : 0;
+  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
+  const shown = value.toFixed(decimals);
+  const changed = Math.abs(value - defaultValue) > step / 2;
+
+  const scrub = (e: React.PointerEvent<HTMLSpanElement>) => {
+    if (disabled || e.button !== 0) return;
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    let last = e.clientX;
+    let acc = value;
+    const move = (ev: PointerEvent) => {
+      const k = ev.shiftKey ? 10 : ev.altKey ? 0.1 : 1;
+      acc += ((ev.clientX - last) / 2) * step * k;
+      last = ev.clientX;
+      onChange(clamp(acc));
+    };
+    const up = () => {
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+  };
+
+  const commit = () => {
+    const v = parseFloat(draft ?? "");
+    if (Number.isFinite(v)) onChange(clamp(v));
+    setDraft(null);
+  };
+
+  return (
+    <div className={["scrub", changed && "is-changed", disabled && "is-disabled"].filter(Boolean).join(" ")}>
+      <div className="scrub__row">
+        <span
+          className="scrub__label"
+          onPointerDown={scrub}
+          onDoubleClick={() => !disabled && onChange(defaultValue)}
+          data-tip={disabled ? undefined : "Drag to change. Double-click to reset."}
+        >
+          {label}
+        </span>
+        {slider ? (
+          <input
+            className="scrub__slider"
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            disabled={disabled}
+            aria-label={`${label} slider`}
+            onChange={(e) => onChange(Number(e.target.value))}
+            style={{ "--fill": `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties}
+          />
+        ) : (
+          <span />
+        )}
+        <span className="scrub__field">
+          <input
+            className="scrub__input tc"
+            value={draft ?? shown}
+            disabled={disabled}
+            aria-label={label}
+            inputMode="decimal"
+            onFocus={(e) => {
+              setDraft(shown);
+              e.currentTarget.select();
+            }}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              else if (e.key === "Escape") {
+                setDraft(null);
+                e.currentTarget.blur();
+              } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                e.preventDefault();
+                const next = clamp(value + (e.key === "ArrowUp" ? 1 : -1) * step * (e.shiftKey ? 10 : 1));
+                onChange(next);
+                setDraft(next.toFixed(decimals));
+              }
+            }}
+          />
+          {unit && <span className="scrub__unit">{unit}</span>}
+        </span>
+        <button
+          type="button"
+          className="scrub__reset"
+          aria-label={`Reset ${label}`}
+          data-tip="Reset"
+          disabled={disabled || !changed}
+          onClick={() => onChange(defaultValue)}
+        >
+          <Icon name="reset" size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const OPEN_KEY = "verso.inspector.open.v1";
+const openState = (): Record<string, boolean> => {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+};
+
+/** Collapsible section with a 32px header; open state is remembered per title. */
+export function Section({
+  title,
+  defaultOpen = true,
+  onReset,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  /** Shown on hover when something in the section differs from its default. */
+  onReset?: () => void;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => openState()[title] ?? defaultOpen);
+  const toggle = () => {
+    localStorage.setItem(OPEN_KEY, JSON.stringify({ ...openState(), [title]: !open }));
+    setOpen(!open);
+  };
+  return (
+    <section className={open ? "insp-section is-open" : "insp-section"}>
+      <div className="insp-section__head">
+        <button type="button" className="insp-section__toggle" aria-expanded={open} onClick={toggle}>
+          <Icon name="chevron-right" size={16} className="insp-section__chevron" />
+          {title}
+        </button>
+        {onReset && (
+          <IconButton icon="reset" label={`Reset ${title.toLowerCase()}`} size={16} onClick={onReset} />
+        )}
+      </div>
+      {open && <div className="insp-section__body">{children}</div>}
+    </section>
   );
 }

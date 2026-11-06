@@ -113,6 +113,14 @@ pub struct VideoClip {
     /// 1 = fit. Ignored when there is a crop path (as in the preview).
     #[serde(default = "one")]
     pub zoom: f64,
+    /// Where the zoomed frame sits, -1..1 on each axis (0 = centred), like the preview's transform-origin.
+    #[serde(default)]
+    pub pos_x: f64,
+    #[serde(default)]
+    pub pos_y: f64,
+    /// 0..1, faded towards black.
+    #[serde(default = "one")]
+    pub opacity: f64,
     #[serde(default)]
     pub zoom_keys: Vec<ZoomKey>,
     #[serde(default)]
@@ -723,21 +731,39 @@ pub fn build_plan(req: &ExportRequest, subs: Option<&Subtitles>) -> Result<Plan,
                     } else {
                         1.0
                     };
+                    // Fraction of the spare width/height left of (above) the zoomed window.
+                    let fx = n(0.5 + c.pos_x.clamp(-1.0, 1.0) / 2.0);
+                    let fy = n(0.5 + c.pos_y.clamp(-1.0, 1.0) / 2.0);
                     if !c.zoom_keys.is_empty() {
                         // `on` counts output frames from the first decoded frame.
                         let time = format!("(on/{fps}-{})", n(lead_src));
                         chain.push_str(&format!(
-                            ",zoompan=z='{}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={w}x{h}:fps={fps}",
+                            ",zoompan=z='{}':x='(iw-iw/zoom)*{fx}':y='(ih-ih/zoom)*{fy}':d=1:s={w}x{h}:fps={fps}",
                             zoom_expr(base, &c.zoom_keys, &time)
                         ));
                     } else if base > 1.001 {
-                        chain.push_str(&format!(",crop=iw/{z}:ih/{z},scale={w}:{h}", z = n(base)));
+                        chain.push_str(&format!(
+                            ",crop=iw/{z}:ih/{z}:(iw-iw/{z})*{fx}:(ih-ih/{z})*{fy},scale={w}:{h}",
+                            z = n(base)
+                        ));
                     }
                 }
                 graph.push(format!("{chain}[g{i}]"));
             }
         }
         post.push("format=yuv420p".to_string());
+        let alpha = if c.opacity.is_finite() {
+            c.opacity.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+        if alpha < 0.999 {
+            // Fade towards black in limited-range YUV (black is Y=16, U=V=128).
+            let o = n(alpha);
+            post.push(format!(
+                "lutyuv=y='16+(val-16)*{o}':u='128+(val-128)*{o}':v='128+(val-128)*{o}'"
+            ));
+        }
         if lead - lead_src > 0.001 {
             post.push(format!(
                 "tpad=start_duration={}:start_mode=clone",

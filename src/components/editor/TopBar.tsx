@@ -1,31 +1,35 @@
-import logo from "../../assets/brand/verso-logo-horizontal-dark-bg.svg";
-import { Button, IconButton, Segmented } from "../ui";
+import { useState } from "react";
+import mark from "../../assets/brand/verso-mark-small.svg";
+import { Button, IconButton } from "../ui";
+import { Icon } from "../Icon";
+import { ContextMenu } from "../ContextMenu";
 import { AccountButton } from "../account/AccountButton";
 import { CreditsBadge } from "../credits/CreditsBadge";
 import { WindowControls } from "../WindowControls";
-import type { AspectRatio } from "../../lib/project";
 
-const RATIOS = ["9:16", "1:1", "16:9"] as const;
+export type SaveState = "saved" | "saving" | "error";
 
 interface TopBarProps {
   projectName: string;
   subtitle?: string;
   onRename: (name: string) => void;
   onRenameDone: () => void;
-  aspect: AspectRatio;
-  onAspect: (a: AspectRatio) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onHome: () => void;
   onAbout: () => void;
+  onShortcuts: () => void;
   onExport: () => void;
+  /** Autosave status, shown instead of a Save button. Ctrl+S still saves a file. */
+  saveState: SaveState;
   onSave: () => void;
 }
 
 export function TopBar(props: TopBarProps) {
-  const { projectName, subtitle, onRename, onRenameDone, aspect, onAspect } = props;
+  const { projectName, subtitle, onRename, onRenameDone, saveState } = props;
+  const [help, setHelp] = useState<{ x: number; y: number } | null>(null);
   return (
     <header className="topbar" data-tauri-drag-region>
       <div className="topbar__left" data-tauri-drag-region>
@@ -34,11 +38,10 @@ export function TopBar(props: TopBarProps) {
           className="topbar__home"
           onClick={props.onHome}
           aria-label="Back to start"
-          title="Back to start"
+          data-tip="Back to start"
         >
-          <img src={logo} alt="" className="topbar__logo" />
+          <img src={mark} alt="" className="topbar__logo" />
         </button>
-        <span className="topbar__divider" />
         <input
           className="topbar__name"
           value={projectName}
@@ -49,32 +52,86 @@ export function TopBar(props: TopBarProps) {
           spellCheck={false}
         />
         {subtitle && <span className="topbar__crumb">› {subtitle}</span>}
-      </div>
-
-      <div className="topbar__center" data-tauri-drag-region>
-        <Segmented label="Aspect ratio" options={RATIOS} value={aspect} onChange={onAspect} />
+        {saveState === "error" ? (
+          <button
+            type="button"
+            className="topbar__status is-error"
+            onClick={props.onSave}
+            data-tip="Save to a file"
+            data-kbd="Ctrl+S"
+          >
+            <Icon name="alert" size={16} />
+            Not saved, retry
+          </button>
+        ) : (
+          <span
+            className="topbar__status"
+            role="status"
+            data-tip="Changes save on their own"
+            data-kbd="Ctrl+S"
+          >
+            {saveState === "saving" ? (
+              "Saving…"
+            ) : (
+              <>
+                <Icon name="check" size={16} />
+                Saved
+              </>
+            )}
+          </span>
+        )}
       </div>
 
       <div className="topbar__right" data-tauri-drag-region>
-        <IconButton icon="undo" label="Undo (Ctrl+Z)" onClick={props.onUndo} disabled={!props.canUndo} />
+        <IconButton
+          icon="undo"
+          label="Undo"
+          shortcut="Ctrl+Z"
+          onClick={props.onUndo}
+          disabled={!props.canUndo}
+        />
         <IconButton
           icon="redo"
-          label="Redo (Ctrl+Shift+Z)"
+          label="Redo"
+          shortcut="Ctrl+Shift+Z"
           onClick={props.onRedo}
           disabled={!props.canRedo}
         />
-        <IconButton icon="help" label="About Verso" onClick={props.onAbout} />
+        <IconButton
+          icon="help"
+          label="Help"
+          aria-haspopup="menu"
+          aria-expanded={!!help}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setHelp(help ? null : { x: r.left, y: r.bottom + 4 });
+          }}
+        />
         <CreditsBadge />
         <AccountButton />
-        <Button icon="save" onClick={props.onSave} title="Save (Ctrl+S)">
-          Save
-        </Button>
-        <Button variant="primary" icon="export" onClick={props.onExport}>
+        <Button
+          variant="primary"
+          icon="export"
+          onClick={props.onExport}
+          data-tip="Export your reel"
+          data-kbd="Ctrl+E"
+        >
           Export reel
         </Button>
-        <span className="topbar__sep" />
         <WindowControls />
       </div>
+      {help && (
+        <ContextMenu
+          x={help.x}
+          y={help.y}
+          onClose={() => setHelp(null)}
+          items={[
+            { label: "Keyboard shortcuts", icon: "help", shortcut: "?", onSelect: props.onShortcuts },
+            { separator: true },
+            { label: "About Verso", icon: "info", onSelect: props.onAbout },
+          ]}
+        />
+      )}
     </header>
   );
 }

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Icon, type IconName } from "../Icon";
+import { Progress } from "../ui";
 
 export function SmartCard({
   icon,
@@ -31,18 +32,9 @@ export function SmartCard({
   );
 }
 
-/** "Listening… 40%" with a thin bar. */
+/** "Listening… 40%" on the shared progress bar. */
 export function Listening({ percent, label = "Listening…" }: { percent: number; label?: string }) {
-  return (
-    <div className="smart-progress" role="status">
-      <span>
-        {label} {Math.round(percent)}%
-      </span>
-      <span className="smart-progress__bar">
-        <span style={{ width: `${percent}%` }} />
-      </span>
-    </div>
-  );
+  return <Progress value={percent} label={label} />;
 }
 
 /** 0..1 slider with words at each end. `onCommit` fires when the user lets go. */

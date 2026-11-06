@@ -1,4 +1,12 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 
@@ -43,7 +51,12 @@ export function Select<T extends string | number>({
 
   const show = () => {
     if (disabled || !options.length) return;
-    setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+    setActive(
+      Math.max(
+        0,
+        options.findIndex((o) => o.value === value),
+      ),
+    );
     setOpen(true);
   };
   const close = (refocus = true) => {
@@ -107,7 +120,10 @@ export function Select<T extends string | number>({
     else if (e.key === "Escape" || e.key === "Tab") return close(e.key === "Escape");
     else if (e.key.length === 1) {
       const now = Date.now();
-      typed.current = { text: (now - typed.current.at < 600 ? typed.current.text : "") + e.key.toLowerCase(), at: now };
+      typed.current = {
+        text: (now - typed.current.at < 600 ? typed.current.text : "") + e.key.toLowerCase(),
+        at: now,
+      };
       const i = options.findIndex((o) => o.label.toLowerCase().startsWith(typed.current.text));
       if (i >= 0) setActive(i);
       return;

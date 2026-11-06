@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { basename, dirname, join, videoDir } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { Button } from "../ui";
+import { Button, Progress } from "../ui";
+import { Modal } from "../Modal";
 import { ProBadge } from "../account/ProBadge";
 import { PublishDialog } from "../publish/PublishDialog";
 import { useEntitlements } from "../../lib/entitlements";
@@ -60,6 +61,7 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
   const [fps, setFps] = useState(30);
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
   const [publishing, setPublishing] = useState(false);
+  const [background, setBackground] = useState(false);
   const jobId = useRef<string | null>(null);
   const running = phase.step === "running";
 
@@ -87,7 +89,14 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
         if (d.jobId !== jobId.current) return;
         jobId.current = null;
         setPhase({ step: "done", outputPath: d.outputPath });
-        notify({ tone: "success", text: "Your reel is ready." });
+        notify({
+          tone: "success",
+          text: "Your reel is ready.",
+          action: {
+            label: "Open folder",
+            run: () => void revealItemInDir(d.outputPath).catch(() => undefined),
+          },
+        });
       },
       error: (e) => {
         if (e.jobId !== jobId.current) return;
@@ -101,13 +110,6 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
       unlisten?.();
     };
   }, [notify]);
-
-  // Escape closes, except mid-export (Cancel is explicit).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !running && !publishing && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [running, publishing, onClose]);
 
   const chooseLocation = async () => {
     const picked = await save({
@@ -140,21 +142,85 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
     if (jobId.current) void cancelExport(jobId.current);
   };
 
+  const title =
+    phase.step === "setup"
+      ? "Export reel"
+      : phase.step === "running"
+        ? phase.preparing
+          ? "Getting ready…"
+          : "Exporting your reel"
+        : "Your reel is ready";
+
+  // Running in the background: the dialog steps aside for a progress toast with Cancel.
+  if (background && phase.step === "running")
+    return (
+      <div className="toast toast--job" role="status">
+        <div className="toast__job">
+          <Progress
+            value={phase.preparing ? undefined : phase.percent}
+            label={phase.preparing ? "Getting your reel ready…" : "Exporting your reel"}
+            eta={phase.preparing ? undefined : formatEta(phase.etaSec)}
+          />
+        </div>
+        <button type="button" className="toast__action" onClick={() => setBackground(false)}>
+          Show
+        </button>
+        <button type="button" className="toast__action" onClick={cancel}>
+          Cancel
+        </button>
+      </div>
+    );
+
+  const footer =
+    phase.step === "setup" ? (
+      <>
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="primary" icon="export" onClick={() => void begin()}>
+          Export
+        </Button>
+      </>
+    ) : phase.step === "running" ? (
+      <>
+        <Button variant="ghost" onClick={cancel}>
+          Cancel export
+        </Button>
+        <Button onClick={() => setBackground(true)}>Keep editing</Button>
+      </>
+    ) : (
+      <>
+        <Button variant="ghost" onClick={onClose} className="modal__dismiss">
+          Done
+        </Button>
+        <Button icon="share" onClick={() => setPublishing(true)}>
+          Send to Surecast
+        </Button>
+        <Button
+          variant="primary"
+          icon="folder"
+          onClick={() =>
+            void revealItemInDir(phase.outputPath).catch(() =>
+              notify({ tone: "danger", text: "We couldn't open that folder." }),
+            )
+          }
+        >
+          Open folder
+        </Button>
+      </>
+    );
+
   return (
-    <div className="modal-backdrop" onMouseDown={() => !running && !publishing && onClose()}>
-      <div
+    <>
+      <Modal
+        title={title}
+        onClose={onClose}
+        dismissable={!running && !publishing}
+        footer={footer}
         className="export"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="export-title"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         {phase.step === "setup" && (
           <>
-            <h2 id="export-title" className="export__title">
-              Export reel
-            </h2>
-
             <label className="export__label" htmlFor="export-name">
               File name
             </label>
@@ -169,7 +235,7 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
 
             <span className="export__label">Save to</span>
             <div className="export__folder">
-              <span className="export__path" title={folder}>
+              <span className="export__path" data-tip={folder || undefined}>
                 {folder || "Choose a folder"}
               </span>
               <Button icon="folder" onClick={() => void chooseLocation()}>
@@ -180,7 +246,11 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
             <span className="export__label" id="export-quality">
               Quality
             </span>
-            <div className="export__qualities" role="radiogroup" aria-labelledby="export-quality">
+            <div
+              className="export__qualities export__qualities--4"
+              role="radiogroup"
+              aria-labelledby="export-quality"
+            >
               {QUALITIES.map((q) => (
                 <button
                   key={q.value}
@@ -235,71 +305,23 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
                 {phase.error}
               </p>
             )}
-
-            <div className="export__actions">
-              <Button variant="ghost" onClick={onClose}>
-                Close
-              </Button>
-              <Button variant="primary" icon="export" onClick={() => void begin()}>
-                Export
-              </Button>
-            </div>
           </>
         )}
 
         {phase.step === "running" && (
-          <>
-            <h2 id="export-title" className="export__title">
-              {phase.preparing ? "Getting ready…" : `Exporting… ${Math.floor(phase.percent)}%`}
-            </h2>
-            <div
-              className="export__bar"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.floor(phase.percent)}
-            >
-              <span className="export__bar-fill" style={{ width: `${phase.percent}%` }} />
-            </div>
-            <p className="export__hint">
-              {phase.preparing ? "Checking your clips." : formatEta(phase.etaSec)}
-            </p>
-            <div className="export__actions">
-              <Button onClick={cancel}>Cancel</Button>
-            </div>
-          </>
+          <Progress
+            value={phase.preparing ? undefined : phase.percent}
+            label={phase.preparing ? "Checking your clips…" : "Putting your reel together…"}
+            eta={phase.preparing ? undefined : formatEta(phase.etaSec)}
+          />
         )}
 
         {phase.step === "done" && (
-          <>
-            <h2 id="export-title" className="export__title">
-              Your reel is ready
-            </h2>
-            <p className="export__hint export__done-path" title={phase.outputPath}>
-              {phase.outputPath}
-            </p>
-            <div className="export__actions">
-              <Button variant="ghost" onClick={onClose}>
-                Done
-              </Button>
-              <Button icon="share" onClick={() => setPublishing(true)}>
-                Send to Surecast
-              </Button>
-              <Button
-                variant="primary"
-                icon="folder"
-                onClick={() =>
-                  void revealItemInDir(phase.outputPath).catch(() =>
-                    notify({ tone: "danger", text: "We couldn't open that folder." }),
-                  )
-                }
-              >
-                Open folder
-              </Button>
-            </div>
-          </>
+          <p className="export__hint export__done-path" data-tip={phase.outputPath}>
+            {phase.outputPath}
+          </p>
         )}
-      </div>
+      </Modal>
       {publishing && phase.step === "done" && (
         <PublishDialog
           outputPath={phase.outputPath}
@@ -308,6 +330,6 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
           onClose={() => setPublishing(false)}
         />
       )}
-    </div>
+    </>
   );
 }

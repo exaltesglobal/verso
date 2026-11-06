@@ -70,7 +70,11 @@ export function LookOverlay({
       {!!look.grain && (
         <div
           className="look__grain"
-          style={{ backgroundImage: GRAIN, backgroundPosition: `${gx}px ${gy}px`, opacity: 0.35 * look.grain }}
+          style={{
+            backgroundImage: GRAIN,
+            backgroundPosition: `${gx}px ${gy}px`,
+            opacity: 0.35 * look.grain,
+          }}
         />
       )}
       {bar > 0 && (

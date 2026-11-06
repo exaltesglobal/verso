@@ -25,6 +25,11 @@ export interface ExportVideoClip {
   speed: number;
   cropPath?: CropPath;
   zoom: number;
+  /** Where the zoomed frame sits, -1..1 (0 = centred). */
+  posX: number;
+  posY: number;
+  /** 0..1, faded towards black. */
+  opacity: number;
   zoomKeys: { t: number; zoom: number }[];
   transitionIn?: Transition;
   color?: ClipColor;
@@ -267,6 +272,9 @@ export function buildExportRequest(
         speed: c.speed ?? 1,
         cropPath: c.cropPath,
         zoom: c.zoom ?? 1,
+        posX: c.pos?.x ?? 0,
+        posY: c.pos?.y ?? 0,
+        opacity: c.opacity ?? 1,
         zoomKeys: c.zoomKeys ?? [],
         transitionIn: c.transitionIn,
         color: c.color,

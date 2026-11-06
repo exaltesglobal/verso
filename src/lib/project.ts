@@ -73,6 +73,10 @@ export interface Clip {
   transitionIn?: Transition;
   /** Video: zoom 1 = fit. Audio/music: volume 0..1 (default 1). */
   zoom?: number;
+  /** Video: where the zoomed frame sits, -1..1 on each axis (0 = centred). Only matters when zoomed in. */
+  pos?: { x: number; y: number };
+  /** Video: 0..1 (default 1), faded towards black. */
+  opacity?: number;
   volume?: number;
   speed?: number;
   /** Text and caption clips. */

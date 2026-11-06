@@ -27,7 +27,15 @@ const SEEK_EPSILON = 0.03;
  * While playing, the video drives the timeline clock; while paused, the
  * timeline drives the video (scrubbing).
  */
-export function VideoLayer({ project, clip, time, playing, mediaClockRef, mediaStyle, secondary }: VideoLayerProps) {
+export function VideoLayer({
+  project,
+  clip,
+  time,
+  playing,
+  mediaClockRef,
+  mediaStyle,
+  secondary,
+}: VideoLayerProps) {
   const ref = useRef<HTMLVideoElement>(null);
   // Speed (constant or ramped) maps timeline time to source time; a background copy may stand in for the file.
   const srcTime = clip ? sourceTimeAt(clip, time) : 0;

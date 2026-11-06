@@ -1,11 +1,12 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "../Icon";
-import { Button } from "../ui";
+import { IconButton, ScrubNumber, Section, Segmented } from "../ui";
+import { ContextMenu } from "../ContextMenu";
+import { Timecode } from "../Timecode";
 import { ReframePanel } from "./ReframePanel";
 import type { CropPath } from "../../lib/reframe";
 import type { AspectRatio, Clip, Project, TextStyle, TrackKind, TransitionKind } from "../../lib/project";
 import { CutToBeatToggle } from "../smart/CutToBeatToggle";
-import { formatDuration } from "../../lib/media";
 import { editSegmentText } from "../../lib/captions";
 import { EnhancePanel } from "../smart/EnhancePanel";
 import { ColorPanel } from "../smart/ColorPanel";
@@ -22,14 +23,15 @@ interface InspectorProps {
   onApply: (next: Project, message: string) => void;
   /** Playhead, in timeline seconds. */
   time: number;
+  onCollapse: () => void;
 }
 
-const KIND_LABEL: Record<TrackKind, string> = {
-  text: "Text",
-  captions: "Caption",
-  video: "Video clip",
-  audio: "Sound",
-  music: "Music",
+const KIND: Record<TrackKind, { label: string; icon: IconName; colour: string }> = {
+  text: { label: "Text", icon: "text", colour: "var(--ui-track-text)" },
+  captions: { label: "Caption", icon: "captions", colour: "var(--ui-track-captions)" },
+  video: { label: "Video clip", icon: "play", colour: "var(--ui-track-video)" },
+  audio: { label: "Sound", icon: "volume", colour: "var(--ui-track-audio)" },
+  music: { label: "Music", icon: "music", colour: "var(--ui-track-audio)" },
 };
 
 const TRANSITIONS: { id: TransitionKind | "none"; label: string }[] = [
@@ -60,64 +62,106 @@ export function Inspector({
   project,
   onApply,
   time,
+  onCollapse,
 }: InspectorProps) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const kind = clip ? KIND[clip.kind] : null;
   return (
     <aside className="inspector" aria-label="Properties">
-      <div className="inspector__head">
-        <p className="eyebrow">{clip ? KIND_LABEL[clip.kind] : "Nothing selected"}</p>
-        <h2 className="inspector__title">{clip?.text ?? clip?.label ?? "Pick a clip"}</h2>
-        {clip ? (
-          <p className="muted small">
-            {formatDuration(clip.start)} to {formatDuration(clip.end)} · {(clip.end - clip.start).toFixed(1)}s
-          </p>
+      <div
+        className="inspector__head"
+        style={kind ? ({ "--kind": kind.colour } as CSSProperties) : undefined}
+      >
+        {kind ? (
+          <>
+            <span className="inspector__kind" data-tip={kind.label}>
+              <Icon name={kind.icon} size={16} />
+            </span>
+            <h2 className="inspector__title">{clip?.text ?? clip?.label}</h2>
+            {clip && <Timecode t={clip.end - clip.start} className="inspector__dur" />}
+            <IconButton
+              icon="more-horizontal"
+              label="More"
+              size={16}
+              aria-haspopup="menu"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setMenu({ x: r.right - 200, y: r.bottom + 4 });
+              }}
+            />
+          </>
         ) : (
-          <p className="muted small">Click a clip on the timeline to change it.</p>
+          <h2 className="inspector__title">Properties</h2>
         )}
+        <IconButton
+          icon="chevron-right"
+          label="Hide properties"
+          shortcut="Ctrl+\"
+          size={16}
+          onClick={onCollapse}
+        />
       </div>
 
+      {!clip && (
+        <div className="empty empty--panel">
+          <Icon name="layers" size={32} />
+          <p className="empty__title">Nothing selected</p>
+          <p>Click a clip on the timeline to change it.</p>
+        </div>
+      )}
+
       {clip?.kind === "video" && (
-        <VideoProps
-          key={clip.id}
-          clip={clip}
-          aspect={aspect}
-          onChange={onChange}
-          onCropPath={onCropPath}
-          project={project}
-          onApply={onApply}
-        />
+        <VideoProps key={clip.id} clip={clip} aspect={aspect} onChange={onChange} onCropPath={onCropPath} />
       )}
       {clip?.kind === "video" && (
-        <section className="inspector__section">
-          <ColorPanel project={project} clipId={clip.id} onApply={onApply} />
-          <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
-          {clip.source?.hasVideo && <BackgroundPanel clip={clip} playhead={time} onChange={onChange} />}
-        </section>
+        <>
+          <Section title="Speed ramp" defaultOpen={false}>
+            <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
+          </Section>
+          <Section title="Colour" defaultOpen={false}>
+            <ColorPanel project={project} clipId={clip.id} onApply={onApply} />
+          </Section>
+          {clip.source?.hasVideo && (
+            <Section title="Background" defaultOpen={false}>
+              <BackgroundPanel clip={clip} playhead={time} onChange={onChange} />
+            </Section>
+          )}
+        </>
       )}
       {(clip?.kind === "audio" || clip?.kind === "music") && <AudioProps clip={clip} onChange={onChange} />}
       {(clip?.kind === "video" || clip?.kind === "audio") && (
-        <section className="inspector__section">
+        <Section title="Clean up voice" defaultOpen={false}>
           <EnhancePanel project={project} clipId={clip.id} onApply={onApply} />
-        </section>
+        </Section>
       )}
       {clip?.kind === "music" && (
-        <section className="inspector__section">
+        <Section title="Beat">
           <CutToBeatToggle project={project} clip={clip} onApply={onApply} />
-        </section>
+        </Section>
       )}
       {(clip?.kind === "text" || clip?.kind === "captions") && <TextProps clip={clip} onChange={onChange} />}
-
-      {clip && (
-        <section className="inspector__section">
-          <Button icon="delete" onClick={onDelete} className="btn--block">
-            Delete clip
-          </Button>
-        </section>
-      )}
 
       <p className="inspector__note">
         <Icon name="save" size={16} />
         Changes never touch your original file.
       </p>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: "Reset size and position",
+              icon: "reset",
+              disabled: clip?.kind !== "video",
+              onSelect: () => onChange({ zoom: 1, pos: undefined, opacity: undefined }),
+            },
+            { separator: true },
+            { label: "Delete clip", icon: "delete", shortcut: "Del", danger: true, onSelect: onDelete },
+          ]}
+        />
+      )}
     </aside>
   );
 }
@@ -132,51 +176,95 @@ function VideoProps({
   aspect: AspectRatio;
   onChange: (p: Partial<Clip>) => void;
   onCropPath: (path: CropPath | null) => void;
-  project: Project;
-  onApply: (next: Project, message: string) => void;
 }) {
   const transition = clip.transitionIn?.kind ?? "none";
+  const zoom = clip.zoom ?? 1;
+  const pos = clip.pos ?? { x: 0, y: 0 };
+  const opacity = clip.opacity ?? 1;
+  // A speaker crop path owns the framing (preview and export ignore zoom and position then).
+  const reframed = !!clip.cropPath;
+  const moved = zoom !== 1 || pos.x !== 0 || pos.y !== 0 || opacity !== 1;
+  const setPos = (p: Partial<{ x: number; y: number }>) => {
+    const next = { ...pos, ...p };
+    onChange({ pos: next.x || next.y ? next : undefined });
+  };
   return (
     <>
-      {clip.source ? (
-        <section className="inspector__section">
-          <ReframePanel clip={clip} aspect={aspect} onCropPath={onCropPath} />
-        </section>
-      ) : null}
-      <section className="inspector__section">
-        <Slider
-          icon="zoom-in"
-          label="Zoom"
-          value={Math.round((clip.zoom ?? 1) * 100)}
+      {/* Effect controls first, like Premiere: the basics everyone reaches for. */}
+      <Section
+        title="Size and position"
+        onReset={moved ? () => onChange({ zoom: 1, pos: undefined, opacity: undefined }) : undefined}
+      >
+        <ScrubNumber
+          label="Scale"
+          value={Math.round(zoom * 100)}
           min={100}
           max={250}
           unit="%"
+          defaultValue={100}
+          disabled={reframed}
+          slider
           onChange={(v) => onChange({ zoom: v / 100 })}
         />
-      </section>{" "}
-      <section className="inspector__section">
-        <h3 className="section-label">
-          <Icon name="speed" size={16} /> Speed
-        </h3>
-        <Chips
-          options={["0.5x", "1x", "1.5x", "2x"]}
-          value={`${clip.speed ?? 1}x`}
-          onChange={(s) => onChange({ speed: parseFloat(s), speedRamp: undefined })}
+        <ScrubNumber
+          label="Position X"
+          value={Math.round(pos.x * 100)}
+          min={-100}
+          max={100}
+          defaultValue={0}
+          disabled={reframed || zoom <= 1}
+          onChange={(v) => setPos({ x: v / 100 })}
         />
-        <Slider
-          icon="volume"
-          label="Clip sound"
+        <ScrubNumber
+          label="Position Y"
+          value={Math.round(pos.y * 100)}
+          min={-100}
+          max={100}
+          defaultValue={0}
+          disabled={reframed || zoom <= 1}
+          onChange={(v) => setPos({ y: v / 100 })}
+        />
+        <ScrubNumber
+          label="Opacity"
+          value={Math.round(opacity * 100)}
+          min={0}
+          max={100}
+          unit="%"
+          defaultValue={100}
+          onChange={(v) => onChange({ opacity: v >= 100 ? undefined : v / 100 })}
+        />
+        {reframed ? (
+          <p className="insp-hint">Reframe is following speakers, so it sets the framing.</p>
+        ) : (
+          zoom <= 1 && <p className="insp-hint">Scale up to move the picture around.</p>
+        )}
+      </Section>
+      <Section title="Sound">
+        <ScrubNumber
+          label="Volume"
           value={Math.round((clip.volume ?? 1) * 100)}
           min={0}
           max={100}
           unit="%"
+          defaultValue={100}
+          slider
           onChange={(v) => onChange({ volume: v / 100 })}
         />
-      </section>
-      <section className="inspector__section">
-        <h3 className="section-label">
-          <Icon name="transitions" size={16} /> Transition in
-        </h3>
+      </Section>
+      {clip.source?.hasVideo && (
+        <Section title={`Reframe for ${aspect}`}>
+          <ReframePanel clip={clip} aspect={aspect} onCropPath={onCropPath} />
+        </Section>
+      )}
+      <Section title="Speed">
+        <Segmented
+          label="Speed"
+          options={["0.5x", "1x", "1.5x", "2x"] as const}
+          value={(["0.5x", "1x", "1.5x", "2x"] as const).find((o) => o === `${clip.speed ?? 1}x`) ?? "1x"}
+          onChange={(s) => onChange({ speed: parseFloat(s), speedRamp: undefined })}
+        />
+      </Section>
+      <Section title="Transition in" defaultOpen={false}>
         <Chips
           options={TRANSITIONS.map((t) => t.label)}
           value={TRANSITIONS.find((t) => t.id === transition)?.label ?? "None"}
@@ -189,57 +277,58 @@ function VideoProps({
           }}
         />
         {clip.transitionIn && (
-          <Slider
-            icon="timeline"
+          <ScrubNumber
             label="Length"
             value={Math.round(clip.transitionIn.duration * 10) / 10}
             min={0.2}
             max={2}
             step={0.1}
             unit="s"
+            defaultValue={0.5}
             onChange={(v) =>
               clip.transitionIn && onChange({ transitionIn: { ...clip.transitionIn, duration: v } })
             }
           />
         )}
-      </section>
+      </Section>
     </>
   );
 }
 
 function AudioProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>) => void }) {
   return (
-    <section className="inspector__section">
-      <Slider
-        icon="volume"
+    <Section title="Sound">
+      <ScrubNumber
         label="Volume"
         value={Math.round((clip.volume ?? 1) * 100)}
         min={0}
         max={150}
         unit="%"
+        defaultValue={100}
+        slider
         onChange={(v) => onChange({ volume: v / 100 })}
       />
-      <Slider
-        icon="adjust"
+      <ScrubNumber
         label="Fade in"
         value={clip.fadeIn ?? 0}
         min={0}
         max={5}
         step={0.1}
         unit="s"
+        defaultValue={0}
         onChange={(v) => onChange({ fadeIn: v })}
       />
-      <Slider
-        icon="adjust"
+      <ScrubNumber
         label="Fade out"
         value={clip.fadeOut ?? 0}
         min={0}
         max={5}
         step={0.1}
         unit="s"
+        defaultValue={0}
         onChange={(v) => onChange({ fadeOut: v })}
       />
-    </section>
+    </Section>
   );
 }
 
@@ -254,26 +343,23 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
   const setStyle = (patch: Partial<TextStyle>) => onChange({ style: { ...style, ...patch } });
   return (
     <>
-      <section className="inspector__section">
-        <label className="field">
-          <span className="field__label">Words</span>
-          <textarea
-            className="field__input"
-            rows={3}
-            value={clip.text ?? clip.label}
-            onChange={(e) => {
-              const text = e.target.value;
-              // Preview draws caption words, not text: keep them in step with the edit.
-              const words = clip.words
-                ? editSegmentText({ start: clip.start, end: clip.end, text: "", words: clip.words }, text).words
-                : undefined;
-              onChange({ text, label: text, ...(words && { words }) });
-            }}
-          />
-        </label>
-      </section>
-      <section className="inspector__section">
-        <h3 className="section-label">Style</h3>
+      <Section title="Words">
+        <textarea
+          className="field__input"
+          rows={3}
+          aria-label="Words"
+          value={clip.text ?? clip.label}
+          onChange={(e) => {
+            const text = e.target.value;
+            // Preview draws caption words, not text: keep them in step with the edit.
+            const words = clip.words
+              ? editSegmentText({ start: clip.start, end: clip.end, text: "", words: clip.words }, text).words
+              : undefined;
+            onChange({ text, label: text, ...(words && { words }) });
+          }}
+        />
+      </Section>
+      <Section title="Style">
         <div className="style-pick">
           {TEXT_PRESETS.map((p) => (
             <button
@@ -305,25 +391,27 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
             />
           ))}
         </div>
-        <Slider
-          icon="text"
+      </Section>
+      <Section title="Size and position">
+        <ScrubNumber
           label="Size"
           value={Math.round(style.size * 1000)}
           min={20}
           max={120}
-          unit=""
+          defaultValue={45}
+          slider
           onChange={(v) => setStyle({ size: v / 1000 })}
         />
-        <Slider
-          icon="layers"
-          label="Position"
+        <ScrubNumber
+          label="Position Y"
           value={Math.round(style.y * 100)}
           min={5}
           max={95}
           unit="%"
+          defaultValue={70}
           onChange={(v) => setStyle({ y: v / 100 })}
         />
-      </section>
+      </Section>
     </>
   );
 }
@@ -351,50 +439,5 @@ function Chips({
         </button>
       ))}
     </div>
-  );
-}
-
-function Slider({
-  icon,
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  unit,
-  onChange,
-}: {
-  icon: IconName;
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  unit: string;
-  onChange: (v: number) => void;
-}) {
-  const pct = ((value - min) / (max - min)) * 100;
-  return (
-    <label className="slider">
-      <span className="slider__top">
-        <span className="slider__label">
-          <Icon name={icon} size={16} />
-          {label}
-        </span>
-        <span className="slider__value">
-          {value}
-          {unit}
-        </span>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ "--fill": `${pct}%` } as CSSProperties}
-      />
-    </label>
   );
 }
