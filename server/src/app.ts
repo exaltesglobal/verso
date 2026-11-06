@@ -87,6 +87,11 @@ export async function buildApp(config: Config, overrides: { db?: Db; mailer?: Ma
   app.get('/assets/manrope.woff2', (_req, reply) =>
     reply.header('Cache-Control', 'public, max-age=31536000, immutable').type('font/woff2').send(font),
   );
+  // Brand kit v2 logo: SVG for pages, PNG for email clients that block SVG.
+  const logoSvg = readFileSync(new URL('../assets/verso-logo.svg', import.meta.url));
+  const logoPng = readFileSync(new URL('../assets/verso-logo.png', import.meta.url));
+  app.get('/assets/verso-logo.svg', (_req, reply) => reply.header('Cache-Control', 'public, max-age=86400').type('image/svg+xml').send(logoSvg));
+  app.get('/assets/verso-logo.png', (_req, reply) => reply.header('Cache-Control', 'public, max-age=86400').type('image/png').send(logoPng));
   app.get('/assets/app.css', (_req, reply) => reply.header('Cache-Control', 'public, max-age=3600').type('text/css').send(CSS + ADMIN_CSS));
 
   app.get('/assets/credits-checkout.js', (_req, reply) =>

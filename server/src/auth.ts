@@ -103,6 +103,7 @@ export async function sendVerifyEmail(ctx: Ctx, user: { id: string; email: strin
       button: 'Confirm email',
       url: `${ctx.config.PUBLIC_URL}/verify?token=${raw}`,
       outro: "If you didn't create a Verso account, you can ignore this email.",
+      logo: `${ctx.config.PUBLIC_URL}/assets/verso-logo.png`,
     }),
   );
 }
@@ -120,6 +121,7 @@ export async function sendResetEmail(ctx: Ctx, email: string) {
       button: 'Choose a new password',
       url: `${ctx.config.PUBLIC_URL}/reset?token=${raw}`,
       outro: "If this wasn't you, ignore this email. Your password stays the same.",
+      logo: `${ctx.config.PUBLIC_URL}/assets/verso-logo.png`,
     }),
   );
 }

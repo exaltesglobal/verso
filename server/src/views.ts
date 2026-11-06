@@ -10,7 +10,8 @@ export const CSS = `@font-face{font-family:Manrope;src:url(/assets/manrope.woff2
 html,body{margin:0;background:#0B0B0F;color:#F5F4F0;font-family:Manrope,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
 a{color:#F5F4F0}
 header{display:flex;align-items:center;justify-content:space-between;max-width:960px;margin:0 auto;padding:20px 24px}
-header .brand{font-weight:800;font-size:18px;letter-spacing:-.01em;text-decoration:none}
+header .brand{display:block;text-decoration:none}
+header .brand img{display:block;height:28px;width:auto}
 header nav{display:flex;gap:20px}
 header nav a,header nav button{color:#B9B7BF;text-decoration:none;font:inherit;background:none;border:0;cursor:pointer;padding:0}
 header nav a:hover,header nav button:hover{color:#F5F4F0}
@@ -58,7 +59,7 @@ export function layout(o: LayoutOpts) {
 <meta name="color-scheme" content="dark"><title>${esc(o.title)} · Verso</title>
 <link rel="preload" href="/assets/manrope.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/app.css"></head>
-<body><header><a class="brand" href="/">Verso</a><nav>${nav}</nav></header>
+<body><header><a class="brand" href="/"><img src="/assets/verso-logo.svg" alt="Verso" width="96" height="28"></a><nav>${nav}</nav></header>
 <main>${o.narrow ? `<div class="narrow">${o.body}</div>` : o.body}</main>
 <footer>© ${new Date().getFullYear()} Agape Labs · Exaltes Global Private Limited</footer></body></html>`;
 }
