@@ -4,6 +4,120 @@ Verso is a desktop reels editor by Agape Labs for India-first creators: podcaste
 
 **Originality rule.** All template names, layouts, timings and copy below are original to Verso. The sources describe trends and platform behaviour only. Do not copy template names, layouts or assets from other editors (CapCut, VN, InShot, Canva, Edits or similar). Do not ship trending audio. Templates carry a `musicMood` and the user picks a licensed track.
 
+## Catalogue (one list)
+
+Every template we ship plus the ones still to build, cross-checked against the 48-name follow-up list. Built templates show their id in `src/templates`.
+
+| Template | Pack | Tier | Status | Id / what to build |
+| --- | --- | --- | --- | --- |
+| Three-Second Promise | trending | Free | Built | `tr-three-second-promise` |
+| POV Window | trending | Free | Built | `tr-pov-window` |
+| Side-by-Side Take | trending | Free | Built | `tr-side-by-side-take` |
+| Beat Typist | trending | Pro | Built | `tr-beat-typist` |
+| Swipe Deck | trending | Free | Built | `tr-swipe-deck` |
+| Five to One | trending | Free | Built | `tr-five-to-one` |
+| Myth Buster Board | trending | Free | Built | `tr-myth-buster-board` |
+| Then / Now Reveal | trending | Free | Built | `tr-then-now-wipe` |
+| Day in Ten Frames | trending | Pro | Built | `tr-day-in-ten-frames` |
+| Three-Step Fix | trending | Free | Built | `tr-three-step-fix` |
+| Lessons Ledger | trending | Pro | Built | `tr-lessons-ledger` |
+| Three-Panel Recap | trending | Pro | Built | `tr-triptych-day` |
+| Price Ladder | trending | Free | Built | `tr-price-ladder` |
+| Scope Opening | cinematic | Free | Built | `ci-scope-opening` |
+| Sunlit Reel | cinematic | Pro | Built | `ci-sunlit-reel` |
+| Silver Stakes | cinematic | Pro | Built | `ci-silver-stakes` |
+| Neon Hours | cinematic | Pro | Built | `ci-neon-hours` |
+| Coming Soon Cut | cinematic | Pro | Built | `ci-coming-soon-cut` |
+| Ramp & Hold | cinematic | Free | Built | `ci-ramp-and-hold` |
+| Slow Push Portrait | cinematic | Free | Built | `ci-slow-push-portrait` |
+| Chapter Cards | cinematic | Pro | Built | `ci-chapter-cards` |
+| Monsoon Frames | cinematic | Pro | Built | `ci-monsoon-frames` |
+| Wide Frame Story | cinematic | Free | Built | `ci-wide-frame-story` |
+| Film memories | cinematic | Free | Built | `cine-film-memories` |
+| Travel montage | cinematic | Pro | Built | `cine-travel` |
+| Mic Drop Clip | podcast | Free | Built | `pc-mic-drop-clip` |
+| Two Chairs | podcast | Free | Built | `pc-two-chairs` |
+| Waveform Card | podcast | Free | Built | `pc-waveform-card` |
+| Hot Take Opener | podcast | Pro | Built | `pc-hot-take-opener` |
+| Pull Quote Moment | podcast | Pro | Built | `pc-pull-quote-moment` |
+| Guest Spotlight | podcast | Free | Built | `pc-guest-spotlight` |
+| Hook + quote | podcast | Free | Built | `podcast-hook-quote` |
+| Two-speaker | podcast | Free | Built | `podcast-two-speaker` |
+| Big number stat | podcast | Pro | Built | `podcast-big-number` |
+| Episode in three beats | podcast | Pro | Built | `podcast-chapters` |
+| Hello, I'm | creator | Free | Built | `cb-hello-im` |
+| Clean Talker | creator | Free | Built | `cb-clean-talker` |
+| Quote Card | creator | Free | Built | `cb-quote-card` |
+| Voice Over Visuals | creator | Free | Built | `cb-voice-over-visuals` |
+| End Card | creator | Free | Built | `cb-end-card` |
+| Photo Dump Beat | creator | Pro | Built | `cb-photo-dump-beat` |
+| Day in my life | creator | Free | Built | `creator-day-in-life` |
+| 3 tips | creator | Free | Built | `creator-three-tips` |
+| Before / after | creator | Free | Built | `creator-before-after` |
+| Product drop | creator | Pro | Built | `creator-product-drop` |
+| Get ready with me | creator | Pro | Built | `creator-grwm` |
+| Answering your questions | creator | Free | Built | `creator-qna` |
+| Rangoli Lights | festive | Pro | Built | `fe-rangoli-lights` |
+| Colour Burst | festive | Free | Built | `fe-colour-burst` |
+| Chand Raat Greetings | festive | Free | Built | `fe-chand-raat` |
+| Pookalam Morning | festive | Free | Built | `fe-pookalam-morning` |
+| Harvest Sun | festive | Pro | Built | `fe-harvest-sun` |
+| Pujo Dhak Beats | festive | Pro | Built | `fe-pujo-dhak` |
+| Bappa Arrival | festive | Free | Built | `fe-bappa-arrival` |
+| Star & Plum Cake | festive | Free | Built | `fe-star-and-plum` |
+| Diwali greeting | festive | Free | Built | `festive-diwali` |
+| Shop opening offer | festive | Free | Built | `festive-shop-opening` |
+| Wedding teaser | festive | Pro | Built | `festive-wedding-teaser` |
+| Fitness challenge | festive | Free | Built | `festive-fitness-challenge` |
+| Food recipe | festive | Pro | Built | `festive-food-recipe` |
+| Navratri nights | festive | Pro | Built | `festive-navratri` |
+| Raksha Bandhan | festive | Free | Built | `festive-rakhi` |
+| Shelf to Spotlight | business | Free | Built | `bz-shelf-to-spotlight` |
+| Offer Countdown | business | Free | Built | `bz-offer-countdown` |
+| Customer Says | business | Free | Built | `bz-customer-says` |
+| Behind the Counter | business | Free | Built | `bz-behind-the-counter` |
+| Menu Walk | business | Pro | Built | `bz-menu-walk` |
+| Find Us | business | Free | Built | `bz-find-us` |
+| Launch Day Drop | business | Pro | Built | `bz-launch-day-drop` |
+| Event countdown | business | Pro | Built | `biz-event-countdown` |
+| Service before / after | business | Free | Built | `biz-service-before-after` |
+| One-Liner | trending | Free | To build | One line of text over a single shot, under 8 s |
+| Twenty Seconds | trending | Free | To build | 20 s explainer with a running countdown (fallback: text timer layer) |
+| Drop Walk | trending, creator | Pro | To build | Walk-in shot with a speed ramp on the beat drop |
+| Hero Frame | cinematic | Pro | To build | Letterboxed hero shot, slow push, one title |
+| Print Stock | cinematic | Pro | To build | Film-print look (fallback until halation ships: warm-film grade plus grain) |
+| Night Lights | cinematic | Free (seasonal) | To build | Festive night lights, soft leaks on two cuts |
+| Cinema Cut | podcast | Pro | To build | Podcast clip in 2.39 letterbox, teal-orange grade |
+| Night Mood | podcast | Pro | To build | Late-night talk: cool-night grade, low-key text |
+| Clip Countdown | podcast | Free | To build | Top three moments counted down 3, 2, 1 |
+| Wide Shot Fit | podcast | Free | To build | 16:9 shot inset in 9:16 (needs blur fill; fallback: dark plate) |
+| Clip Frame | creator | Free | To build | Clip inside a framed card, headline above |
+| Galti Mat Karo | creator | Free | To build | Hinglish "don't make this mistake" list with a payoff |
+| Shubh Bolo | festive | Free | To build | One greeting for any festival, festival name swaps in |
+| Sahi Gift | festive | Free | To build | Festive gift guide: three picks and a CTA |
+| Diwali Dump | festive | Free | To build | Diwali photo dump on the beat (photo slots now work) |
+| Festive Film | festive | Pro | To build | Cinematic festival recap with a title card |
+| Ghar Ki Taiyaari | festive | Free | To build | Home prep before the festival, before/after beats |
+| Shubh Title + Outro | festive | Pro | To build | Branded festive title card and outro pair |
+| Five Reasons | business | Free | To build | Five reasons to buy, numbered points |
+| Founder Note | business | Free | To build | Founder to camera, three points, signature CTA |
+| Studio Cut | business | Pro | To build | Product on a studio backdrop (needs backdrop generator; fallback: colour plate) |
+| Signature Walk | business | Pro (Full), Free (Lite) | To build | Owner walks through the shop, ramp on entry |
+
+Follow-up names we already cover under another name: Wide Frame = Wide Frame Story; Snap Reveal = Then / Now Reveal; Straight Talk, Just Talking = Clean Talker; Five Things = Five to One; Word Storm = Beat Typist; Slow Burn = Slow Push Portrait; Beat Drop Walk = Ramp & Hold; Faded Memory = Film memories; Title Card = Chapter Cards; Silver = Silver Stakes; Headline Clip = Mic Drop Clip; Two-Up Exchange = Two Chairs; Hot Take Montage = Hot Take Opener; Chapter Card = Episode in three beats; Photo Dump = Photo Dump Beat; Teaser = Coming Soon Cut; Dhoop = Sunlit Reel; Rangoli Reveal = Rangoli Lights; Garba Drop = Navratri nights; Price Drop = Price Ladder; Before and After Snap = Service before / after. Behind the Counter and Offer Countdown exist under those names.
+
+### Design rules (enforced by `withRules` in `src/templates/rules.ts`)
+
+- The hook slot ends by 3 s: longer first slots are split, and the rest keeps the framing. Text is on frame 0. Dips at the ends are capped at 0.25 s, so there are no black holds.
+- Look: a grade plus at most two of grain, vignette and letterbox (vignette is dropped first). Light leaks flash on at most two transitions.
+- Three text roles: Headline (first line), Point, CTA (last line). Size floors: 56 px Latin, 64 px Devanagari on 1080x1920 (applied in `applyTemplate`).
+- Copy: Hinglish (`hi`) is the default when a template has it; English is always there. Still to write: Devanagari Hindi presets for every layer, and Hinglish for the 94 hand-made layers that lack it.
+- Every slot shows "Min clip N s". Photos (jpg, png, webp) fill any slot as a still.
+- Safe zones: top 10%, bottom 20%, right 12%. Text centres are clamped out of the top and bottom zones. `SafeZoneOverlay` shows the zones in the preview.
+- Beat snap tolerance per pack: `BEAT_SNAP_TOLERANCE` (a template can override it with `beatSnap`).
+- Fonts: no template uses Bebas Neue; if one does, use only the OFL `@fontsource/bebas-neue`. Sticker emoji should bundle Noto Emoji (OFL); today they use the system emoji font.
+- There is no trending-audio import path, and none should be added. Templates carry a `musicMood` only.
+
 ---
 
 ## 1. Trends summary (2025–2026)
