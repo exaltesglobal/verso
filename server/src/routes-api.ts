@@ -37,19 +37,22 @@ const tokenBody = z.discriminatedUnion('grant_type', [
   z.object({ grant_type: z.literal('refresh_token'), refresh_token: z.string().min(10).max(200) }),
 ]);
 
+/** The signed-in user (and device) from the `Authorization: Bearer` access token. */
+export async function requireBearer(ctx: Ctx, req: FastifyRequest) {
+  const h = req.headers.authorization;
+  if (!h?.startsWith('Bearer ')) throw new ApiError(401, 'unauthorized', 'Sign in required.');
+  try {
+    return await verifyAccessToken(ctx.keys, h.slice(7));
+  } catch {
+    throw new ApiError(401, 'invalid_token', 'Your session expired. Refresh your token.');
+  }
+}
+
 export function apiRoutes(ctx: Ctx) {
   return async function (app: FastifyInstance) {
     const authLimit = { rateLimit: { max: ctx.config.AUTH_RATE_LIMIT_PER_MINUTE, timeWindow: '1 minute' } };
 
-    async function bearer(req: FastifyRequest) {
-      const h = req.headers.authorization;
-      if (!h?.startsWith('Bearer ')) throw new ApiError(401, 'unauthorized', 'Sign in required.');
-      try {
-        return await verifyAccessToken(ctx.keys, h.slice(7));
-      } catch {
-        throw new ApiError(401, 'invalid_token', 'Your session expired. Refresh your token.');
-      }
-    }
+    const bearer = (req: FastifyRequest) => requireBearer(ctx, req);
 
     app.post('/v1/auth/signup', { config: authLimit }, async (req, reply) => {
       const b = z.object({ email: emailSchema, password: passwordSchema, name: z.string().trim().max(120).optional(), ...device }).parse(req.body);

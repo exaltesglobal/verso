@@ -3,6 +3,7 @@ mod analysis;
 mod background;
 mod account;
 mod commands;
+mod credits;
 mod crash;
 mod export;
 // Colour/speed/still export helpers. Move to `pub mod color;` in export/mod.rs when wiring export.
@@ -68,6 +69,12 @@ pub fn run() {
             account::fetch_entitlements,
             account::get_entitlements,
             account::list_devices,
+            credits::credits_pricing,
+            credits::credits_balance,
+            credits::credits_debit,
+            credits::credits_refund,
+            credits::credits_history,
+            credits::credits_buy,
             crash::report_frontend_error,
             crash::pending_crash_reports,
             crash::send_crash_reports,

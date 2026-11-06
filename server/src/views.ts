@@ -1,4 +1,5 @@
 import type { User } from './auth.js';
+import type { Pack } from './credits.js';
 import type { Entitlements } from './plans.js';
 
 export const esc = (v: unknown) =>
@@ -176,3 +177,57 @@ ${alert(o.error)}
 <ul class="ticks">${proFeatures.map((f) => `<li>${f}</li>`).join('')}</ul>${action}</div>
 </div>`;
 }
+
+// ---------- credit top-ups ----------
+
+export function creditsBuyPage(o: { csrf: string; packs: Pack[]; selected?: string; allowed: boolean; configured: boolean; error?: string }) {
+  if (!o.configured) return messagePage({ title: "Payments aren't set up yet", body: 'Check back soon. Your credits and AI tools keep working in the meantime.' });
+  if (!o.allowed) {
+    return messagePage({
+      title: 'Top-ups are part of Pro',
+      body: 'Upgrade to Verso Pro to buy more credits. Pro also gives you more credits every month.',
+      link: { href: '/pricing', label: 'See Pro' },
+    });
+  }
+  const selected = o.packs.find((p) => p.id === o.selected)?.id ?? o.packs[0]?.id;
+  const options = o.packs
+    .map(
+      (p) => `<label style="display:flex;gap:10px;align-items:center;justify-content:space-between;margin:0 0 8px;color:#F5F4F0;padding:12px;border:1px solid #2A2A33;border-radius:10px">
+<span style="display:flex;gap:10px;align-items:center"><input type="radio" name="pack" value="${esc(p.id)}"${p.id === selected ? ' checked' : ''} style="width:auto"> ${p.credits.toLocaleString('en-IN')} credits</span>
+<span class="muted">${esc(p.priceInr)}${p.priceUsd ? ` · ${esc(p.priceUsd)}` : ''}</span></label>`,
+    )
+    .join('');
+  const currency = o.packs.some((p) => p.priceUsd)
+    ? `<label for="currency">Pay in</label><select id="currency" name="currency"><option value="INR">Indian rupees</option><option value="USD">US dollars</option></select>`
+    : '';
+  return `<div class="card"><h1>Get more credits</h1>
+<p class="muted">Credits you buy never expire. We use your monthly credits first.</p>
+${alert(o.error)}
+<form method="post" action="/credits/buy">${csrfField(o.csrf)}${options}${currency}
+<button class="btn primary" type="submit">Continue to payment</button></form></div>`;
+}
+
+export function creditsCheckoutPage(o: { csrf: string; keyId: string; orderId: string; amount: number; currency: string; credits: number; email: string; price: string }) {
+  return `<div class="card"><h1>${o.credits.toLocaleString('en-IN')} credits · ${esc(o.price)}</h1>
+<p class="muted">Finish paying in the Razorpay window. Your credits show up in Verso right after.</p>
+<div id="rzp" data-key="${esc(o.keyId)}" data-order="${esc(o.orderId)}" data-amount="${o.amount}" data-currency="${esc(o.currency)}" data-email="${esc(o.email)}" data-desc="${o.credits} Verso credits"></div>
+<form id="paid" method="post" action="/credits/paid">${csrfField(o.csrf)}
+<input type="hidden" name="razorpay_payment_id"><input type="hidden" name="razorpay_order_id"><input type="hidden" name="razorpay_signature"></form>
+<button id="again" class="btn primary" type="button" hidden>Open payment again</button>
+<p class="small muted" style="margin:16px 0 0"><a href="/credits/buy">Pick a different pack</a></p></div>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script><script src="/assets/credits-checkout.js"></script>`;
+}
+
+/** Opens Razorpay Checkout for the order on the page and posts the signed result to /credits/paid. */
+export const CREDITS_CHECKOUT_JS = `(function(){
+var d=document.getElementById('rzp').dataset,again=document.getElementById('again'),paid=document.getElementById('paid');
+function open(){new Razorpay({key:d.key,order_id:d.order,amount:d.amount,currency:d.currency,name:'Verso',description:d.desc,
+prefill:{email:d.email},theme:{color:'#FF4A2B'},
+handler:function(r){paid.razorpay_payment_id.value=r.razorpay_payment_id;paid.razorpay_order_id.value=r.razorpay_order_id;paid.razorpay_signature.value=r.razorpay_signature;paid.submit();},
+modal:{ondismiss:function(){again.hidden=false;}}}).open();}
+again.addEventListener('click',open);open();})();`;
+
+/** CSP for the checkout page only: Razorpay's script, iframe and API. */
+export const CHECKOUT_CSP =
+  "default-src 'self'; script-src 'self' https://checkout.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; " +
+  "connect-src 'self' https://*.razorpay.com; img-src 'self' data: https://*.razorpay.com; style-src 'self' 'unsafe-inline'; font-src 'self'; form-action 'self'; base-uri 'self'";

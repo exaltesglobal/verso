@@ -15,7 +15,8 @@ import {
   verifyEmail,
   type User,
 } from './auth.js';
-import { cancelSubscription, createCheckout } from './billing.js';
+import { cancelSubscription, createCheckout, razorpay } from './billing.js';
+import { createOrder, creditsPricing, fulfilOrder, priceLabel, verifyCheckoutSignature } from './credits.js';
 import { randomToken, safeEqual } from './crypto.js';
 import { ApiError, type Ctx } from './ctx.js';
 import { googleAuthUrl, googleProfileFromCode } from './google.js';
@@ -328,6 +329,75 @@ export function pageRoutes(ctx: Ctx) {
       } catch (e) {
         req.log.error({ err: e }, 'checkout failed');
         return pricing(req, reply, errMsg(e));
+      }
+    });
+
+    // ---------- credit top-ups (the desktop app opens /credits/buy?pack=... in the browser) ----------
+
+    const buyPage = async (req: FastifyRequest, reply: FastifyReply, user: User, selected?: string, error?: string) => {
+      const pricing = creditsPricing(config);
+      const allowed = pricing.topUpsForFree || (await getEntitlements(ctx.db, user.id)).plan === 'pro';
+      return html(reply, req, 'Get more credits', v.creditsBuyPage({ csrf: req.csrf, packs: pricing.packs, selected, allowed, configured: config.razorpayOrdersConfigured, error }), {
+        status: error ? 400 : 200,
+      });
+    };
+
+    app.get('/credits/buy', async (req, reply) => {
+      const user = requireUser(req, reply);
+      if (!user) return reply;
+      return buyPage(req, reply, user, (req.query as Record<string, string>).pack);
+    });
+
+    app.post('/credits/buy', async (req, reply) => {
+      const user = requireUser(req, reply);
+      if (!user) return reply;
+      const packId = field(req, 'pack') ?? '';
+      const currency = field(req, 'currency') === 'USD' ? 'USD' : 'INR';
+      try {
+        const order = await createOrder(ctx, user, packId, currency);
+        reply.header('Content-Security-Policy', v.CHECKOUT_CSP);
+        return html(
+          reply,
+          req,
+          'Pay for credits',
+          v.creditsCheckoutPage({ csrf: req.csrf, ...order, email: user.email, price: priceLabel(order.amount, order.currency) }),
+        );
+      } catch (e) {
+        req.log.error({ err: e }, 'credit order failed');
+        return buyPage(req, reply, user, packId, errMsg(e));
+      }
+    });
+
+    // Razorpay Checkout's success callback. The webhook grants too; whichever is first wins, the other is a no-op.
+    app.post('/credits/paid', async (req, reply) => {
+      const user = requireUser(req, reply);
+      if (!user) return reply;
+      const orderId = field(req, 'razorpay_order_id') ?? '';
+      const paymentId = field(req, 'razorpay_payment_id') ?? '';
+      const signature = field(req, 'razorpay_signature') ?? '';
+      const pending = v.messagePage({
+        title: "We're confirming your payment",
+        body: 'Your credits show up in Verso within a few minutes. You can close this tab.',
+      });
+      if (!config.RAZORPAY_KEY_SECRET || !verifyCheckoutSignature(config.RAZORPAY_KEY_SECRET, orderId, paymentId, signature)) {
+        return html(reply, req, 'Confirming payment', pending);
+      }
+      try {
+        // Only grant for captured money; an authorized-only payment is granted by the payment.captured webhook.
+        const payment = await razorpay<{ status: string; order_id?: string }>(config, 'GET', `/payments/${encodeURIComponent(paymentId)}`);
+        if (payment.status !== 'captured' || payment.order_id !== orderId) return html(reply, req, 'Confirming payment', pending);
+        const order = await ctx.db('credit_orders').where({ id: orderId, user_id: user.id }).first();
+        if (!order) return html(reply, req, 'Confirming payment', pending);
+        await ctx.db.transaction((trx) => fulfilOrder(trx, config, orderId, paymentId));
+        return html(
+          reply,
+          req,
+          'Credits added',
+          v.messagePage({ title: 'Your credits are ready', body: `We added ${Number(order.credits).toLocaleString('en-IN')} credits to your account. Go back to Verso to use them.` }),
+        );
+      } catch (e) {
+        req.log.error({ err: e }, 'credit payment confirm failed');
+        return html(reply, req, 'Confirming payment', pending);
       }
     });
 

@@ -52,6 +52,22 @@ const schema = z.object({
   PRICE_LABEL_PRO_YEARLY: z.string().default('₹4,999 / year'),
 
   UPDATES_MANIFEST: z.string().default('./updates/latest.json'),
+
+  // AI credits. Every number is tunable here; the app reads them from GET /v1/credits/pricing.
+  CREDITS_FREE_MONTHLY: z.coerce.number().int().min(0).default(30),
+  CREDITS_PRO_MONTHLY: z.coerce.number().int().min(0).default(1000),
+  /** Overrides for action costs, e.g. "auto_cut=4,captions=2". Unlisted actions keep their defaults. */
+  CREDITS_COSTS: opt,
+  /** Top-up packs as credits:inrPaise[:usdCents], comma-separated. */
+  CREDITS_PACKS: z.string().default('300:19900:299,1000:54900:799,3000:144900:1999'),
+  CREDITS_TOPUP_FOR_FREE: z
+    .string()
+    .optional()
+    .transform((v) => v === undefined || v === '' || v === '1' || v === 'true'),
+  /** Credits the desktop app may spend offline before it has to sync. */
+  CREDITS_OFFLINE_BUFFER: z.coerce.number().int().min(0).default(50),
+  /** How often the server checks for monthly allowance resets. 0 turns the in-process job off (use cron). */
+  CREDITS_RESET_INTERVAL_MINUTES: z.coerce.number().int().min(0).default(60),
 });
 
 export type Config = z.infer<typeof schema> & {
@@ -60,6 +76,8 @@ export type Config = z.infer<typeof schema> & {
   corsOrigins: string[];
   googleConfigured: boolean;
   razorpayConfigured: boolean;
+  /** One-time credit orders need only the key pair, not the subscription plan ids. */
+  razorpayOrdersConfigured: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -83,5 +101,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     razorpayConfigured: Boolean(
       c.RAZORPAY_KEY_ID && c.RAZORPAY_KEY_SECRET && c.RAZORPAY_PLAN_PRO_MONTHLY && c.RAZORPAY_PLAN_PRO_YEARLY,
     ),
+    razorpayOrdersConfigured: Boolean(c.RAZORPAY_KEY_ID && c.RAZORPAY_KEY_SECRET),
   };
 }

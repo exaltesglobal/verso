@@ -122,7 +122,7 @@ fn keyring() -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(|e| format!("We couldn't open the system keychain ({e})."))
 }
 
-fn stored_refresh() -> Option<String> {
+pub(crate) fn stored_refresh() -> Option<String> {
     keyring().ok()?.get_password().ok()
 }
 
@@ -141,7 +141,7 @@ fn sign_out_local(app: &AppHandle) {
 
 // ---------- HTTP ----------
 
-fn endpoint(api: &str, path: &str) -> Result<String, String> {
+pub(crate) fn endpoint(api: &str, path: &str) -> Result<String, String> {
     let base = api.trim().trim_end_matches('/');
     if base.is_empty() {
         return Err("Sign-in isn't set up yet.".into());
@@ -150,7 +150,7 @@ fn endpoint(api: &str, path: &str) -> Result<String, String> {
 }
 
 /// Sends a request. Errors are `(status, friendly message)`; status 0 means we couldn't reach the server.
-fn send(req: ureq2::Request, body: Option<Value>) -> Result<Value, (u16, String)> {
+pub(crate) fn send(req: ureq2::Request, body: Option<Value>) -> Result<Value, (u16, String)> {
     let req = req.timeout(Duration::from_secs(20));
     let res = match body {
         Some(b) => req.send_json(b),
@@ -180,7 +180,7 @@ fn store_tokens(app: &AppHandle, v: &Value) -> Result<String, String> {
 }
 
 /// A valid access token, refreshing it with the keychain's refresh token when it's about to expire.
-fn access_token(app: &AppHandle, api: &str) -> Result<String, String> {
+pub(crate) fn access_token(app: &AppHandle, api: &str) -> Result<String, String> {
     let state = app.state::<AccountState>();
     let _guard = state.refresh_lock.lock().unwrap();
     if let Some((token, exp)) = state.access.lock().unwrap().clone() {
@@ -206,13 +206,14 @@ fn authed_get(app: &AppHandle, api: &str, path: &str) -> Result<Value, String> {
     send(ureq2::get(&endpoint(api, path)?).set("Authorization", &format!("Bearer {token}")), None).map_err(|(_, m)| m)
 }
 
-async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
+pub(crate) async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
 }
 
 // ---------- offline token ----------
 
-fn verify(token: &str, x: &str, device_id: &str) -> Option<(Value, u64)> {
+/// All claims of a token signed by the entitlement key, for this device. None when invalid or expired.
+fn decode(token: &str, x: &str, device_id: &str) -> Option<Value> {
     let key = DecodingKey::from_ed_components(x).ok()?;
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.set_audience(&["verso-desktop"]);
@@ -221,7 +222,19 @@ fn verify(token: &str, x: &str, device_id: &str) -> Option<(Value, u64)> {
     if data.claims["did"].as_str().is_some_and(|d| d != device_id) {
         return None;
     }
-    Some((data.claims["ent"].clone(), data.claims["exp"].as_u64()?))
+    Some(data.claims)
+}
+
+fn verify(token: &str, x: &str, device_id: &str) -> Option<(Value, u64)> {
+    let claims = decode(token, x, device_id)?;
+    Some((claims["ent"].clone(), claims["exp"].as_u64()?))
+}
+
+/// Claims of another server-signed token (e.g. the credits offline grant), checked like the entitlement token.
+pub(crate) fn verified_claims(app: &AppHandle, token: &str) -> Option<Value> {
+    let cache = load_cache(app);
+    let key = PINNED_KEY.map(String::from).or(cache.dev_public_key)?;
+    decode(token, &key, &cache.device_id)
 }
 
 fn current(app: &AppHandle) -> Entitlements {
