@@ -3189,3 +3189,8 @@ input[type="range"]::-webkit-slider-thumb {
   font: inherit;
   font-size: var(--vs-font-size-small);
 }
+
+/* Five tracks: give the timeline a little more room. */
+.editor {
+  grid-template-rows: var(--vs-size-topbar) minmax(0, 1fr) 286px;
+}
