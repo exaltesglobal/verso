@@ -1,6 +1,6 @@
 // Project model and pure editing operations. Every operation returns a new
 // Project, which keeps undo/redo trivial (see useHistory).
-import type { MediaInfo } from "./media";
+import { isImage, PHOTO_SECONDS, type MediaInfo } from "./media";
 import type { CropPath } from "./reframe";
 import type { ProjectBrand } from "./brandkit";
 
@@ -111,6 +111,8 @@ export interface Clip {
   fx?: { push?: number };
   /** Text: a shape sticker (SVG data URL) drawn instead of the text (see stickers.ts). */
   sticker?: { svg: string };
+  /** Text: the template text layer this clip came from (see swapProjectLanguage). */
+  templateTextId?: string;
 }
 
 export interface ClipColor {
@@ -159,6 +161,8 @@ export interface Project {
   /** Brand kit snapshot (logo, colours) applied to this reel. */
   brand?: ProjectBrand;
   look?: Look;
+  /** Template this reel was built from (see applyTemplate). */
+  templateId?: string;
 }
 
 export const TRACK_ORDER: { kind: TrackKind; label: string }[] = [
@@ -197,6 +201,7 @@ export function normalizeProject(p: Partial<Project> & { tracks: Track[]; name: 
     captionStyle: p.captionStyle ?? "bold-pop",
     brand: p.brand,
     look: p.look,
+    templateId: p.templateId,
   };
 }
 
@@ -236,7 +241,17 @@ export function appendMedia(project: Project, items: MediaInfo[]): Project {
   for (const m of items) {
     const length = Math.max(0.1, m.durationSec);
     const label = stripExtension(m.fileName);
-    if (m.hasVideo) {
+    if (isImage(m)) {
+      // No source: a photo has no length to trim against; preview and export draw the still.
+      added.video.push({
+        id: uid("v"),
+        label,
+        start: videoCursor,
+        end: videoCursor + PHOTO_SECONDS,
+        still: { path: m.path },
+      });
+      videoCursor += PHOTO_SECONDS;
+    } else if (m.hasVideo) {
       const linkId = m.hasAudio ? uid("l") : undefined;
       added.video.push({
         id: uid("v"),

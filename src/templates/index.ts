@@ -1,6 +1,6 @@
 // Template packs plus the transforms that turn a template into a project.
 import { withGrade } from "../lib/looks";
-import type { MediaInfo } from "../lib/media";
+import { isImage, type MediaInfo } from "../lib/media";
 import { emptyProject, uid, type Clip, type Project, type TrackKind } from "../lib/project";
 import { BRIEF_TEMPLATES } from "./packs/brief";
 import { businessPack } from "./packs/business";
@@ -8,9 +8,12 @@ import { cinematicPack } from "./packs/cinematic";
 import { creatorPack } from "./packs/creator";
 import { festivePack } from "./packs/festive";
 import { podcastPack } from "./packs/podcast";
+import { sizeFloor, withRules } from "./rules";
+
+export { BEAT_SNAP_TOLERANCE, SAFE_ZONE, beatSnapTolerance, limitLook } from "./rules";
 import type { PackId, Template, TemplateLang, TemplatePack, TemplateSlot, TemplateText } from "./types";
 
-export type { Template, TemplateLang, TemplatePack, TemplateSlot } from "./types";
+export type { Template, TemplateLang, TemplatePack, TemplateSlot, TextRole } from "./types";
 
 const HAND_MADE = [cinematicPack, podcastPack, creatorPack, festivePack, businessPack];
 const PACKS: [PackId, string][] = [
@@ -29,7 +32,7 @@ export const TEMPLATE_PACKS: TemplatePack[] = PACKS.map(([id, name]) => ({
   templates: [
     ...(BRIEF_TEMPLATES as Template[]).filter((t) => t.pack === id),
     ...HAND_MADE.filter((p) => p.id === id).flatMap((p) => p.templates),
-  ],
+  ].map(withRules),
 }));
 export const TEMPLATES: Template[] = TEMPLATE_PACKS.flatMap((p) => p.templates);
 
@@ -42,6 +45,9 @@ export function templateLangs(t: Template): TemplateLang[] {
   }
   return [...langs];
 }
+
+/** Hinglish when the template has it (the default copy), else English. */
+export const defaultLang = (t: Template): TemplateLang => (t.texts.some((x) => x.hi) ? "hi" : "en");
 
 const textIn = (t: TemplateText, lang: TemplateLang) =>
   lang === "en" ? t.text : lang === "hi" ? (t.hi ?? t.text) : (t.regional?.[lang] ?? t.hi ?? t.text);
@@ -75,6 +81,11 @@ function slotClips(
     zoomKeys: lively ? slot.punch?.map((t) => ({ t, zoom: slot.punchZoom ?? 1.12 })) : undefined,
   };
   if (!m) return { video: base };
+  // A photo fills the whole slot as a still: no source span, speed or sound.
+  if (isImage(m))
+    return {
+      video: { ...base, end: slot.end, still: { path: m.path }, speed: undefined, speedRamp: undefined },
+    };
   const linkId = m.hasAudio ? uid("l") : undefined;
   const video: Clip = { ...base, inPoint, source: m, linkId };
   if (!m.hasAudio) return { video };
@@ -127,7 +138,7 @@ export function applyTemplate(
     const m = videos.length ? videos[i % videos.length] : undefined;
     const len = slot.end - slot.start;
     let inPoint = 0;
-    if (m) {
+    if (m && !isImage(m)) {
       const at = cursor.get(m.path) ?? 0;
       // Skip the first moments of a long file (often a black frame or setup).
       inPoint = at + len <= m.durationSec ? at : 0;
@@ -151,10 +162,14 @@ export function applyTemplate(
       text,
       start: t.start,
       end: t.end,
+      templateTextId: t.id,
       style: {
         preset: t.preset,
         y: t.y,
-        size: t.size ?? (t.preset === "title" ? 0.065 : t.preset === "body" ? 0.032 : 0.045),
+        size: Math.max(
+          sizeFloor(text),
+          t.size ?? (t.preset === "title" ? 0.065 : t.preset === "body" ? 0.032 : 0.045),
+        ),
         color: t.color ?? (t.preset === "boxed" || t.preset === "neon" ? template.accents[0] : "#F5F4F0"),
         align: t.align ?? "center",
         animation: t.animation,
@@ -169,6 +184,7 @@ export function applyTemplate(
     aspect: template.aspect,
     captionStyle: template.captionStyle,
     look: template.look,
+    templateId: template.id,
     updatedAt: Date.now(),
     tracks: base.tracks.map((t) =>
       t.kind === "music" || t.kind === "captions" ? t : { ...t, clips: added[t.kind] },
@@ -203,10 +219,15 @@ export function swapSlotMedia(project: Project, slotId: string, media: MediaInfo
     swapped.set(video.id, {
       ...video,
       ...v,
+      // Spread skips keys v leaves out: clear the old file's source/still explicitly.
+      source: v.source,
+      still: v.still,
+      linkId: v.linkId,
+      inPoint: v.inPoint,
       id: video.id,
       fx: video.fx,
-      speed: video.speed,
-      speedRamp: video.speedRamp,
+      speed: v.still ? undefined : video.speed,
+      speedRamp: v.still ? undefined : video.speedRamp,
       cropPath: undefined,
       zoomKeys: undefined,
     });
@@ -232,4 +253,69 @@ function plannedLength(project: Project, clipId: string) {
   const i = clips.findIndex((c) => c.id === clipId);
   const next = clips[i + 1];
   return next ? next.start - clips[i].start : clips[i].end - clips[i].start;
+}
+
+/** Every language variant of a layer, to tell template copy from text the user typed. */
+const variants = (t: TemplateText) => [t.text, t.hi, ...Object.values(t.regional ?? {})];
+
+/**
+ * Switches every template text layer to lang in one change. Layers the user
+ * has retyped (text matches no variant) keep their words.
+ */
+export function swapProjectLanguage(project: Project, lang: TemplateLang): Project {
+  const layers = new Map(TEMPLATES.find((t) => t.id === project.templateId)?.texts.map((t) => [t.id, t]));
+  if (!layers.size) return project;
+  return {
+    ...project,
+    updatedAt: Date.now(),
+    tracks: project.tracks.map((tr) =>
+      tr.kind !== "text"
+        ? tr
+        : {
+            ...tr,
+            clips: tr.clips.map((c) => {
+              const layer = c.templateTextId ? layers.get(c.templateTextId) : undefined;
+              if (!layer || !variants(layer).includes(c.text)) return c;
+              const text = textIn(layer, lang);
+              const style = c.style && { ...c.style, size: Math.max(c.style.size, sizeFloor(text)) };
+              return { ...c, text, label: text, style };
+            }),
+          },
+    ),
+  };
+}
+
+/** Languages the project's template has copy for (empty when it wasn't built from one). */
+export function projectLangs(project: Project): TemplateLang[] {
+  const t = TEMPLATES.find((x) => x.id === project.templateId);
+  return t ? templateLangs(t) : [];
+}
+
+/**
+ * Slot trimming: which part of the file fills the slot. Moves every piece of
+ * the slot (and its linked sound) to start inPoint seconds into the file.
+ */
+export function setSlotInPoint(project: Project, slotId: string, inPoint: number): Project {
+  const pieces = (project.tracks.find((t) => t.kind === "video")?.clips ?? [])
+    .filter((c) => c.slotId === slotId && c.source)
+    .sort((a, b) => a.start - b.start);
+  if (!pieces.length) return project;
+  const first = pieces[0].start;
+  const span = pieces[pieces.length - 1].end - first;
+  const at = Math.max(0, Math.min(inPoint, pieces[0].source!.durationSec - span));
+  const next = new Map<string, number>();
+  for (const c of pieces) {
+    next.set(c.id, at + (c.start - first));
+    if (c.linkId)
+      for (const a of project.tracks.find((t) => t.kind === "audio")?.clips ?? [])
+        if (a.linkId === c.linkId) next.set(a.id, at + (c.start - first));
+  }
+  return {
+    ...project,
+    updatedAt: Date.now(),
+    tracks: project.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => (next.has(c.id) ? { ...c, inPoint: next.get(c.id) } : c)),
+    })),
+  };
 }

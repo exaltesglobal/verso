@@ -23,6 +23,14 @@ export interface ImportResult {
 
 const VIDEO_EXT = ["mp4", "mov", "m4v", "mkv", "webm", "avi"];
 const AUDIO_EXT = ["mp3", "wav", "m4a", "aac", "flac", "ogg"];
+const IMAGE_EXT = ["jpg", "jpeg", "png", "webp"];
+
+/** Photos probe as one-frame video; they go on the timeline as stills (Clip.still). */
+export const isImage = (m: Pick<MediaInfo, "path">) =>
+  IMAGE_EXT.includes(m.path.split(".").pop()?.toLowerCase() ?? "");
+
+/** How long a photo stays on screen when added outside a template slot. */
+export const PHOTO_SECONDS = 3;
 
 export function probeMedia(path: string): Promise<MediaInfo> {
   return invoke<MediaInfo>("probe_media", { path });
@@ -34,8 +42,9 @@ export async function pickAndProbe(): Promise<ImportResult> {
     multiple: true,
     title: "Import video",
     filters: [
-      { name: "Videos and audio", extensions: [...VIDEO_EXT, ...AUDIO_EXT] },
+      { name: "Videos, photos and audio", extensions: [...VIDEO_EXT, ...IMAGE_EXT, ...AUDIO_EXT] },
       { name: "Videos", extensions: VIDEO_EXT },
+      { name: "Photos", extensions: IMAGE_EXT },
       { name: "Audio", extensions: AUDIO_EXT },
     ],
   });

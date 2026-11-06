@@ -33,7 +33,12 @@ export interface TemplateSlot {
   region?: "top" | "middle" | "bottom";
   /** Split layouts: timeline pieces this slot shows (cuts alternate between panels). */
   segments?: [number, number][];
+  /** Shortest source clip (seconds) that fills the slot; shown as "Min clip N s". Filled in by withRules. */
+  minClip?: number;
 }
+
+/** The three text styles a template uses: the hook line, supporting points, the call to action. */
+export type TextRole = "headline" | "point" | "cta";
 
 export interface TemplateText {
   id: string;
@@ -50,8 +55,10 @@ export interface TemplateText {
   animation?: TextStyle["animation"];
   font?: TextStyle["font"];
   align?: TextStyle["align"];
-  /** Hindi / Hinglish copy, used when the user picks Hindi. */
+  /** Hinglish copy (Hindi in Latin script); the default language when present. */
   hi?: string;
+  /** Headline, point or CTA. Filled in by withRules when the author leaves it out. */
+  role?: TextRole;
   /** Regional copy (Tamil, Malayalam, Bengali, Marathi). */
   regional?: Partial<Record<RegionalLang, string>>;
 }
@@ -83,6 +90,8 @@ export interface Template {
   isNew?: boolean;
   /** Designed for a split screen; until the canvas supports panels, panels take turns. */
   layout?: "split-v" | "split-h" | "triptych-v" | "pip";
+  /** Seconds a cut may move to land on a beat; defaults to the pack's BEAT_SNAP_TOLERANCE. */
+  beatSnap?: number;
 }
 
 export interface TemplatePack {
