@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { About } from "./components/About";
 import { Splash } from "./components/Splash";
 import { Settings } from "./screens/Settings";
+import { Batch } from "./screens/Batch";
 import { Toast, type ToastMessage } from "./components/ui";
 import { invoke } from "@tauri-apps/api/core";
 import { pickAndProbe, probeMedia, type MediaInfo } from "./lib/media";
@@ -11,7 +12,7 @@ import { sampleProject } from "./data/placeholder";
 import { appendMedia, emptyProject, type Project } from "./lib/project";
 import { listProjects, openAutosaved, openProjectFile, type ProjectSummary } from "./lib/persist";
 
-type Screen = "welcome" | "editor";
+type Screen = "welcome" | "editor" | "batch";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -118,7 +119,13 @@ export default function App() {
 
   return (
     <>
-      {screen === "welcome" ? (
+      {screen === "batch" ? (
+        <Batch
+          onClose={() => setScreen("welcome")}
+          onOpenReels={() => setScreen("welcome")}
+          notify={notify}
+        />
+      ) : screen === "welcome" ? (
         <Welcome
           importing={importing}
           onNewProject={() => openEditor("media", emptyProject())}
@@ -133,6 +140,7 @@ export default function App() {
           onOpenSample={() => openEditor("media", sampleProject())}
           recents={recents}
           onSettings={() => setShowSettings(true)}
+          onBatch={() => setScreen("batch")}
           onOpenRecent={(id) =>
             openAutosaved(id)
               .then(openExisting)

@@ -19,6 +19,7 @@ interface WelcomeProps {
   onOpenRecent: (id: string) => void;
   onOpenFile: () => void;
   onSettings: () => void;
+  onBatch: () => void;
 }
 
 interface Action {
@@ -41,6 +42,7 @@ export function Welcome({
   onOpenRecent,
   onOpenFile,
   onSettings,
+  onBatch,
 }: WelcomeProps) {
   const actions: Action[] = [
     {
@@ -105,6 +107,10 @@ export function Welcome({
         <section className="recent" aria-labelledby="recent-title">
           <div className="recent__head">
             <h2 id="recent-title">{recents.length ? "Recent projects" : "Try a sample"}</h2>
+            <button type="button" className="btn btn--ghost" onClick={onBatch}>
+              <Icon name="layers" size={20} />
+              <span>Batch mode</span>
+            </button>
             <button type="button" className="btn btn--ghost" onClick={onOpenFile}>
               <Icon name="folder" size={20} />
               <span>Open a project</span>

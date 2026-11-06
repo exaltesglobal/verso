@@ -3312,3 +3312,129 @@ input[type="range"]::-webkit-slider-thumb {
   gap: var(--vs-space-2);
   margin-top: var(--vs-space-2);
 }
+
+/* ---------- Batch ---------- */
+.batch {
+  height: 100%;
+  overflow: auto;
+  background: var(--vs-color-role-bg-app);
+}
+
+.batch__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+  padding: var(--vs-space-4) var(--vs-space-6);
+  border-bottom: 1px solid var(--vs-color-role-border);
+}
+
+.batch__title {
+  font-size: var(--vs-font-size-title);
+  font-weight: var(--vs-font-weight-bold);
+}
+
+.batch__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-4);
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: var(--vs-space-6);
+}
+
+.batch__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+}
+
+.batch__count {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-2);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.batch__count .field__input {
+  width: auto;
+}
+
+.batch__spacer {
+  flex: 1;
+}
+
+.batch__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.batch-job {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+  padding: var(--vs-space-3) var(--vs-space-4);
+  border-radius: var(--vs-radius-lg);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+}
+
+.batch-job__top {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+}
+
+.batch-job__name {
+  flex: 1;
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.batch-job__status {
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.batch-job.is-done .batch-job__status {
+  color: var(--vs-color-semantic-success);
+}
+
+.batch-job.is-failed .batch-job__status {
+  color: var(--vs-color-semantic-danger);
+}
+
+.batch-job__reels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-1);
+  font-size: var(--vs-font-size-small);
+}
+
+.progress-bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--vs-radius-pill);
+  background: var(--vs-color-neutral-700);
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--vs-color-role-text-primary);
+  transition: width var(--vs-motion-duration-base) var(--vs-motion-easing-standard);
+}
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+  padding: var(--vs-space-3);
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-surface);
+}
+
+.form-error {
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-semantic-danger);
+}
