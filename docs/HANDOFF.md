@@ -2,11 +2,11 @@
 
 Export dialog → **Hand off to a pro editor**. Verso writes project files into a folder you pick, so an editor can keep working in Premiere Pro, DaVinci Resolve or Final Cut Pro without redoing the cut.
 
-| Choice | Files written |
-| --- | --- |
-| Open in Premiere Pro | `<name>.xml` (FCP7 XML / xmeml v5, Premiere's native XML import), `<name>.fcpxml`, `<name> captions.srt`, `<name> - read me.txt` |
-| Open in DaVinci Resolve | `<name>.fcpxml` (FCPXML 1.11; Final Cut Pro opens it too), `<name> captions.srt`, `<name> - read me.txt` |
-| Just the video (MP4) | Switches to the normal video export. |
+| Choice                  | Files written                                                                                                                    |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Open in Premiere Pro    | `<name>.xml` (FCP7 XML / xmeml v5, Premiere's native XML import), `<name>.fcpxml`, `<name> captions.srt`, `<name> - read me.txt` |
+| Open in DaVinci Resolve | `<name>.fcpxml` (FCPXML 1.11; Final Cut Pro opens it too), `<name> captions.srt`, `<name> - read me.txt`                         |
+| Just the video (MP4)    | Switches to the normal video export.                                                                                             |
 
 Code: `src/lib/handoff.ts` (pure writers), `src/components/editor/HandoffPanel.tsx` (UI). Files are written with the existing `save_project_as` command (non-JSON text is written as is). Check: `pnpm test:handoff`.
 
