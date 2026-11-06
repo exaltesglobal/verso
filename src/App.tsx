@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { About } from "./components/About";
 import { Splash } from "./components/Splash";
+import { Settings } from "./screens/Settings";
 import { Toast, type ToastMessage } from "./components/ui";
 import { invoke } from "@tauri-apps/api/core";
 import { pickAndProbe, probeMedia, type MediaInfo } from "./lib/media";
@@ -23,6 +24,7 @@ export default function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [showAbout, setShowAbout] = useState(false);
   const [recents, setRecents] = useState<ProjectSummary[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
   const openAbout = useCallback(() => setShowAbout(true), []);
   const closeAbout = useCallback(() => setShowAbout(false), []);
 
@@ -130,6 +132,7 @@ export default function App() {
           onMakeClips={() => openEditor("autocut", sampleProject())}
           onOpenSample={() => openEditor("media", sampleProject())}
           recents={recents}
+          onSettings={() => setShowSettings(true)}
           onOpenRecent={(id) =>
             openAutosaved(id)
               .then(openExisting)
@@ -157,6 +160,7 @@ export default function App() {
         />
       )}
       {showAbout && <About onClose={closeAbout} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {showSplash && <Splash />}
     </>

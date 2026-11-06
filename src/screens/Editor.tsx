@@ -24,10 +24,11 @@ import {
 } from "../lib/project";
 import { autosaveProject, saveProject, saveProjectAs } from "../lib/persist";
 import { useHistory } from "../lib/useHistory";
+import { useEntitlements } from "../lib/entitlements";
 import { replaceCaptions } from "../lib/captions";
 import type { CropPath } from "../lib/reframe";
 
-export type PanelTab = "media" | "autocut" | "templates" | "text" | "captions" | "audio";
+export type PanelTab = "media" | "autocut" | "magic" | "templates" | "text" | "captions" | "audio";
 
 interface EditorProps {
   initialTab: PanelTab;
@@ -65,6 +66,7 @@ export function Editor({
   );
   const [zoom, setZoom] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const { can } = useEntitlements();
   const last = useRef<number | null>(null);
   /**
    * Timeline time reported by the playing <video>, or null when no real media
@@ -252,6 +254,14 @@ export function Editor({
   }, [onImport, addToTimeline]);
 
   const selected = findClip(project, selectedClip);
+
+  const applySmart = useCallback(
+    (next: Project, message: string) => {
+      setProject(next);
+      notify({ tone: "success", text: message });
+    },
+    [setProject, notify],
+  );
   // Captions go on the selected video clip, or the first one with a real file.
   const captionClip =
     (selected?.kind === "video" && selected.source ? selected : undefined) ??
@@ -314,6 +324,8 @@ export function Editor({
         onCaptions={(caps, clip) => setProject((p) => replaceCaptions(p, clip, caps))}
         onOpenProject={onOpenProject}
         onMakeAll={(ps) => void makeAll(ps)}
+        project={project}
+        onApply={applySmart}
         notify={notify}
       />
       <Preview
@@ -334,6 +346,8 @@ export function Editor({
         onChange={(patch) => selected && patchClip(selected.id, patch)}
         onDelete={() => remove(false)}
         onCropPath={setCropPath}
+        project={project}
+        onApply={applySmart}
       />
       <Timeline
         project={project}
@@ -349,7 +363,13 @@ export function Editor({
         onDelete={() => remove(false)}
       />
       {exporting && (
-        <ExportDialog project={project} aspect={aspect} notify={notify} onClose={() => setExporting(false)} />
+        <ExportDialog
+          project={project}
+          aspect={aspect}
+          notify={notify}
+          watermark={!can("watermark_free")}
+          onClose={() => setExporting(false)}
+        />
       )}
     </div>
   );

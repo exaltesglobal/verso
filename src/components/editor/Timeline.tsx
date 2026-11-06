@@ -3,6 +3,8 @@ import { Icon, type IconName } from "../Icon";
 import { IconButton } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { useWaveform } from "../../lib/waveform";
+import { BeatMarkers } from "../smart/BeatMarkers";
+import { useBeatMarkers } from "../smart/hooks";
 import { formatDuration } from "../../lib/media";
 import {
   linkedIds,
@@ -86,6 +88,7 @@ export function Timeline(props: TimelineProps) {
   };
 
   const empty = duration === 0;
+  const beats = useBeatMarkers(project);
   const rows = `32px repeat(${project.tracks.length}, minmax(40px, 1fr))`;
 
   return (
@@ -195,6 +198,7 @@ export function Timeline(props: TimelineProps) {
               </div>
             ))}
 
+            <BeatMarkers beats={beats} pps={pps} offset={GUTTER} />
             {!empty && (
               <>
                 <div

@@ -2,6 +2,7 @@ import logo from "../assets/brand/verso-logo-horizontal-dark-bg.svg";
 import { Icon, type IconName } from "../components/Icon";
 import { AgapeCredit } from "../components/AgapeCredit";
 import { IconButton } from "../components/ui";
+import { AccountButton } from "../components/account/AccountButton";
 import { recentProjects } from "../data/placeholder";
 import { useFilmstrip } from "../lib/filmstrip";
 import { formatDuration } from "../lib/media";
@@ -17,6 +18,7 @@ interface WelcomeProps {
   recents: ProjectSummary[];
   onOpenRecent: (id: string) => void;
   onOpenFile: () => void;
+  onSettings: () => void;
 }
 
 interface Action {
@@ -38,6 +40,7 @@ export function Welcome({
   recents,
   onOpenRecent,
   onOpenFile,
+  onSettings,
 }: WelcomeProps) {
   const actions: Action[] = [
     {
@@ -68,7 +71,8 @@ export function Welcome({
         <img src={logo} alt="Verso" className="welcome__logo" />
         <div className="welcome__bar-actions">
           <IconButton icon="help" label="About Verso" onClick={onAbout} />
-          <IconButton icon="settings" label="Settings" />
+          <IconButton icon="settings" label="Settings" onClick={onSettings} />
+          <AccountButton />
         </div>
       </header>
 

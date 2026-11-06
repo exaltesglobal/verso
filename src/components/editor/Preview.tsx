@@ -6,6 +6,7 @@ import { cropStyle, panelBoxes, sampleCropPath, sourceTimeFor } from "../../lib/
 import type { CSSProperties } from "react";
 import { CaptionText } from "./CaptionStylePreview";
 import { captionStyle } from "../../lib/captionStyles";
+import { zoomAt } from "../../lib/smart";
 import { Button, IconButton } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration } from "../../lib/media";
@@ -66,8 +67,9 @@ export function Preview({
   // Reframe: one crop rect per panel (two when showing both speakers).
   const rects = clip?.cropPath ? sampleCropPath(clip.cropPath, sourceTimeFor(clip, time)) : [];
   const boxes = clip?.cropPath && rects.length ? panelBoxes(clip.cropPath) : [];
-  const zoomStyle: CSSProperties | undefined =
-    clip?.zoom && clip.zoom > 1 ? { transform: `scale(${clip.zoom})` } : undefined;
+  const punch = clip ? zoomAt(clip, time - clip.start) : 1;
+  const scale = (clip?.zoom ?? 1) * punch;
+  const zoomStyle: CSSProperties | undefined = scale > 1.001 ? { transform: `scale(${scale})` } : undefined;
   const panels = boxes.length
     ? boxes.map((b, i) => ({ box: b, style: rects[i] ? cropStyle(rects[i]) : undefined }))
     : [{ box: { x: 0, y: 0, w: 1, h: 1 }, style: zoomStyle }];

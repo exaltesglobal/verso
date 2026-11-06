@@ -2976,7 +2976,9 @@ input[type="range"]::-webkit-slider-thumb {
   background:
     radial-gradient(120% 60% at 30% 20%, color-mix(in srgb, var(--a1) 55%, transparent), transparent 60%),
     linear-gradient(165deg, var(--a2), var(--vs-color-neutral-950));
-  background-size: 160% 160%, 100% 100%;
+  background-size:
+    160% 160%,
+    100% 100%;
   animation: tpl-pan var(--dur) ease-in-out infinite alternate;
 }
 
@@ -3053,7 +3055,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 @keyframes tpl-pan {
   to {
-    background-position: 100% 100%, 0 0;
+    background-position:
+      100% 100%,
+      0 0;
   }
 }
 

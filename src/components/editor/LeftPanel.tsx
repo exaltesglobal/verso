@@ -2,17 +2,20 @@ import type { ReactNode } from "react";
 import { Icon, type IconName } from "../Icon";
 import { Button, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
-import { audioTracks, templates } from "../../data/placeholder";
+import { audioTracks } from "../../data/placeholder";
 import { useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration, formatResolution, formatSize, type MediaInfo } from "../../lib/media";
 import type { Clip, Project, TextStyle } from "../../lib/project";
 import { AutoCutPanel } from "./AutoCutPanel";
+import { TemplatesPanel } from "../smart/TemplatesPanel";
+import { SmartToolsPanel } from "../smart/SmartToolsPanel";
 import { CaptionsPanel } from "./CaptionsPanel";
 import { transcribeFile } from "../../lib/transcriber";
 
 const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
   { id: "media", label: "Media", icon: "folder" },
   { id: "autocut", label: "Auto-cut", icon: "auto-cut" },
+  { id: "magic", label: "Magic", icon: "one-click" },
   { id: "templates", label: "Templates", icon: "templates" },
   { id: "text", label: "Text", icon: "text" },
   { id: "captions", label: "Captions", icon: "captions" },
@@ -33,6 +36,8 @@ interface LeftPanelProps {
   onCaptions: (captions: Clip[], clip: Clip) => void;
   onOpenProject: (p: Project) => void;
   onMakeAll: (projects: Project[]) => void;
+  project: Project;
+  onApply: (next: Project, message: string) => void;
   notify: (m: ToastMessage) => void;
 }
 
@@ -50,6 +55,8 @@ export function LeftPanel({
   onCaptions,
   onOpenProject,
   onMakeAll,
+  project,
+  onApply,
   notify,
 }: LeftPanelProps) {
   return (
@@ -87,7 +94,15 @@ export function LeftPanel({
             onMakeAll={onMakeAll}
           />
         )}
-        {tab === "templates" && <TemplatesTab />}
+        {tab === "templates" && <TemplatesPanel media={media} project={project} onApply={onApply} />}
+        {tab === "magic" && (
+          <SmartToolsPanel
+            project={project}
+            onApply={onApply}
+            onNeedCaptions={() => onTab("captions")}
+            notify={notify}
+          />
+        )}
         {tab === "text" && <TextTab onAdd={onAddText} />}
         {tab === "captions" && (
           <CaptionsPanel
@@ -191,31 +206,6 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
     </li>
   );
 }
-function TemplatesTab() {
-  return (
-    <div className="panel__body">
-      <PanelHead icon="templates" title="Templates">
-        Ready-made looks. Apply one and swap in your own clips.
-      </PanelHead>
-      <div className="template-grid">
-        {templates.map((t) => (
-          <button key={t.id} type="button" className="template">
-            <span
-              className="template__thumb"
-              style={{ background: `linear-gradient(170deg, ${t.tint[0]}, ${t.tint[1]})` }}
-            >
-              <span className="template__bar" />
-              <span className="template__bar template__bar--short" />
-            </span>
-            <span className="template__name">{t.name}</span>
-            <span className="template__uses">{t.uses}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function TextTab({ onAdd }: { onAdd: (preset: TextStyle["preset"], text: string) => void }) {
   const presets: { label: string; cls: string; preset: TextStyle["preset"]; text: string }[] = [
     { label: "Add a title", cls: "text-preset--title", preset: "title", text: "Your big idea" },

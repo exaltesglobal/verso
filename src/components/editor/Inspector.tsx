@@ -3,7 +3,8 @@ import { Icon, type IconName } from "../Icon";
 import { Button } from "../ui";
 import { ReframePanel } from "./ReframePanel";
 import type { CropPath } from "../../lib/reframe";
-import type { AspectRatio, Clip, TextStyle, TrackKind, TransitionKind } from "../../lib/project";
+import type { AspectRatio, Clip, Project, TextStyle, TrackKind, TransitionKind } from "../../lib/project";
+import { CutToBeatToggle } from "../smart/CutToBeatToggle";
 import { formatDuration } from "../../lib/media";
 
 interface InspectorProps {
@@ -12,6 +13,8 @@ interface InspectorProps {
   onChange: (patch: Partial<Clip>) => void;
   onDelete: () => void;
   onCropPath: (path: CropPath | null) => void;
+  project: Project;
+  onApply: (next: Project, message: string) => void;
 }
 
 const KIND_LABEL: Record<TrackKind, string> = {
@@ -41,7 +44,15 @@ const TEXT_PRESETS: { id: TextStyle["preset"]; label: string }[] = [
 
 const SWATCHES = ["#F5F4F0", "#FFB547", "#F472B6", "#5B8CFF", "#2FD4A3", "#0B0B0F"];
 
-export function Inspector({ clip, aspect, onChange, onDelete, onCropPath }: InspectorProps) {
+export function Inspector({
+  clip,
+  aspect,
+  onChange,
+  onDelete,
+  onCropPath,
+  project,
+  onApply,
+}: InspectorProps) {
   return (
     <aside className="inspector" aria-label="Properties">
       <div className="inspector__head">
@@ -57,9 +68,22 @@ export function Inspector({ clip, aspect, onChange, onDelete, onCropPath }: Insp
       </div>
 
       {clip?.kind === "video" && (
-        <VideoProps key={clip.id} clip={clip} aspect={aspect} onChange={onChange} onCropPath={onCropPath} />
+        <VideoProps
+          key={clip.id}
+          clip={clip}
+          aspect={aspect}
+          onChange={onChange}
+          onCropPath={onCropPath}
+          project={project}
+          onApply={onApply}
+        />
       )}
       {(clip?.kind === "audio" || clip?.kind === "music") && <AudioProps clip={clip} onChange={onChange} />}
+      {clip?.kind === "music" && (
+        <section className="inspector__section">
+          <CutToBeatToggle project={project} clip={clip} onApply={onApply} />
+        </section>
+      )}
       {(clip?.kind === "text" || clip?.kind === "captions") && <TextProps clip={clip} onChange={onChange} />}
 
       {clip && (
@@ -88,6 +112,8 @@ function VideoProps({
   aspect: AspectRatio;
   onChange: (p: Partial<Clip>) => void;
   onCropPath: (path: CropPath | null) => void;
+  project: Project;
+  onApply: (next: Project, message: string) => void;
 }) {
   const transition = clip.transitionIn?.kind ?? "none";
   return (
