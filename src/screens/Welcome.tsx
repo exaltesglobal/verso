@@ -3,6 +3,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { AgapeCredit } from "../components/AgapeCredit";
 import { IconButton } from "../components/ui";
 import { AccountButton } from "../components/account/AccountButton";
+import { WindowControls } from "../components/WindowControls";
 import { recentProjects } from "../data/placeholder";
 import { useFilmstrip } from "../lib/filmstrip";
 import { formatDuration } from "../lib/media";
@@ -69,12 +70,14 @@ export function Welcome({
 
   return (
     <div className="welcome">
-      <header className="welcome__bar">
+      <header className="welcome__bar" data-tauri-drag-region>
         <img src={logo} alt="Verso" className="welcome__logo" />
-        <div className="welcome__bar-actions">
+        <div className="welcome__bar-actions" data-tauri-drag-region>
           <IconButton icon="help" label="About Verso" onClick={onAbout} />
           <IconButton icon="settings" label="Settings" onClick={onSettings} />
           <AccountButton />
+          <span className="topbar__sep" />
+          <WindowControls />
         </div>
       </header>
 

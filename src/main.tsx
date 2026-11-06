@@ -12,6 +12,12 @@ import { BetaGate } from "./screens/BetaGate";
 
 installCrashHandlers();
 
+// No browser context menu: text fields keep theirs, everything else uses Verso's own menus.
+window.addEventListener("contextmenu", (e) => {
+  const el = e.target as HTMLElement;
+  if (!el.closest("input, textarea, [contenteditable='true']")) e.preventDefault();
+});
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BetaGate>

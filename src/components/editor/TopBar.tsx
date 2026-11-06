@@ -1,6 +1,7 @@
 import mark from "../../assets/brand/verso-mark.svg";
 import { Button, IconButton, Segmented } from "../ui";
 import { AccountButton } from "../account/AccountButton";
+import { WindowControls } from "../WindowControls";
 import type { AspectRatio } from "../../lib/project";
 
 const RATIOS = ["9:16", "1:1", "16:9"] as const;
@@ -25,8 +26,8 @@ interface TopBarProps {
 export function TopBar(props: TopBarProps) {
   const { projectName, subtitle, onRename, onRenameDone, aspect, onAspect } = props;
   return (
-    <header className="topbar">
-      <div className="topbar__left">
+    <header className="topbar" data-tauri-drag-region>
+      <div className="topbar__left" data-tauri-drag-region>
         <button
           type="button"
           className="topbar__home"
@@ -50,11 +51,11 @@ export function TopBar(props: TopBarProps) {
         {subtitle && <span className="topbar__crumb">› {subtitle}</span>}
       </div>
 
-      <div className="topbar__center">
+      <div className="topbar__center" data-tauri-drag-region>
         <Segmented label="Aspect ratio" options={RATIOS} value={aspect} onChange={onAspect} />
       </div>
 
-      <div className="topbar__right">
+      <div className="topbar__right" data-tauri-drag-region>
         <IconButton icon="undo" label="Undo (Ctrl+Z)" onClick={props.onUndo} disabled={!props.canUndo} />
         <IconButton
           icon="redo"
@@ -70,6 +71,8 @@ export function TopBar(props: TopBarProps) {
         <Button variant="primary" icon="export" onClick={props.onExport}>
           Export reel
         </Button>
+        <span className="topbar__sep" />
+        <WindowControls />
       </div>
     </header>
   );

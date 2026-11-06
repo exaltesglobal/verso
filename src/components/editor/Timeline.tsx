@@ -47,6 +47,8 @@ interface TimelineProps {
   onEdit: (e: TimelineEdit) => void;
   onSplit: () => void;
   onDelete: () => void;
+  /** Right-click on a clip. */
+  onClipMenu?: (id: string, x: number, y: number) => void;
 }
 
 export function Timeline(props: TimelineProps) {
@@ -190,6 +192,10 @@ export function Timeline(props: TimelineProps) {
                     onSelect={() => onSelectClip(c.id)}
                     onEdit={onEdit}
                     makeSnapper={() => snapper(linkedIds(project, c.id))}
+                    onMenu={(x, y) => {
+                      onSelectClip(c.id);
+                      props.onClipMenu?.(c.id, x, y);
+                    }}
                   />
                 ))}
                 {empty && t.kind === "video" && (
@@ -226,6 +232,7 @@ interface ClipViewProps {
   onSelect: () => void;
   onEdit: (e: TimelineEdit) => void;
   makeSnapper: () => (t: number) => number;
+  onMenu: (x: number, y: number) => void;
 }
 
 type Drag = {
@@ -238,7 +245,7 @@ type Drag = {
   snap: (t: number) => number;
 };
 
-function ClipView({ clip: c, kind, pps, selected, onSelect, onEdit, makeSnapper }: ClipViewProps) {
+function ClipView({ clip: c, kind, pps, selected, onSelect, onEdit, makeSnapper, onMenu }: ClipViewProps) {
   const drag = useRef<Drag | null>(null);
   const widthPx = Math.max(18, (c.end - c.start) * pps - 4);
   const colour = c.variant === "effect" ? "effects" : kind;
@@ -308,6 +315,10 @@ function ClipView({ clip: c, kind, pps, selected, onSelect, onEdit, makeSnapper 
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onMenu(e.clientX, e.clientY);
+      }}
       aria-pressed={selected}
       title={`${c.text ?? c.label} · ${formatDuration(c.end - c.start)}`}
     >

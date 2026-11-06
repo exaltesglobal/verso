@@ -6,6 +6,7 @@ import { Preview } from "../components/editor/Preview";
 import { Inspector } from "../components/editor/Inspector";
 import { Timeline, type TimelineEdit } from "../components/editor/Timeline";
 import { ExportDialog } from "../components/editor/ExportDialog";
+import { ContextMenu } from "../components/ContextMenu";
 import type { MediaInfo } from "../lib/media";
 import {
   addTextClip,
@@ -65,6 +66,7 @@ export function Editor({
   );
   const [zoom, setZoom] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const last = useRef<number | null>(null);
   /**
    * Timeline time reported by the playing <video>, or null when no real media
@@ -359,7 +361,26 @@ export function Editor({
         onEdit={onTimelineEdit}
         onSplit={split}
         onDelete={() => remove(false)}
+        onClipMenu={(id, x, y) => setMenu({ id, x, y })}
       />
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Split at playhead", shortcut: "S", onSelect: split },
+            {
+              label: "Add fade in",
+              disabled: findClip(project, menu.id)?.kind !== "video",
+              onSelect: () => patchClip(menu.id, { transitionIn: { kind: "fade", duration: 0.5 } }),
+            },
+            { separator: true },
+            { label: "Delete", shortcut: "Del", onSelect: () => remove(false) },
+            { label: "Delete and close the gap", shortcut: "Shift+Del", onSelect: () => remove(true) },
+          ]}
+        />
+      )}
       {exporting && (
         <ExportDialog
           project={project}

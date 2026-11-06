@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Button, IconButton } from "../components/ui";
+import { WindowControls } from "../components/WindowControls";
 import type { ToastMessage } from "../components/ui";
 import { findMoments, projectForMoment } from "../lib/autoclips";
 import { useEntitlements } from "../lib/entitlements";
@@ -129,12 +130,14 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
 
   return (
     <div className="batch">
-      <header className="batch__bar">
+      <header className="batch__bar" data-tauri-drag-region>
         <IconButton icon="undo" label="Back" onClick={onClose} />
         <h1 className="batch__title">Batch mode</h1>
         <span className="muted">
           Queue long videos, get ranked reels for all of them. Leave it running overnight.
         </span>
+        <span className="batch__spacer" data-tauri-drag-region />
+        <WindowControls />
       </header>
 
       <main className="batch__main">
