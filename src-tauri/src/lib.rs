@@ -4,6 +4,10 @@ mod account;
 mod commands;
 mod crash;
 mod export;
+// Colour/speed/still export helpers. Move to `pub mod color;` in export/mod.rs when wiring export.
+#[allow(dead_code)]
+#[path = "export/color.rs"]
+mod export_color;
 mod reframe;
 mod tools;
 mod updates;
@@ -64,6 +68,10 @@ pub fn run() {
             crash::discard_crash_reports,
             updates::check_for_update,
             updates::install_update,
+            commands::enhance::enhance_audio,
+            commands::color::auto_color,
+            commands::color::render_still,
+            commands::color::import_lut,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

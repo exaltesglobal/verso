@@ -4,6 +4,8 @@
 pub mod analysis;
 pub mod export;
 pub mod captions;
+pub mod color;
+pub mod enhance;
 pub mod media;
 pub mod projects;
 pub mod reframe;
