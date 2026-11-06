@@ -40,7 +40,7 @@ tauri-plugin-updater = "2"
 log = "0.4"
 # Accounts: OS keychain for the refresh token, offline token check (all MIT/Apache).
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 base64 = "0.22"
 rand = "0.8"
 # Voice/dubbing: translator tokenizers (Apache-2.0; Oniguruma is BSD-2).
