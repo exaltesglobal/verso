@@ -1,3 +1,4 @@
+mod captions;
 mod commands;
 mod tools;
 
@@ -9,6 +10,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::media::probe_media,
             commands::thumbnails::media_filmstrip,
+            commands::captions::caption_models,
+            commands::captions::download_caption_model,
+            commands::captions::cancel_caption_download,
+            commands::captions::transcribe,
+            commands::captions::cancel_transcription,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");
