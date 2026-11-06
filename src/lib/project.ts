@@ -58,6 +58,12 @@ export interface Clip {
   /** Music: fade in/out seconds. */
   fadeIn?: number;
   fadeOut?: number;
+  /** Video: punch-in zooms, `t` in seconds from the clip start (see zoomAt in smart.ts). */
+  zoomKeys?: { t: number; zoom: number }[];
+  /** Video: the template slot this clip fills (see swapSlotMedia). */
+  slotId?: string;
+  /** Music: "Cut to the beat" is on for this clip. */
+  beatSync?: boolean;
 }
 
 export interface Track {

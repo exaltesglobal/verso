@@ -1,4 +1,5 @@
 mod captions;
+mod analysis;
 mod commands;
 mod export;
 mod reframe;
@@ -32,6 +33,9 @@ pub fn run() {
             commands::reframe::download_reframe_model,
             commands::reframe::analyze_reframe,
             commands::reframe::plan_crop,
+            commands::analysis::detect_silences,
+            commands::analysis::detect_emphasis,
+            commands::analysis::detect_beats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");
