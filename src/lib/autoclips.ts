@@ -152,7 +152,7 @@ const FILLERS = [
 
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
-function hookStrength(s: Sentence): { score: number; reasons: string[] } {
+export function hookStrength(s: Sentence): { score: number; reasons: string[] } {
   const reasons: string[] = [];
   let score = 0;
   const words = s.words.map((w) => norm(w.text));

@@ -9,6 +9,7 @@ import type { Clip, Project, TextStyle } from "../../lib/project";
 import { AutoCutPanel } from "./AutoCutPanel";
 import { TemplatesPanel } from "../smart/TemplatesPanel";
 import { SmartToolsPanel } from "../smart/SmartToolsPanel";
+import { BoostPanel } from "../insights/BoostPanel";
 import { CaptionsPanel } from "./CaptionsPanel";
 import { transcribeFile } from "../../lib/transcriber";
 
@@ -16,6 +17,7 @@ const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
   { id: "media", label: "Media", icon: "folder" },
   { id: "autocut", label: "Auto-cut", icon: "auto-cut" },
   { id: "magic", label: "Magic", icon: "one-click" },
+  { id: "boost", label: "Boost", icon: "auto-reel" },
   { id: "templates", label: "Templates", icon: "templates" },
   { id: "text", label: "Text", icon: "text" },
   { id: "captions", label: "Captions", icon: "captions" },
@@ -95,6 +97,21 @@ export function LeftPanel({
           />
         )}
         {tab === "templates" && <TemplatesPanel media={media} project={project} onApply={onApply} />}
+        {tab === "boost" && (
+          <BoostPanel
+            project={project}
+            onApply={onApply}
+            onFix={(fix) => {
+              if (fix === "captions") onTab("captions");
+              else if (fix === "pauses") onTab("magic");
+              else if (fix === "music") onTab("audio");
+              else if (fix === "aspect")
+                onApply({ ...project, aspect: "9:16" }, "Switched to full-screen vertical.");
+              else if (fix === "trim")
+                notify({ tone: "info", text: "Trim the slow parts: drag a clip edge or split with S." });
+            }}
+          />
+        )}
         {tab === "magic" && (
           <SmartToolsPanel
             project={project}

@@ -3194,3 +3194,121 @@ input[type="range"]::-webkit-slider-thumb {
 .editor {
   grid-template-rows: var(--vs-size-topbar) minmax(0, 1fr) 286px;
 }
+
+/* ---------- Boost ---------- */
+.watch-score {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-4);
+  padding: var(--vs-space-4);
+  border-radius: var(--vs-radius-lg);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+}
+
+.watch-score__ring {
+  --c: var(--vs-color-semantic-warning);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 50%;
+  background: conic-gradient(var(--c) var(--p), var(--vs-color-neutral-700) 0);
+}
+
+.watch-score__ring::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--vs-color-role-bg-surface);
+}
+
+.watch-score__ring span {
+  position: relative;
+  font-size: var(--vs-font-size-title-sm);
+  font-weight: var(--vs-font-weight-extrabold);
+}
+
+.watch-score--good .watch-score__ring {
+  --c: var(--vs-color-semantic-success);
+}
+
+.watch-score--low .watch-score__ring {
+  --c: var(--vs-color-semantic-danger);
+}
+
+.checks,
+.hooks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vs-space-3);
+  padding: var(--vs-space-2) 0;
+}
+
+.check__dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--vs-color-semantic-warning);
+}
+
+.check.is-ok .check__dot {
+  background: var(--vs-color-semantic-success);
+}
+
+.check__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.check__label {
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.check__detail,
+.hook__why {
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-muted);
+}
+
+.check__fix {
+  height: var(--vs-size-control-sm);
+}
+
+.hooks__head {
+  justify-content: space-between;
+}
+
+.hook {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-1);
+  padding: var(--vs-space-3);
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+}
+
+.hook__title {
+  font-size: var(--vs-font-size-body-lg);
+  font-weight: var(--vs-font-weight-bold);
+}
+
+.hook__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vs-space-2);
+  margin-top: var(--vs-space-2);
+}

@@ -27,7 +27,7 @@ import { useHistory } from "../lib/useHistory";
 import { replaceCaptions } from "../lib/captions";
 import type { CropPath } from "../lib/reframe";
 
-export type PanelTab = "media" | "autocut" | "magic" | "templates" | "text" | "captions" | "audio";
+export type PanelTab = "media" | "autocut" | "magic" | "boost" | "templates" | "text" | "captions" | "audio";
 
 interface EditorProps {
   initialTab: PanelTab;
