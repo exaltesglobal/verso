@@ -649,10 +649,10 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--vs-color-role-bg-raised);
 }
 
-.topbar__wordmark {
-  font-size: 20px;
-  font-weight: var(--vs-font-weight-extrabold);
-  letter-spacing: -0.045em;
+/* v2 minimum: the full logo is never narrower than 96px. */
+.topbar__logo {
+  height: 28px;
+  width: auto;
 }
 
 .topbar__divider {

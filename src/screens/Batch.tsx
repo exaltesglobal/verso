@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import versoMark from "../assets/brand/verso-mark-small.svg";
 import { Icon } from "../components/Icon";
 import { Button, IconButton } from "../components/ui";
 import { WindowControls } from "../components/WindowControls";
@@ -145,6 +146,7 @@ export function Batch({ onClose, onOpenReels, notify }: BatchProps) {
     <div className="batch">
       <header className="batch__bar" data-tauri-drag-region>
         <IconButton icon="undo" label="Back" onClick={onClose} />
+        <img src={versoMark} alt="" width={24} height={24} />
         <h1 className="batch__title">Batch mode</h1>
         <span className="muted">
           Queue long videos, get ranked reels for all of them. Leave it running overnight.

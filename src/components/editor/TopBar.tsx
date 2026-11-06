@@ -1,4 +1,4 @@
-import mark from "../../assets/brand/verso-mark.svg";
+import logo from "../../assets/brand/verso-logo-horizontal-dark-bg.svg";
 import { Button, IconButton, Segmented } from "../ui";
 import { AccountButton } from "../account/AccountButton";
 import { CreditsBadge } from "../credits/CreditsBadge";
@@ -36,8 +36,7 @@ export function TopBar(props: TopBarProps) {
           aria-label="Back to start"
           title="Back to start"
         >
-          <img src={mark} alt="" width={26} height={26} />
-          <span className="topbar__wordmark">verso</span>
+          <img src={logo} alt="" className="topbar__logo" />
         </button>
         <span className="topbar__divider" />
         <input
