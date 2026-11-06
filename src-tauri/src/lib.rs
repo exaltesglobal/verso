@@ -4,6 +4,10 @@ mod account;
 mod commands;
 mod crash;
 mod export;
+// Looks for export; move to `pub mod look;` in export/mod.rs when wiring it in.
+#[path = "export/look.rs"]
+#[allow(dead_code)]
+mod look;
 mod reframe;
 mod tools;
 mod updates;
