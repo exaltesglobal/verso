@@ -61,6 +61,19 @@ pub const MODELS: &[ModelSpec] = &[
     },
 ];
 
+/// Every model download goes through here so the files can move to our own server later.
+/// With `VERSO_MODEL_MIRROR` set (at build time or run time), `https://host/path` becomes
+/// `<mirror>/host/path`; the SHA-256 pins stay the same, so a mirror can't swap a file.
+pub fn mirrored(url: &str) -> String {
+    let mirror = std::env::var("VERSO_MODEL_MIRROR")
+        .ok()
+        .or(option_env!("VERSO_MODEL_MIRROR").map(String::from));
+    match mirror.as_deref().map(|m| m.trim().trim_end_matches('/')) {
+        Some(m) if !m.is_empty() => format!("{m}/{}", url.trim_start_matches("https://")),
+        _ => url.to_string(),
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelStatus {
@@ -125,7 +138,7 @@ pub fn download_spec(
         .map_err(|e| format!("We couldn't create the models folder ({e})."))?;
     let part = dest.with_extension("part");
 
-    let resp = ureq::get(m.url).call().map_err(|e| {
+    let resp = ureq::get(&mirrored(m.url)).call().map_err(|e| {
         format!(
             "We couldn't download the {} ({e}). Check your internet connection and try again.",
             m.name.to_lowercase()

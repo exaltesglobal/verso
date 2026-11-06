@@ -87,7 +87,7 @@ pub fn find(id: &str) -> Result<&'static ModelSpec, String> {
 }
 
 pub fn url(spec: &ModelSpec) -> String {
-    format!("{BASE_URL}{}", spec.file)
+    crate::reframe::models::mirrored(&format!("{BASE_URL}{}", spec.file))
 }
 
 pub fn model_path(dir: &Path, spec: &ModelSpec) -> PathBuf {

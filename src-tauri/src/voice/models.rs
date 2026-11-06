@@ -368,12 +368,14 @@ pub fn download(root: &Path, id: &str, mut progress: impl FnMut(f64)) -> Result<
             continue;
         }
         let part = dir.join(format!("{}.part", f.name));
-        let resp = ureq::get(f.url).call().map_err(|e| {
-            format!(
-                "We couldn't download {} ({e}). Check your internet connection and try again.",
-                p.name
-            )
-        })?;
+        let resp = ureq::get(&crate::reframe::models::mirrored(f.url))
+            .call()
+            .map_err(|e| {
+                format!(
+                    "We couldn't download {} ({e}). Check your internet connection and try again.",
+                    p.name
+                )
+            })?;
         let mut body = resp.into_body();
         let mut reader = body.as_reader();
         let mut file = std::fs::File::create(&part)
