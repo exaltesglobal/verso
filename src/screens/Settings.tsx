@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { AccountDetails } from "../components/account/AccountPanel";
+import { SurecastSettings } from "../components/publish/SurecastSettings";
 import { Button, Segmented, Toggle } from "../components/ui";
 import type { ExportQuality } from "../lib/export";
 import { CAPTION_LANGUAGES } from "../lib/captions";
@@ -97,6 +98,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
         <Section title="Account">
           <AccountDetails />
         </Section>
+
+        <SurecastSettings />
 
         <Section title="Exports">
           <Row label="Default quality" hint="Higher quality makes bigger files.">

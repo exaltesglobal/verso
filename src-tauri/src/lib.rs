@@ -10,6 +10,7 @@ mod export;
 #[path = "export/color.rs"]
 mod export_color;
 mod reframe;
+mod surecast;
 mod tools;
 mod updates;
 
@@ -77,6 +78,15 @@ pub fn run() {
             commands::color::auto_color,
             commands::color::render_still,
             commands::color::import_lut,
+            surecast::surecast_connect,
+            surecast::surecast_disconnect,
+            surecast::surecast_status,
+            surecast::surecast_clients,
+            surecast::surecast_enqueue,
+            surecast::surecast_jobs,
+            surecast::surecast_retry,
+            surecast::surecast_remove,
+            surecast::surecast_refresh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");
