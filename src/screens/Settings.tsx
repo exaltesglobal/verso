@@ -21,6 +21,7 @@ const LICENCES: [string, string, string][] = [
   ["Tauri", "MIT or Apache-2.0", "https://github.com/tauri-apps/tauri"],
   ["React", "MIT", "https://github.com/facebook/react"],
   ["Manrope font", "SIL Open Font License 1.1", "https://github.com/sharanda/manrope"],
+  ["Fraunces font", "SIL Open Font License 1.1", "https://github.com/undercasetype/Fraunces"],
   ["keyring", "MIT or Apache-2.0", "https://github.com/hwchen/keyring-rs"],
   ["ureq", "MIT or Apache-2.0", "https://github.com/algesten/ureq"],
   ["jsonwebtoken", "MIT", "https://github.com/Keats/jsonwebtoken"],

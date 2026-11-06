@@ -153,8 +153,8 @@
   display: inline-block;
   padding: 1px var(--vs-space-2);
   border-radius: var(--vs-radius-pill);
-  background: var(--vs-color-brand-ember-tint);
-  color: var(--vs-color-brand-glow);
+  background: var(--vs-color-neutral-700);
+  color: var(--vs-color-role-text-primary);
   font-size: var(--vs-font-size-caption);
   font-weight: var(--vs-font-weight-bold);
   letter-spacing: 0.02em;
@@ -313,7 +313,7 @@
 }
 
 .settings__link:hover {
-  color: var(--vs-color-brand-glow);
+  color: var(--vs-color-role-text-secondary);
 }
 
 .settings__licences {

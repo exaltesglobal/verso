@@ -415,13 +415,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: auto;
-  background:
-    radial-gradient(
-      900px 480px at 85% -10%,
-      color-mix(in srgb, var(--vs-color-brand-glow) 10%, transparent),
-      transparent 70%
-    ),
-    var(--vs-color-role-bg-app);
+  background: var(--vs-color-role-bg-app);
 }
 
 .welcome__bar {
@@ -456,10 +450,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .hero__payoff {
-  background: var(--vs-gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--vs-color-role-text-secondary);
 }
 
 .welcome__lede {
@@ -3740,7 +3731,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--vs-color-brand-glow) 35%, transparent);
+  background: color-mix(in srgb, var(--vs-color-semantic-info) 35%, transparent);
 }
 
 /* ---------- Restored after the merge rebuild ---------- */
@@ -3924,7 +3915,7 @@ input[type="number"]::-webkit-inner-spin-button {
     0 / 12px 12px;
 }
 .bg-mode__art--replace {
-  background: linear-gradient(var(--vs-color-brand-glow), var(--vs-color-neutral-900));
+  background: linear-gradient(#6b5a48, var(--vs-color-neutral-900));
 }
 .bg-mode__art--studio {
   background: radial-gradient(circle at 50% 45%, #5c5b66, var(--vs-color-neutral-950) 75%);

@@ -49,7 +49,7 @@
       "icons/icon.ico"
     ],
     "createUpdaterArtifacts": false,
-    "resources": { "fonts/*": "fonts/", "licenses/Manrope-OFL.txt": "licenses/Manrope-OFL.txt" },
+    "resources": { "fonts/*": "fonts/", "licenses/*": "licenses/" },
     "windows": {
       "nsis": {
         "installMode": "currentUser",
