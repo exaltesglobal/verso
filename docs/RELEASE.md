@@ -8,7 +8,7 @@ How to build signed installers, ship auto-updates and cut a release. Server keys
 | Platform                     | Installers                                  | Notes                                                   |
 | ---------------------------- | ------------------------------------------- | ------------------------------------------------------- |
 | Windows x64                  | NSIS `.exe` (per-user, no admin) and `.msi` | English only. Icons from `src-tauri/icons`.             |
-| macOS (Apple silicon, Intel) | `.dmg` per architecture                     | macOS 11+. Needs notarization to open without warnings. |
+| macOS (Apple silicon, Intel) | `.dmg` per architecture                     | macOS 13.4+ (ONNX Runtime). Needs notarization to open without warnings. |
 
 Bundle settings live in `src-tauri/tauri.conf.json` (`bundle.windows.nsis`, `bundle.windows.wix`, `bundle.macOS`).
 

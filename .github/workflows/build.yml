@@ -26,9 +26,11 @@ jobs:
             features: metal
           - platform: macos-15-intel
             target: x86_64-apple-darwin
+            build_ort: true # ort has no prebuilt ONNX Runtime for Intel Macs
     runs-on: ${{ matrix.platform }}
     env:
-      MACOSX_DEPLOYMENT_TARGET: "11.0"
+      # ONNX Runtime (ort prebuilt and source build) targets macOS 13.4, so the Mac app does too.
+      MACOSX_DEPLOYMENT_TARGET: "13.4"
     steps:
       - uses: actions/checkout@v4
 
@@ -55,10 +57,11 @@ jobs:
         run: pnpm fetch:ffmpeg
 
       # LGPL FFmpeg built from source (scripts/build-ffmpeg-macos.sh), cached per arch and script version.
-      - name: Cache FFmpeg (macOS)
+      # restore/save are separate so the cache survives a later failing step.
+      - name: Restore FFmpeg (macOS)
         if: runner.os == 'macOS'
         id: ffcache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ffmpeg-out
           key: ffmpeg-macos-${{ matrix.target }}-${{ hashFiles('scripts/build-ffmpeg-macos.sh') }}
@@ -68,6 +71,44 @@ jobs:
         run: |
           brew install pkg-config nasm meson ninja || true
           WORK="$RUNNER_TEMP/ffmpeg-build" bash scripts/build-ffmpeg-macos.sh ffmpeg-out
+      - name: Save FFmpeg (macOS)
+        if: runner.os == 'macOS' && steps.ffcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ffmpeg-out
+          key: ${{ steps.ffcache.outputs.cache-primary-key }}
+
+      # ONNX Runtime for Intel Macs (scripts/build-onnxruntime-macos.sh), linked statically by ort.
+      - name: Restore ONNX Runtime (Intel Mac)
+        if: matrix.build_ort
+        id: ortcache
+        uses: actions/cache/restore@v4
+        with:
+          path: ort-out
+          key: ort-macos-${{ matrix.target }}-${{ hashFiles('scripts/build-onnxruntime-macos.sh') }}
+      - name: Build ONNX Runtime (Intel Mac)
+        if: matrix.build_ort && steps.ortcache.outputs.cache-hit != 'true'
+        shell: bash
+        run: WORK="$RUNNER_TEMP/ort-build" bash scripts/build-onnxruntime-macos.sh ort-out
+      - name: Save ONNX Runtime (Intel Mac)
+        if: matrix.build_ort && steps.ortcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ort-out
+          key: ${{ steps.ortcache.outputs.cache-primary-key }}
+      # whisper.cpp Metal and ONNX Runtime CoreML use @available, which needs clang's runtime library;
+      # rustc does not link it by default.
+      - name: Link clang runtime (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          rt="$(clang -print-resource-dir)/lib/darwin/libclang_rt.osx.a"
+          ls "$rt"
+          echo "CARGO_TARGET_$(echo '${{ matrix.target }}' | tr 'a-z-' 'A-Z_')_RUSTFLAGS=-C link-arg=$rt" >> "$GITHUB_ENV"
+      - name: Use ONNX Runtime (Intel Mac)
+        if: matrix.build_ort
+        shell: bash
+        run: echo "ORT_LIB_LOCATION=$PWD/ort-out/Release" >> "$GITHUB_ENV"
       - name: FFmpeg sidecars (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -91,7 +132,10 @@ jobs:
           node -e '
             const fs = require("fs");
             const pubkey = process.env.PUBKEY || "";
-            const cfg = { bundle: { createUpdaterArtifacts: Boolean(pubkey) }, plugins: { updater: { pubkey } } };
+            const cfg = {
+              bundle: { createUpdaterArtifacts: Boolean(pubkey), macOS: { minimumSystemVersion: process.env.MACOSX_DEPLOYMENT_TARGET || "11.0" } },
+              plugins: { updater: { pubkey } }
+            };
             if (process.env.ENDPOINT) cfg.plugins.updater.endpoints = [process.env.ENDPOINT];
             fs.writeFileSync("src-tauri/tauri.release.conf.json", JSON.stringify(cfg, null, 2));
           '
