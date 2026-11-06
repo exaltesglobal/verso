@@ -52,7 +52,7 @@ struct Cache {
 #[serde(rename_all = "camelCase")]
 pub struct Entitlements {
     plan: String,
-    features: Value,
+    pub(crate) features: Value,
     limits: Value,
     signed_in: bool,
     email: Option<String>,
@@ -260,7 +260,7 @@ pub(crate) fn verified_claims(app: &AppHandle, token: &str) -> Option<Value> {
     decode(token, &key, &cache.device_id)
 }
 
-fn current(app: &AppHandle) -> Entitlements {
+pub(crate) fn current(app: &AppHandle) -> Entitlements {
     let mut out = free();
     if stored_refresh().is_none() {
         return out;

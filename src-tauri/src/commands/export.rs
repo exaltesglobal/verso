@@ -116,7 +116,7 @@ struct Fonts {
     dir: Option<PathBuf>,
     /// Family name the ASS script asks for.
     family: String,
-    /// One TTF for drawtext (watermark).
+    /// The system fallback font file (unused when `dir` is set).
     file: String,
 }
 
@@ -204,11 +204,6 @@ fn run(app: &AppHandle, id: &str, req: &ExportRequest) -> Result<(), String> {
 
     let encoder = encoders::detect()?.remove(0);
     let fonts = Fonts::find(app, req);
-    if req.watermark && fonts.file.is_empty() {
-        return Err(
-            "We couldn't find a font for your text. Reinstalling Verso usually fixes this.".into(),
-        );
-    }
 
     let stem = out
         .file_stem()
@@ -226,13 +221,7 @@ fn run(app: &AppHandle, id: &str, req: &ExportRequest) -> Result<(), String> {
         ass_path: a,
         fonts_dir: f,
     });
-    let (args, total) = export::build_args(
-        req,
-        &encoder,
-        &fonts.file,
-        subs.as_ref(),
-        &tmp.to_string_lossy(),
-    )?;
+    let (args, total) = export::build_args(req, &encoder, subs.as_ref(), &tmp.to_string_lossy())?;
 
     let mut child = tools::command(Tool::Ffmpeg)
         .args(&args)
@@ -332,6 +321,11 @@ pub async fn detect_encoders() -> Result<EncoderInfo, String> {
 pub fn start_export(app: AppHandle, request: ExportRequest) -> Result<String, String> {
     if export::total_duration(&request) <= 0.0 {
         return Err("Add a clip to your timeline before exporting.".into());
+    }
+    // Same rule as the export dialog, checked here too: 4K and 60 fps are Pro.
+    let pro_only = request.quality == export::Quality::Ultra || request.fps > 30;
+    if pro_only && crate::account::current(&app).features["export_4k"].as_bool() != Some(true) {
+        return Err("4K and 60 fps export are part of Verso Pro.".into());
     }
     let id = format!(
         "exp{}-{}",

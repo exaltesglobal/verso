@@ -216,9 +216,15 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
                   role="radio"
                   aria-checked={fps === f.value}
                   className={fps === f.value ? "export__quality is-active" : "export__quality"}
-                  onClick={() => setFps(f.value)}
+                  onClick={() =>
+                    f.value > 30 && !can("export_4k")
+                      ? openUpgrade("60 fps export is part of Verso Pro.")
+                      : setFps(f.value)
+                  }
                 >
-                  <span className="export__quality-title">{f.title}</span>
+                  <span className="export__quality-title">
+                    {f.title} {f.value > 30 && <ProBadge />}
+                  </span>
                   <span className="export__quality-hint">{f.hint}</span>
                 </button>
               ))}

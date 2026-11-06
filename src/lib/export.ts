@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { AspectRatio, CaptionWord, Clip, ClipColor, Look, Project, TextStyle, Transition } from "./project";
+import type {
+  AspectRatio,
+  CaptionWord,
+  Clip,
+  ClipColor,
+  Look,
+  Project,
+  TextStyle,
+  Transition,
+} from "./project";
 import { soundSource } from "./enhance";
 import type { CropPath } from "./reframe";
 import { captionStyle } from "./captionStyles";
@@ -92,7 +101,6 @@ export interface ExportRequest {
   textOverlays: ExportText[];
   captions: ExportCaption[];
   captionStyle: ExportCaptionStyle;
-  watermark: boolean;
   outputPath: string;
   fontPath?: string;
   look?: Look;
@@ -125,8 +133,6 @@ export interface EncoderInfo {
 export interface ExportOptions {
   quality: ExportQuality;
   outputPath: string;
-  /** Kept for later; no plan turns it on. */
-  watermark?: boolean;
   fps?: number;
   fontPath?: string;
 }
@@ -287,7 +293,6 @@ export function buildExportRequest(
       animation: cs.animation,
       revealWords: cs.revealWords,
     },
-    watermark: options.watermark ?? false,
     outputPath: options.outputPath,
     fontPath: options.fontPath,
     look: project.look,

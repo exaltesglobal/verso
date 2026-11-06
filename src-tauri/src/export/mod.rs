@@ -6,7 +6,7 @@
 //! transition are chained with `xfade` into one run; runs are laid over a
 //! black base so gaps stay black. Audio clips are sped up, faded, delayed to
 //! their position and mixed. Text layers and captions are written to an ASS
-//! file (see `ass.rs`) and burned with libass; the watermark uses `drawtext`.
+//! file (see `ass.rs`) and burned with libass. No watermark is ever drawn.
 
 pub mod ass;
 pub mod color;
@@ -326,11 +326,8 @@ pub struct ExportRequest {
     pub captions: Vec<Caption>,
     #[serde(default)]
     pub caption_style: Option<CaptionStyle>,
-    /// Small "Made with Verso" mark, bottom right. Off by default (not tied to a plan).
-    #[serde(default)]
-    pub watermark: bool,
     pub output_path: String,
-    /// TTF/OTF used by drawtext. None = the bundled or a system font.
+    /// Subtitle font used only when the bundled Manrope is missing. None = a system font.
     #[serde(default)]
     pub font_path: Option<String>,
     /// Whole-frame look: grain, vignette, letterbox, leaks, dips (export/look.rs).
@@ -601,12 +598,8 @@ pub struct Subtitles<'a> {
 }
 
 /// Build inputs and the filter graph. Outputs are labelled `[vout]` and `[aout]`.
-/// `font` is only used for the watermark.
-pub fn build_plan(
-    req: &ExportRequest,
-    font: &str,
-    subs: Option<&Subtitles>,
-) -> Result<Plan, String> {
+/// Exports never carry a watermark, on any plan.
+pub fn build_plan(req: &ExportRequest, subs: Option<&Subtitles>) -> Result<Plan, String> {
     let total = total_duration(req);
     if total <= 0.0 {
         return Err("Add a clip to your timeline before exporting.".into());
@@ -788,8 +781,9 @@ pub fn build_plan(
                 .transition_in
                 .map(|x| x.kind)
                 .unwrap_or(TransitionKind::Fade);
+            // Blend in 4:4:4 so colour edges don't smear during the transition, then back to 4:2:0.
             graph.push(format!(
-                "[{cur}][v{j}]xfade=transition={}:duration={}:offset={}[x{j}]",
+                "[{cur}]format=yuv444p[xa{j}];[v{j}]format=yuv444p[xb{j}];[xa{j}][xb{j}]xfade=transition={}:duration={}:offset={},format=yuv420p[x{j}]",
                 xfade_name(kind),
                 t(d),
                 t(cum - d)
@@ -825,15 +819,6 @@ pub fn build_plan(
             "ass=filename={}:fontsdir={}",
             esc(s.ass_path),
             esc(s.fonts_dir)
-        ));
-    }
-    if req.watermark {
-        let size = (h.min(w) as f64 * 0.028).round();
-        draws.push(format!(
-            "drawtext=fontfile={}:text={}:expansion=none:fontsize={size}:fontcolor=white@0.75:borderw=1:bordercolor=black@0.4:x=w-text_w-{m}:y=h-text_h-{m}",
-            esc(font),
-            esc("Made with Verso"),
-            m = (size * 0.9).round()
         ));
     }
     if draws.is_empty() {
@@ -931,11 +916,10 @@ pub fn build_plan(
 pub fn build_args(
     req: &ExportRequest,
     encoder: &str,
-    font: &str,
     subs: Option<&Subtitles>,
     output: &str,
 ) -> Result<(Vec<String>, f64), String> {
-    let plan = build_plan(req, font, subs)?;
+    let plan = build_plan(req, subs)?;
     let fps = req.fps.clamp(1, 120);
     let mut args: Vec<String> = [
         "-hide_banner",
@@ -981,8 +965,7 @@ pub fn build_args(
     Ok((args, plan.duration))
 }
 
-/// A system font for the watermark and as the subtitle fallback when the
-/// bundled Manrope is missing.
+/// A system font, the subtitle fallback when the bundled Manrope is missing.
 pub fn default_font() -> Option<String> {
     let candidates: &[&str] = if cfg!(windows) {
         &[
