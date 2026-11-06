@@ -7,6 +7,7 @@ mod export;
 mod reframe;
 mod tools;
 mod updates;
+mod voice;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -64,6 +65,11 @@ pub fn run() {
             crash::discard_crash_reports,
             updates::check_for_update,
             updates::install_update,
+            commands::voice::voice_models,
+            commands::voice::download_voice_model,
+            commands::voice::synthesize,
+            commands::voice::translate,
+            commands::voice::dub,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

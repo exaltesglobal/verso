@@ -13,6 +13,7 @@ export const PLANS = {
       watermark_free: true,
       caption_styles_pro: false,
       templates_pro: false,
+      dubbing: false,
     },
     limits: {
       auto_clips_per_month: 10,
@@ -28,6 +29,7 @@ export const PLANS = {
       watermark_free: true,
       caption_styles_pro: true,
       templates_pro: true,
+      dubbing: true,
     },
     limits: {
       auto_clips_per_month: -1, // -1 means unlimited
