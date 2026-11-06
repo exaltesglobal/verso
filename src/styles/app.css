@@ -3738,3 +3738,30 @@ input[type="number"]::-webkit-inner-spin-button {
 ::selection {
   background: color-mix(in srgb, var(--vs-color-brand-glow) 35%, transparent);
 }
+
+/* ---------- Restored after the merge rebuild ---------- */
+.panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.moment__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.moment__why {
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.moment__open {
+  align-self: flex-start;
+}
+
+.topbar__center {
+  display: flex;
+  justify-content: center;
+}

@@ -255,7 +255,17 @@ export function moveClip(project: Project, id: string, delta: number): Project {
   return mapTracks(project, (t) => ({
     ...t,
     clips: t.clips
-      .map((c) => (ids.has(c.id) ? { ...c, start: c.start + d, end: c.end + d } : c))
+      .map((c) =>
+        ids.has(c.id)
+          ? {
+              ...c,
+              start: c.start + d,
+              end: c.end + d,
+              // Caption words are timeline seconds and travel with their clip.
+              words: c.words?.map((w) => ({ ...w, start: w.start + d, end: w.end + d })),
+            }
+          : c,
+      )
       .sort((a, b) => a.start - b.start),
   }));
 }
@@ -299,9 +309,11 @@ export function splitClip(
     clips: t.clips.flatMap((c) => {
       if (!ids.has(c.id) || time <= c.start + MIN_CLIP_SECONDS || time >= c.end - MIN_CLIP_SECONDS)
         return [c];
-      const left: Clip = { ...c, end: time };
+      // Caption words are timeline seconds: each half keeps only its own words.
+      const left: Clip = { ...c, end: time, words: c.words?.filter((w) => w.start < time) };
       const right: Clip = {
         ...c,
+        words: c.words?.filter((w) => w.start >= time),
         id: uid(c.id[0] ?? "c"),
         start: time,
         inPoint: c.source ? (c.inPoint ?? 0) + (time - c.start) : c.inPoint,

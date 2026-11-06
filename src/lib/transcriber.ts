@@ -3,6 +3,7 @@
 import type { TranscriptWord } from "./autoclips";
 import {
   ACCURACY,
+  CAPTION_LANGUAGES,
   downloadModel,
   listModels,
   onModelProgress,
@@ -10,11 +11,18 @@ import {
   type CaptionLanguage,
 } from "./captions";
 import type { MediaInfo } from "./media";
+import { getSettings } from "./settings";
+
+/** The Settings default; older saved values the engine rejects fall back to auto. */
+function settingsLanguage(): CaptionLanguage {
+  const saved = getSettings().captionLanguage;
+  return CAPTION_LANGUAGES.find((l) => l.id === saved)?.id ?? "auto";
+}
 
 export async function transcribeFile(
   media: MediaInfo,
   onProgress: (percent: number, stage: string) => void,
-  language: CaptionLanguage = "auto",
+  language: CaptionLanguage = settingsLanguage(),
   accuracy: "fast" | "balanced" | "best" = "balanced",
 ): Promise<TranscriptWord[]> {
   const modelId = ACCURACY.find((a) => a.id === accuracy)?.modelId ?? ACCURACY[0].modelId;

@@ -204,29 +204,29 @@ export const FILLER_KINDS: FillerKind[] = [
     phrases: ["kind of", "sort of", "kinda"],
     optIn: true,
   },
-  { id: "aa", label: "Aa / hmm", lang: "hi", phrases: ["aa", "aaa", "à¤¹à¤®à¥à¤®", "à¤…", "à¤†"] },
-  { id: "matlab", label: "Matlab", lang: "hi", phrases: ["matlab", "à¤®à¤¤à¤²à¤¬"] },
+  { id: "aa", label: "Aa / hmm", lang: "hi", phrases: ["aa", "aaa", "हम्म", "अ", "आ"] },
+  { id: "matlab", label: "Matlab", lang: "hi", phrases: ["matlab", "मतलब"] },
   {
     id: "haan",
     label: "Haan",
     lang: "hi",
-    phrases: ["haan", "haa", "à¤¹à¤¾à¤", "à¤¹à¤¾à¤‚"],
+    phrases: ["haan", "haa", "हाँ", "हां"],
     contextual: true,
   },
-  { id: "yaani", label: "Yaani", lang: "hi", phrases: ["yaani", "yani", "à¤¯à¤¾à¤¨à¥€"] },
+  { id: "yaani", label: "Yaani", lang: "hi", phrases: ["yaani", "yani", "यानी"] },
   {
     id: "aisa-hai",
     label: "Aisa hai ki",
     lang: "hi",
-    phrases: ["aisa hai ki", "à¤à¤¸à¤¾ à¤¹à¥ˆ à¤•à¤¿"],
+    phrases: ["aisa hai ki", "ऐसा है कि"],
     optIn: true,
   },
-  { id: "toh", label: "Toh", lang: "hi", phrases: ["toh", "à¤¤à¥‹"], optIn: true, contextual: true },
+  { id: "toh", label: "Toh", lang: "hi", phrases: ["toh", "तो"], optIn: true, contextual: true },
   {
     id: "acha",
     label: "Acha",
     lang: "hi",
-    phrases: ["acha", "accha", "achha", "à¤…à¤šà¥à¤›à¤¾"],
+    phrases: ["acha", "accha", "achha", "अच्छा"],
     optIn: true,
   },
 ];
@@ -284,8 +284,8 @@ export function findFillers(words: CaptionWord[], options: FillerOptions): Fille
   const apart = (from: number, to: number) =>
     gap(from - 1, from) > 0.25 ||
     gap(to, to + 1) > 0.25 ||
-    /[,.!?â€¦]$/.test(words[from - 1]?.text ?? ".") ||
-    /[,.!?â€¦]$/.test(words[to].text);
+    /[,.!?…]$/.test(words[from - 1]?.text ?? ".") ||
+    /[,.!?…]$/.test(words[to].text);
 
   const hits: FillerHit[] = [];
   const add = (kind: string, from: number, to: number) =>
@@ -312,7 +312,7 @@ export function findFillers(words: CaptionWord[], options: FillerOptions): Fille
         continue;
       }
     }
-    if (enabled.has(FALSE_START_KIND.id) && /[-â€”â€“]$/.test(words[i].text.trim()) && i < words.length - 1) {
+    if (enabled.has(FALSE_START_KIND.id) && /[-—–]$/.test(words[i].text.trim()) && i < words.length - 1) {
       add(FALSE_START_KIND.id, i, i);
       continue;
     }
@@ -388,7 +388,7 @@ const easeOut = (x: number) => 1 - (1 - x) ** 3;
 const easeInOut = (x: number) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
 
 /**
- * Total zoom (clip zoom Ã— punch-in) at `localTime` seconds from the clip start.
+ * Total zoom (clip zoom × punch-in) at `localTime` seconds from the clip start.
  * Each key eases in over 0.25 s, holds 1 s, then eases back out.
  */
 export function zoomAt(clip: Clip, localTime: number): number {
@@ -422,7 +422,7 @@ export function captionEmphasisTimes(words: CaptionWord[]): number[] {
 
 /**
  * Sets punch-in keys on video clips. `moments` is per clip id (source seconds);
- * `intensity` 0..1 (0.75 â‰ˆ a 1.15Ã— punch on the biggest moments).
+ * `intensity` 0..1 (0.75 ≈ a 1.15× punch on the biggest moments).
  */
 export function applyPunchIns(
   project: Project,

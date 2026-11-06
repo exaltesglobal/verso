@@ -6,6 +6,7 @@ import type { CropPath } from "../../lib/reframe";
 import type { AspectRatio, Clip, Project, TextStyle, TrackKind, TransitionKind } from "../../lib/project";
 import { CutToBeatToggle } from "../smart/CutToBeatToggle";
 import { formatDuration } from "../../lib/media";
+import { editSegmentText } from "../../lib/captions";
 
 interface InspectorProps {
   clip: (Clip & { kind: TrackKind }) | undefined;
@@ -241,7 +242,14 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
             className="field__input"
             rows={3}
             value={clip.text ?? clip.label}
-            onChange={(e) => onChange({ text: e.target.value, label: e.target.value })}
+            onChange={(e) => {
+              const text = e.target.value;
+              // Preview draws caption words, not text: keep them in step with the edit.
+              const words = clip.words
+                ? editSegmentText({ start: clip.start, end: clip.end, text: "", words: clip.words }, text).words
+                : undefined;
+              onChange({ text, label: text, ...(words && { words }) });
+            }}
           />
         </label>
       </section>

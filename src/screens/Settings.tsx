@@ -5,22 +5,16 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { AccountDetails } from "../components/account/AccountPanel";
 import { Button, Segmented, Toggle } from "../components/ui";
 import type { ExportQuality } from "../lib/export";
+import { CAPTION_LANGUAGES } from "../lib/captions";
 import { updateSettings, useSettings } from "../lib/settings";
 import { checkForUpdates, installUpdate } from "../lib/updates";
 
 const QUALITY: Record<string, ExportQuality> = { Draft: "draft", Standard: "standard", High: "high" };
 const QUALITY_LABELS = Object.keys(QUALITY);
+// Only what the captions engine accepts (Language::parse in src-tauri/src/captions/mod.rs).
 const LANGUAGES: [string, string][] = [
   ["auto", "Detect automatically"],
-  ["en", "English"],
-  ["hi", "Hindi"],
-  ["es", "Spanish"],
-  ["pt", "Portuguese"],
-  ["fr", "French"],
-  ["de", "German"],
-  ["ar", "Arabic"],
-  ["id", "Indonesian"],
-  ["ja", "Japanese"],
+  ...CAPTION_LANGUAGES.map((l): [string, string] => [l.id, l.label]),
 ];
 const LICENCES: [string, string, string][] = [
   ["Tauri", "MIT or Apache-2.0", "https://github.com/tauri-apps/tauri"],
