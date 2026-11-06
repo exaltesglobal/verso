@@ -71,7 +71,11 @@ fn esc(s: &str) -> String {
 fn n(x: f64) -> String {
     let s = format!("{x:.4}");
     let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s.is_empty() || s == "-" { "0".into() } else { s.into() }
+    if s.is_empty() || s == "-" {
+        "0".into()
+    } else {
+        s.into()
+    }
 }
 
 const EPS: f64 = 0.005;
@@ -95,7 +99,11 @@ pub fn color_chain(c: &ClipColor) -> Option<String> {
     let t = k(c.temperature);
     if t.abs() > EPS {
         // Warm (t > 0) lowers the light's kelvin: 6500 K -> 3500 K; cool -> 11500 K.
-        let kelvin = if t > 0.0 { 6500.0 - t * 3000.0 } else { 6500.0 - t * 5000.0 };
+        let kelvin = if t > 0.0 {
+            6500.0 - t * 3000.0
+        } else {
+            6500.0 - t * 5000.0
+        };
         f.push(format!("colortemperature=temperature={}", kelvin.round()));
     }
     if k(c.tint).abs() > EPS {
@@ -167,17 +175,25 @@ pub fn ramp_segments(keys: &[RampKey], source_span: f64, pieces: usize) -> Vec<R
         .map(|i| {
             let (u0, u1) = (i as f64 / pieces as f64, (i + 1) as f64 / pieces as f64);
             let inv: f64 = (0..STEPS)
-                .map(|j| 1.0 / ramp_speed_at(keys, u0 + (u1 - u0) * (j as f64 + 0.5) / STEPS as f64))
+                .map(|j| {
+                    1.0 / ramp_speed_at(keys, u0 + (u1 - u0) * (j as f64 + 0.5) / STEPS as f64)
+                })
                 .sum::<f64>()
                 / STEPS as f64;
-            RampSegment { src_start: u0 * source_span, src_end: u1 * source_span, speed: 1.0 / inv }
+            RampSegment {
+                src_start: u0 * source_span,
+                src_end: u1 * source_span,
+                speed: 1.0 / inv,
+            }
         })
         .collect()
 }
 
 /// Output length of the segments, in seconds.
 pub fn ramp_duration(segs: &[RampSegment]) -> f64 {
-    segs.iter().map(|s| (s.src_end - s.src_start) / s.speed).sum()
+    segs.iter()
+        .map(|s| (s.src_end - s.src_start) / s.speed)
+        .sum()
 }
 
 /// `[input]` must start at the clip's in point. Output starts at PTS 0.
@@ -185,7 +201,9 @@ pub fn ramp_video_graph(segs: &[RampSegment], input: &str, output: &str, prefix:
     let k = segs.len();
     let mut g = vec![format!(
         "[{input}]split={k}{}",
-        (0..k).map(|i| format!("[{prefix}s{i}]")).collect::<String>()
+        (0..k)
+            .map(|i| format!("[{prefix}s{i}]"))
+            .collect::<String>()
     )];
     for (i, s) in segs.iter().enumerate() {
         g.push(format!(
@@ -197,7 +215,9 @@ pub fn ramp_video_graph(segs: &[RampSegment], input: &str, output: &str, prefix:
     }
     g.push(format!(
         "{}concat=n={k}:v=1:a=0[{output}]",
-        (0..k).map(|i| format!("[{prefix}r{i}]")).collect::<String>()
+        (0..k)
+            .map(|i| format!("[{prefix}r{i}]"))
+            .collect::<String>()
     ));
     g.join(";")
 }
@@ -219,7 +239,9 @@ pub fn ramp_audio_graph(segs: &[RampSegment], input: &str, output: &str, prefix:
     let k = segs.len();
     let mut g = vec![format!(
         "[{input}]asplit={k}{}",
-        (0..k).map(|i| format!("[{prefix}s{i}]")).collect::<String>()
+        (0..k)
+            .map(|i| format!("[{prefix}s{i}]"))
+            .collect::<String>()
     )];
     for (i, s) in segs.iter().enumerate() {
         g.push(format!(
@@ -231,7 +253,9 @@ pub fn ramp_audio_graph(segs: &[RampSegment], input: &str, output: &str, prefix:
     }
     g.push(format!(
         "{}concat=n={k}:v=0:a=1[{output}]",
-        (0..k).map(|i| format!("[{prefix}r{i}]")).collect::<String>()
+        (0..k)
+            .map(|i| format!("[{prefix}r{i}]"))
+            .collect::<String>()
     ));
     g.join(";")
 }
@@ -258,7 +282,12 @@ mod tests {
     #[test]
     fn ramp_length_matches_integral() {
         // 2x then 0.5x halves: 0.5*(1/2) + 0.5*(1/0.5) = 1.25 of the span.
-        let keys = [RampKey { t: 0.0, speed: 2.0 }, RampKey { t: 0.5, speed: 2.0 }, RampKey { t: 0.5, speed: 0.5 }, RampKey { t: 1.0, speed: 0.5 }];
+        let keys = [
+            RampKey { t: 0.0, speed: 2.0 },
+            RampKey { t: 0.5, speed: 2.0 },
+            RampKey { t: 0.5, speed: 0.5 },
+            RampKey { t: 1.0, speed: 0.5 },
+        ];
         let d = ramp_duration(&ramp_segments(&keys, 10.0, 8));
         assert!((d - 12.5).abs() < 0.01, "{d}");
         assert_eq!(atempo_chain(0.2), "atempo=0.5,atempo=0.5,atempo=0.8");

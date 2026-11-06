@@ -160,7 +160,8 @@ fn enhance(
         || download_spec(models, &RNNOISE, |p| emit(p, "download")).is_ok();
     let model = model_ok.then_some(RNNOISE.file);
 
-    let key = cache_key(src).ok_or("We couldn't find that file. It may have been moved or deleted.")?;
+    let key =
+        cache_key(src).ok_or("We couldn't find that file. It may have been moved or deleted.")?;
     let mut h = DefaultHasher::new();
     (key, CHAIN_VERSION, strength, model_ok).hash(&mut h);
     in_point.to_bits().hash(&mut h);
@@ -190,7 +191,11 @@ fn enhance(
         return Err("This clip is too short to clean up.".into());
     }
     input.extend(["-t".into(), format!("{duration:.3}")]);
-    input.extend(["-i".into(), src.to_string_lossy().into_owned(), "-vn".into()]);
+    input.extend([
+        "-i".into(),
+        src.to_string_lossy().into_owned(),
+        "-vn".into(),
+    ]);
     let filters = chain(strength, model);
 
     // Pass 1: measure loudness after clean-up.
@@ -233,7 +238,11 @@ fn enhance(
 
 /// The models folder when it exists (arnndn reads the model by relative name).
 fn models_cwd(models: &Path) -> &Path {
-    if models.is_dir() { models } else { Path::new(".") }
+    if models.is_dir() {
+        models
+    } else {
+        Path::new(".")
+    }
 }
 
 /// `invoke("enhance_audio", { path, inPoint, outPoint, options: { strength } })`.

@@ -46,8 +46,12 @@ fn average_stats(log: &str) -> Option<[f64; 6]> {
     let mut sum = [0.0; 6];
     let mut n = [0u32; 6];
     for line in log.lines() {
-        let Some(rest) = line.split("lavfi.signalstats.").nth(1) else { continue };
-        let Some((k, v)) = rest.split_once('=') else { continue };
+        let Some(rest) = line.split("lavfi.signalstats.").nth(1) else {
+            continue;
+        };
+        let Some((k, v)) = rest.split_once('=') else {
+            continue;
+        };
         if let (Some(i), Ok(v)) = (KEYS.iter().position(|x| *x == k), v.trim().parse::<f64>()) {
             sum[i] += v;
             n[i] += 1;
@@ -84,7 +88,12 @@ pub async fn auto_color(path: String, in_point: f64, out_point: f64) -> Result<C
         let dur = (out_point - in_point).max(0.1);
         let fps = (30.0 / dur).clamp(0.05, 2.0);
         let out = tools::command(Tool::Ffmpeg)
-            .args(["-hide_banner", "-nostats", "-ss", &format!("{:.3}", in_point.max(0.0))])
+            .args([
+                "-hide_banner",
+                "-nostats",
+                "-ss",
+                &format!("{:.3}", in_point.max(0.0)),
+            ])
             .args(["-t", &format!("{dur:.3}"), "-i"])
             .arg(&path)
             .args([
@@ -114,15 +123,27 @@ pub async fn render_still(app: AppHandle, path: String, time: f64) -> Result<Str
     let dir = cache_dir(&app, "stills")?;
     tauri::async_runtime::spawn_blocking(move || {
         let src = Path::new(&path);
-        let key = cache_key(src).ok_or("We couldn't find that file. It may have been moved or deleted.")?;
-        let out = dir.join(format!("{key}-{}.png", (time.max(0.0) * 1000.0).round() as u64));
+        let key = cache_key(src)
+            .ok_or("We couldn't find that file. It may have been moved or deleted.")?;
+        let out = dir.join(format!(
+            "{key}-{}.png",
+            (time.max(0.0) * 1000.0).round() as u64
+        ));
         if out.is_file() {
             return Ok(out.to_string_lossy().into_owned());
         }
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("We couldn't create the cache folder ({e})."))?;
         let status = tools::command(Tool::Ffmpeg)
-            .args(["-hide_banner", "-loglevel", "error", "-y", "-ss", &format!("{:.3}", time.max(0.0)), "-i"])
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                &format!("{:.3}", time.max(0.0)),
+                "-i",
+            ])
             .arg(src)
             .args(["-frames:v", "1", "-update", "1"])
             .arg(&out)
@@ -165,20 +186,28 @@ pub fn parse_cube(text: &str) -> Result<Cube, String> {
         match first {
             "TITLE" => title = Some(line[5..].trim().trim_matches('"').to_string()),
             "LUT_3D_SIZE" => {
-                size = parts.next().and_then(|s| s.parse().ok()).ok_or_else(|| bad("the size is missing"))?
+                size = parts
+                    .next()
+                    .and_then(|s| s.parse().ok())
+                    .ok_or_else(|| bad("the size is missing"))?
             }
             "LUT_1D_SIZE" => return Err(bad("it is a 1D LUT, and Verso needs a 3D one")),
             "DOMAIN_MIN" => lo = nums(parts).ok_or_else(|| bad("DOMAIN_MIN is broken"))?,
             "DOMAIN_MAX" => hi = nums(parts).ok_or_else(|| bad("DOMAIN_MAX is broken"))?,
             _ if first.parse::<f64>().is_ok() => {
-                let v = nums(line.split_whitespace()).ok_or_else(|| bad("a colour row is broken"))?;
-                data.push(std::array::from_fn(|i| (v[i] - lo[i]) / (hi[i] - lo[i]).max(1e-6)));
+                let v =
+                    nums(line.split_whitespace()).ok_or_else(|| bad("a colour row is broken"))?;
+                data.push(std::array::from_fn(|i| {
+                    (v[i] - lo[i]) / (hi[i] - lo[i]).max(1e-6)
+                }));
             }
             _ => {} // Unknown keywords (e.g. LUT_IN_VIDEO_RANGE) are ignored.
         }
     }
     if !(2..=MAX_LUT_SIZE).contains(&size) {
-        return Err(bad(&format!("its size must be between 2 and {MAX_LUT_SIZE}")));
+        return Err(bad(&format!(
+            "its size must be between 2 and {MAX_LUT_SIZE}"
+        )));
     }
     if data.len() != size * size * size {
         return Err(bad("it has the wrong number of colours"));
@@ -201,7 +230,8 @@ impl Cube {
         let m = (avg(mid) / 0.5).max(0.05);
         let slope = (avg(self.at(0.75, 0.75, 0.75)) - avg(self.at(0.25, 0.25, 0.25))) / 0.5 / m;
         let c = self.at(0.7, 0.4, 0.3);
-        let chroma = c.iter().cloned().fold(f64::MIN, f64::max) - c.iter().cloned().fold(f64::MAX, f64::min);
+        let chroma =
+            c.iter().cloned().fold(f64::MIN, f64::max) - c.iter().cloned().fold(f64::MAX, f64::min);
         let r = |x: f64| (x.clamp(-1.0, 1.0) * 100.0).round() / 100.0;
         ColorFix {
             brightness: r((m - 1.0) * 2.0),
@@ -232,18 +262,23 @@ pub async fn import_lut(app: AppHandle, path: String) -> Result<ImportedLut, Str
         .join("luts");
     tauri::async_runtime::spawn_blocking(move || {
         let src = Path::new(&path);
-        let meta = std::fs::metadata(src).map_err(|_| "We couldn't find that LUT file.".to_string())?;
+        let meta =
+            std::fs::metadata(src).map_err(|_| "We couldn't find that LUT file.".to_string())?;
         if meta.len() > 64 * 1024 * 1024 {
             return Err("This LUT file is too big to be a .cube LUT.".into());
         }
-        let text = std::fs::read_to_string(src).map_err(|_| "We couldn't read that LUT file.".to_string())?;
+        let text = std::fs::read_to_string(src)
+            .map_err(|_| "We couldn't read that LUT file.".to_string())?;
         let cube = parse_cube(&text)?;
         let mut h = DefaultHasher::new();
         text.hash(&mut h);
         std::fs::create_dir_all(&dir).map_err(|e| format!("We couldn't save the LUT ({e})."))?;
         let dest = dir.join(format!("{:016x}.cube", h.finish()));
         std::fs::write(&dest, &text).map_err(|e| format!("We couldn't save the LUT ({e})."))?;
-        let name = src.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+        let name = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
         Ok(ImportedLut {
             path: dest.to_string_lossy().into_owned(),
             title: cube.title.clone().filter(|t| !t.is_empty()).unwrap_or(name),
