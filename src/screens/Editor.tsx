@@ -229,8 +229,9 @@ export function Editor({
   // ---------- Keyboard ----------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.closest("input, textarea, select, [contenteditable='true']")) return;
+      // The target can be the window or document (not an Element) when nothing has focus.
+      const el = e.target;
+      if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) return;
       // Export, Settings, About and account dialogs own the keyboard while open.
       if (document.querySelector("[aria-modal='true']")) return;
       const mod = e.ctrlKey || e.metaKey;

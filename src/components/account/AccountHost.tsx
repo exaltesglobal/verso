@@ -50,7 +50,7 @@ function CrashPrompt() {
   return (
     <div className="acct-card" role="alertdialog" aria-labelledby="crash-title">
       <p id="crash-title" className="acct-lead">
-        Verso closed unexpectedly last time. Send a report to help us fix it?
+        Verso ran into a problem last time. Send a report to help us fix it?
       </p>
       <p className="acct-muted">
         It includes the app version, your system type and where the error happened. No files or personal info.
