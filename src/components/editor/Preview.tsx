@@ -62,6 +62,8 @@ export function Preview({
   const frames = useFilmstrip(clip?.source);
   const frame =
     clip?.source && frameAt(frames, clip.source.durationSec, (clip.inPoint ?? 0) + time - clip.start);
+  // The <video> must not wait for the filmstrip (slow, or missing without FFmpeg).
+  const picture = !!frame || !!clip?.source?.hasVideo;
   const empty = duration === 0;
 
   // Reframe: one crop rect per panel (two when showing both speakers).
@@ -78,13 +80,13 @@ export function Preview({
     <section className="preview" aria-label="Preview">
       <div className="preview__stage">
         <div className={`frame ${RATIO_CLASS[aspect]}`}>
-          {!frame && (
+          {!picture && (
             <div className="frame__scene">
               <div className="frame__light" />
               {!empty && <div className="frame__subject" />}
             </div>
           )}
-          {frame &&
+          {picture &&
             panels.map((p, i) => (
               <div
                 key={i}
@@ -97,7 +99,7 @@ export function Preview({
                 }}
               >
                 {/* Real frame under the video: shows instantly while scrubbing. Centre crop = vertical cutout. */}
-                <img className="frame__image" src={frame} alt="" draggable={false} style={p.style} />
+                {frame && <img className="frame__image" src={frame} alt="" draggable={false} style={p.style} />}
                 <VideoLayer
                   clip={clip}
                   time={time}

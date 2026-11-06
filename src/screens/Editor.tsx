@@ -12,6 +12,7 @@ import {
   appendMedia,
   deleteClip,
   findClip,
+  linkedIds,
   moveClip,
   projectDuration,
   splitAtPlayhead,
@@ -115,19 +116,29 @@ export function Editor({
 
   // ---------- Autosave (debounced) ----------
   const firstSave = useRef(true);
+  /** Edit not yet autosaved; flushed when the editor closes (Home, opening a reel). */
+  const unsaved = useRef<Project | null>(null);
   useEffect(() => {
     if (firstSave.current) {
       firstSave.current = false;
       return;
     }
     if (project.tracks.every((t) => t.clips.length === 0)) return;
+    unsaved.current = project;
     const t = window.setTimeout(() => {
+      unsaved.current = null;
       autosaveProject(project).catch(() => {
         /* plain browser: nowhere to save */
       });
     }, 800);
     return () => window.clearTimeout(t);
   }, [project]);
+  useEffect(
+    () => () => {
+      if (unsaved.current) autosaveProject(unsaved.current).catch(() => undefined);
+    },
+    [],
+  );
 
   // ---------- Editing ----------
   const split = useCallback(() => {
@@ -182,7 +193,18 @@ export function Editor({
   );
 
   const patchClip = useCallback(
-    (id: string, patch: Partial<Clip>) => setProject((p) => updateClip(p, id, patch)),
+    (id: string, patch: Partial<Clip>) =>
+      setProject(
+        (p) => {
+          // Preview plays sound from the video clip, export from the Sound clip: keep the pair's volume equal.
+          if (patch.volume === undefined) return updateClip(p, id, patch);
+          let next = updateClip(p, id, patch);
+          for (const other of linkedIds(p, id)) if (other !== id) next = updateClip(next, other, { volume: patch.volume });
+          return next;
+        },
+        // Slider drags and typing become one undo step per field.
+        `clip:${id}:${Object.keys(patch).join(",")}`,
+      ),
     [setProject],
   );
 
@@ -200,6 +222,8 @@ export function Editor({
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (el.closest("input, textarea, select, [contenteditable='true']")) return;
+      // Export, Settings, About and account dialogs own the keyboard while open.
+      if (document.querySelector("[aria-modal='true']")) return;
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
       if (e.code === "Space") {
@@ -278,11 +302,13 @@ export function Editor({
 
   const setCropPath = useCallback(
     (path: CropPath | null) => {
-      if (!selectedClip) return;
+      // ReframePanel sends null whenever it mounts without fresh speaker results (selecting,
+      // splitting or reopening a clip). That must not wipe a crop the clip already has.
+      if (!selectedClip || !path) return;
       setProject((p) => {
         const c = findClip(p, selectedClip);
-        if (!c || c.kind !== "video" || (path ?? undefined) === c.cropPath) return p;
-        return updateClip(p, selectedClip, { cropPath: path ?? undefined });
+        if (!c || c.kind !== "video" || path === c.cropPath) return p;
+        return updateClip(p, selectedClip, { cropPath: path });
       });
     },
     [selectedClip, setProject],
