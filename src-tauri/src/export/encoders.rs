@@ -1,5 +1,5 @@
 //! H.264 encoder choice. The shipped FFmpeg is LGPL (no libx264), so we use
-//! the GPU encoders when they work, then Windows MediaFoundation, then
+//! the GPU encoders when they work (VideoToolbox on macOS), then Windows MediaFoundation, then
 //! OpenH264, and MPEG-4 part 2 only as a last resort.
 
 use std::io::ErrorKind;
@@ -9,7 +9,8 @@ use std::sync::OnceLock;
 use super::Quality;
 use crate::tools::{self, Tool};
 
-pub const PREFERENCE: [&str; 6] = [
+pub const PREFERENCE: [&str; 7] = [
+    "h264_videotoolbox",
     "h264_nvenc",
     "h264_qsv",
     "h264_amf",
@@ -151,7 +152,7 @@ pub fn video_args(encoder: &str, quality: Quality, fps: u32) -> Vec<String> {
             };
             vec!["-q:v".into(), q.into()]
         }
-        // h264_mf, libopenh264
+        // h264_videotoolbox, h264_mf, libopenh264
         _ => vec!["-b:v".into(), b.clone(), "-maxrate".into(), max.clone()],
     };
     a.extend(extra);

@@ -8,7 +8,7 @@ How to build signed installers, ship auto-updates and cut a release. Server keys
 | Platform                     | Installers                                  | Notes                                                   |
 | ---------------------------- | ------------------------------------------- | ------------------------------------------------------- |
 | Windows x64                  | NSIS `.exe` (per-user, no admin) and `.msi` | English only. Icons from `src-tauri/icons`.             |
-| macOS (Apple silicon, Intel) | `.dmg` and `.app`                           | macOS 11+. Needs notarization to open without warnings. |
+| macOS (Apple silicon, Intel) | `.dmg` per architecture                     | macOS 11+. Needs notarization to open without warnings. |
 
 Bundle settings live in `src-tauri/tauri.conf.json` (`bundle.windows.nsis`, `bundle.windows.wix`, `bundle.macOS`).
 
@@ -90,12 +90,29 @@ Add these GitHub secrets. The workflow passes them to the build only when they'r
 | `APPLE_PASSWORD`             | App-specific password for that Apple ID (appleid.apple.com)              |
 | `APPLE_TEAM_ID`              | 10-character team id                                                     |
 
-### 7. FFmpeg on macOS (placeholder)
+### 7. FFmpeg on macOS
 
-`pnpm fetch:ffmpeg` only knows Windows and Linux builds. For macOS, host a zip per architecture containing LGPL
-`ffmpeg`, `ffprobe` and its `LICENSE` (built with `--disable-gpl --disable-nonfree`, no x264/x265), and set the
-variables `MACOS_FFMPEG_LGPL_URL_AARCH64` and `MACOS_FFMPEG_LGPL_URL_X86_64`. Without them the Mac build has no
-FFmpeg. Keep a link to the exact FFmpeg source you built from; the LGPL requires offering it.
+CI builds FFmpeg itself with `scripts/build-ffmpeg-macos.sh` on each Mac runner (arm64 on `macos-15`, Intel on
+`macos-15-intel`): FFmpeg 7.1.1, LGPL only (`--disable-gpl --disable-nonfree`), VideoToolbox, libass, libvpx,
+libopus, freetype/harfbuzz/fribidi, all linked statically so the binaries need nothing but macOS itself. The
+script fails if the result is GPL or links a non-system library. The output is cached per architecture until
+the script changes (first build about 15 minutes). The source URL and configure line go into
+`FFMPEG-LICENSE.txt`, which ships inside the app. To build locally on a Mac:
+`brew install pkg-config nasm meson ninja && scripts/build-ffmpeg-macos.sh out/`.
+
+### 8. Unsigned builds
+
+Until the signing secrets exist ([SIGNING.md](SIGNING.md)), installers are unsigned:
+
+- **Windows**: SmartScreen shows "Windows protected your PC". Click **More info** then **Run anyway**.
+- **Mac**: the app is ad-hoc signed so it runs on Apple silicon, but Gatekeeper blocks the first launch. Right-click
+  Verso in Applications and choose **Open** (macOS 15: System Settings > Privacy & Security > **Open Anyway**),
+  or run `xattr -d com.apple.quarantine /Applications/Verso.app`.
+
+### Test builds without a release
+
+Actions > "Build and release" > **Run workflow** on `main`. Installers appear as run artifacts
+(`verso-aarch64-apple-darwin`, `verso-x86_64-apple-darwin`, `verso-x86_64-pc-windows-msvc`); no release is made.
 
 ## GitHub settings summary
 
@@ -105,7 +122,6 @@ FFmpeg. Keep a link to the exact FFmpeg source you built from; the LGPL requires
 | Secret (optional)   | `APPLE_*` (above), `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`        |
 | Variable            | `TAURI_UPDATER_PUBKEY`, `VERSO_UPDATE_ENDPOINT`, `VERSO_ENTITLEMENT_PUBLIC_KEY` |
 | Variable            | `VITE_VERSO_API_URL`, `VITE_VERSO_BETA_GATE`                                    |
-| Variable (optional) | `MACOS_FFMPEG_LGPL_URL_AARCH64`, `MACOS_FFMPEG_LGPL_URL_X86_64`                 |
 
 ## Release checklist
 
@@ -130,9 +146,10 @@ FFmpeg. Keep a link to the exact FFmpeg source you built from; the LGPL requires
    git tag v0.2.0
    git push origin main v0.2.0
    ```
-6. **CI builds** Windows and both Mac architectures and drafts a GitHub release with the installers, `.sig`
-   files and `latest.json`.
-7. **Review the draft**: install on a clean machine, write release notes, then **Publish**.
+6. **CI builds** Windows and both Mac architectures and publishes the GitHub release with the installers,
+   `SHA256SUMS.txt`, and (when the updater key is set) `.sig` files and `latest.json`. A tag with a hyphen
+   (`v0.2.0-beta.1`) becomes a pre-release.
+7. **Check the release**: install on a clean machine and edit the release notes.
 8. **Roll out the update**: copy the release's `latest.json` to the server's `UPDATES_MANIFEST` (skip if you use
    the GitHub endpoint). Running copies show "A new version of Verso is ready. Restart to update." within a few
    seconds of their next launch, or from Settings > Updates > Check now.
