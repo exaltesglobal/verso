@@ -74,8 +74,11 @@ pub fn detect() -> Result<Vec<String>, String> {
         return Ok(found.clone());
     }
     let list = listed()?;
+    // VERSO_DISABLE_NVENC=1 skips NVENC, to test the fallback encoders on an NVIDIA machine.
+    let skip_nvenc = std::env::var("VERSO_DISABLE_NVENC").is_ok_and(|v| v == "1");
     let found: Vec<String> = PREFERENCE
         .iter()
+        .filter(|e| !(skip_nvenc && **e == "h264_nvenc"))
         .filter(|e| list.split_whitespace().any(|w| w == **e))
         .filter(|e| works(e))
         .map(|e| e.to_string())
