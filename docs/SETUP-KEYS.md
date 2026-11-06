@@ -176,8 +176,8 @@ Cloud Economy includes Node.js web apps managed from hPanel.
 | Root directory | `server` (when importing the whole repo) |
 | Node.js version | 20.x or 22.x |
 | Package manager | pnpm if offered, otherwise npm |
-| Install / build command | `pnpm install --frozen-lockfile && pnpm build` (npm: `npm install && npm run build`) |
-| Start command / entry file | `pnpm start` (or entry file `dist/index.js`) |
+| Install / build command | `pnpm install && pnpm build` (npm: `npm install && npm run build`) |
+| Entry file | `server.cjs` (start command `node server.cjs`; Hostinger loads entries with `require()`, so the shim imports the ES module build) |
 
 The build needs devDependencies (TypeScript). `better-sqlite3` is optional and may fail to compile on the
 host; that is fine because production uses MySQL.
@@ -212,7 +212,7 @@ migration. Either:
 - **SSH** (hPanel > Advanced > SSH Access): `cd` into the app's folder and run `npm run migrate:prod`
   (`node dist/migrate.js`). It needs the same env vars; if the shell doesn't have them, put them in a
   `server/.env` file on the server only (it is git-ignored and read automatically).
-- **Start command**: use `node dist/migrate.js && node dist/index.js` so each start applies pending
+- **Start command**: use `node dist/migrate.js && node server.cjs` so each start applies pending
   migrations first. Migrations are idempotent and locked, so this is safe.
 
 To undo the last batch: `node dist/migrate.js --rollback`.
