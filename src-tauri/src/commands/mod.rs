@@ -2,6 +2,7 @@
 //! One file per area (media, project, export, ...). Register new commands in `lib.rs`.
 
 pub mod analysis;
+pub mod background;
 pub mod export;
 pub mod captions;
 pub mod media;

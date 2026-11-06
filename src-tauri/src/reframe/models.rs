@@ -87,7 +87,12 @@ pub fn installed(dir: &Path, id: &str) -> Option<PathBuf> {
 }
 
 pub fn status(dir: &Path) -> Vec<ModelStatus> {
-    MODELS
+    status_of(dir, MODELS)
+}
+
+/// Status of any model list (reframe, background, ...).
+pub fn status_of(dir: &Path, models: &[ModelSpec]) -> Vec<ModelStatus> {
+    models
         .iter()
         .map(|m| ModelStatus {
             id: m.id.into(),
@@ -102,8 +107,16 @@ pub fn status(dir: &Path) -> Vec<ModelStatus> {
 }
 
 /// Download, verify and install one model. `progress` gets 0..=100.
-pub fn download(dir: &Path, id: &str, mut progress: impl FnMut(f64)) -> Result<PathBuf, String> {
-    let m = spec(id)?;
+pub fn download(dir: &Path, id: &str, progress: impl FnMut(f64)) -> Result<PathBuf, String> {
+    download_spec(dir, spec(id)?, progress)
+}
+
+/// Download, verify and install any model spec. progress gets 0..=100.
+pub fn download_spec(
+    dir: &Path,
+    m: &ModelSpec,
+    mut progress: impl FnMut(f64),
+) -> Result<PathBuf, String> {
     let dest = dir.join(m.file);
     if dest.is_file() {
         return Ok(dest);
