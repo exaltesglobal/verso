@@ -1,6 +1,6 @@
 import type { User } from './auth.js';
 import type { Pack } from './credits.js';
-import type { Entitlements } from './plans.js';
+import { PLANS, type Entitlements } from './plans.js';
 
 export const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -156,8 +156,10 @@ export function pricingPage(o: {
   yearly: string;
   error?: string;
 }) {
-  const proFeatures = ['4K export', 'No watermark', 'Unlimited auto clips', 'Pro caption styles', 'Pro templates', 'Use on up to 3 devices'];
-  const freeFeatures = ['1080p export', 'Verso watermark', '10 auto clips a month', 'Basic caption styles', '1 device'];
+  // Mirrors PLANS (plans.ts): Free is the full editor with no watermark; Pro adds the AI tools and 4K/60 fps.
+  const devices = (n: number) => `Use on ${n === 1 ? '1 device' : `up to ${n} devices`}`;
+  const freeFeatures = ['The full editor', '1080p export', 'No watermark, ever', 'Basic caption styles', devices(PLANS.free.limits.max_devices)];
+  const proFeatures = ['4K and 60 fps export', 'Auto-cut and auto clips', 'Speaker reframe', 'Premium caption styles and Pro templates', devices(PLANS.pro.limits.max_devices)];
   const isPro = o.ent?.plan === 'pro';
   let action: string;
   if (!o.configured) action = `<div class="alert">Payments aren't set up yet. Check back soon.</div>`;
@@ -169,7 +171,7 @@ export function pricingPage(o: {
 <label style="display:flex;gap:10px;align-items:center;margin:0;color:#F5F4F0"><input type="radio" name="plan" value="pro_monthly" style="width:auto"> Monthly · ${esc(o.monthly)}</label>
 <button class="btn primary" type="submit">Upgrade to Pro</button></form>`;
 
-  return `<h1>Pricing</h1><p class="muted">Start free. Go Pro when you want 4K, no watermark and unlimited auto clips.</p>
+  return `<h1>Pricing</h1><p class="muted">Start free with the full editor and no watermark. Go Pro for auto clips, speaker reframe and 4K. AI tools use credits on both plans.</p>
 ${alert(o.error)}
 <div class="grid">
 <div class="card"><h2>Free</h2><div class="price">₹0</div><ul class="ticks">${freeFeatures.map((f) => `<li>${f}</li>`).join('')}</ul></div>

@@ -49,7 +49,7 @@ export const FREE: Entitlements = {
     dubbing: false,
     watermark_free: true,
   },
-  limits: { auto_clips_per_month: 10, max_devices: 1, max_export_height: 1080 },
+  limits: { auto_clips_per_month: 0, max_devices: 1, max_export_height: 1080 },
   signedIn: false,
   email: null,
   offlineUntil: null,

@@ -75,7 +75,7 @@ fn free() -> Entitlements {
             "auto_clips": false, "speaker_reframe": false, "background_pro": false, "dubbing": false, "export_4k": false,
             "watermark_free": true, "caption_styles_pro": false, "templates_pro": false
         }),
-        limits: json!({ "auto_clips_per_month": 10, "max_devices": 1, "max_export_height": 1080 }),
+        limits: json!({ "auto_clips_per_month": 0, "max_devices": 1, "max_export_height": 1080 }),
         signed_in: false,
         email: None,
         offline_until: None,

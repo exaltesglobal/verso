@@ -17,7 +17,7 @@ export const PLANS = {
       dubbing: false,
     },
     limits: {
-      auto_clips_per_month: 10,
+      auto_clips_per_month: 0, // auto clips are Pro
       max_devices: 1,
       max_export_height: 1080,
     },

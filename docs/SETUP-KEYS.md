@@ -344,6 +344,17 @@ refreshes the balance when its window regains focus.
 - Refills also happen lazily on each balance check. For a cron job on Hostinger (hPanel > Advanced > Cron Jobs),
   hourly: `cd ~/verso-server && node dist/credits-reset.js`, and set `CREDITS_RESET_INTERVAL_MINUTES=0`.
 
+#### Hostinger cron jobs (hPanel > Advanced > Cron Jobs)
+
+| Job | Schedule | Command |
+| --- | --- | --- |
+| Credit allowance resets | Hourly (`0 * * * *`) | `cd ~/verso-server && node dist/credits-reset.js` |
+| Expired sign-in rows (sessions, refresh tokens, sign-in codes, email links) | Daily (`30 3 * * *`) | `cd ~/verso-server && node dist/tokens-cleanup.js` |
+
+Both scripts read the same `.env` as the server and exit non-zero on failure, so Hostinger's cron email shows
+problems. `tokens-cleanup` keeps rows for 7 days after they expire or are used. Dev equivalents:
+`pnpm credits:reset` and `pnpm tokens:cleanup`.
+
 ### API
 
 All except pricing need `Authorization: Bearer <access_token>`.
