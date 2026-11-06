@@ -16,6 +16,8 @@ export interface Clip {
   source?: MediaInfo;
   /** Transitions and effects sit on the video track but use the effects colour. */
   variant?: "effect";
+  /** Caption clips: per-word timings (timeline seconds) for karaoke highlight. */
+  words?: { text: string; start: number; end: number }[];
 }
 
 export interface Track {
