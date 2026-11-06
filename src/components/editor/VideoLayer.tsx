@@ -37,12 +37,17 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
   }, [clip, inPoint]);
 
   // Play / pause, and keep the picture on the playhead while paused.
+  const lastClipId = useRef<string | undefined>(undefined);
   useEffect(() => {
     const v = ref.current;
     if (!v || !src) return;
     v.volume = Math.max(0, Math.min(1, clip?.volume ?? 1));
+    // Entering another clip of the same file (after a split or a removed pause) must jump
+    // exactly to its in point, or the cut-out part plays and the clock runs backwards.
+    const entered = clip?.id !== lastClipId.current;
+    lastClipId.current = clip?.id;
     if (playing) {
-      if (Math.abs(v.currentTime - sourceTime) > 0.25) v.currentTime = sourceTime;
+      if (Math.abs(v.currentTime - sourceTime) > (entered ? SEEK_EPSILON : 0.25)) v.currentTime = sourceTime;
       if (v.paused) void v.play().catch(() => {});
     } else {
       if (!v.paused) v.pause();
@@ -63,8 +68,9 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
       const { clip: c, inPoint: ip } = live.current;
       if (v && c && !v.paused && v.readyState >= 2) {
         const t = c.start + (v.currentTime - ip);
-        // Past the clip's out point: hand over to the next clip.
-        mediaClockRef.current = t >= c.end ? c.end : t;
+        // Past the clip's out point: hand over to the next clip. Before its start the
+        // seek hasn't landed yet: let the editor clock carry on rather than jump back.
+        mediaClockRef.current = t >= c.end ? c.end : t < c.start - 0.05 ? null : t;
       } else {
         mediaClockRef.current = null; // buffering: editor clock carries on
       }
