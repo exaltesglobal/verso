@@ -93,3 +93,55 @@ hashes while downloading, and only renames into place if the SHA-256 matches.
 | `face_sface` | `github.com/opencv/opencv_zoo/raw/48b10fa5…/models/face_recognition_sface/face_recognition_sface_2021dec.onnx` | `0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79` |
 
 Before launch, mirror the three files on our own CDN and point the URLs there (same hashes).
+
+# Background (blur, remove, replace)
+
+Background effects run **on-device and offline** with the same ONNX Runtime as reframing. Checked November 2026.
+
+| Id           | Job                               | Model                                                  | Licence    | Size    |
+| ------------ | --------------------------------- | ------------------------------------------------------ | ---------- | ------- |
+| `seg_selfie` | Separate the person from the room | MediaPipe Selfie Segmentation (general, 256x256), ONNX | Apache-2.0 | 0.46 MB |
+
+- Source: <https://huggingface.co/onnx-community/mediapipe_selfie_segmentation> (model card `license: apache-2.0`),
+  pinned to commit `be49485c8e027524be38591817fc5cd31bd9d00e`, file `onnx/model.onnx`,
+  SHA-256 `3241ac4ad8aa35bdaf33946776db29f7c283a413aa0b0dacb9483594b4531aad`, 462,352 bytes.
+  Input `pixel_values` float32 `[1,3,256,256]` RGB 0..1; output `alphas` `[1,1,256,256]`.
+- Upstream model: Google MediaPipe Selfie Segmentation, Apache-2.0
+  (<https://ai.google.dev/edge/mediapipe/solutions/vision/image_segmenter>, model card linked there). Ship its
+  Apache-2.0 notice in `licenses/`.
+- Stored in `<app data>/models/background/`, downloaded with the same hash-verified downloader as reframe
+  (`download_background_model`). Mirror on our CDN before launch.
+
+## Pipeline
+
+1. FFmpeg decodes the clip range at the **source fps** (CFR via `fps=`), scaled so the long edge is at most
+   1920 px (rotation metadata respected), as `rawvideo rgb24` over a pipe.
+2. The model runs on each frame at 256x256. The mask gets a **temporal EMA** (steady where little moves,
+   follows fast motion) and a **guided filter** at ~480 px against the frame's luma so edges follow hair and
+   shoulders, then a soft smoothstep when upsampled for compositing.
+3. Composite per mode: `blur` (area-downscale + box blur, strength 0..1), `studio` (lighter blur, darker
+   vignetted background, gentle lift on the person), `replace` (solid colour, two-colour gradient, or a photo
+   scaled to cover), `remove` (alpha).
+4. A second FFmpeg encodes into `<app cache>/background/<key>.mp4|webm` (key = file + size + mtime + range +
+   mode + options). The original file is never written. Writes go to `.part.*` and are renamed when complete.
+
+## Output formats (LGPL FFmpeg sidecar)
+
+| Mode                    | File                                                                             | Why                                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| blur / studio / replace | MP4, H.264 (best working encoder from `export::encoders`, High preset), AAC 192k | Plays in the WebView preview and is a high-bitrate intermediate for export. No libx264 in the LGPL build.                      |
+| remove                  | WebM, VP9 `yuva420p` (`libvpx-vp9`, CRF 20), Opus 160k                           | VP9 alpha plays with transparency in Chromium/WebView2 and FFmpeg reads it back. ProRes 4444/QTRLE do not play in the WebView. |
+
+FFmpeg's native VP9 decoder **drops alpha**: when export composites a `remove` copy over other layers it must
+open it with `-c:v libvpx-vp9 -i <file>`.
+
+## Rejected (and why)
+
+| Option                      | Why not                                                                                                                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Robust Video Matting (RVM)  | Code is **GPL-3.0**; no separate permissive weight licence.                                                                                                                |
+| BRIA RMBG-1.4 / 2.0         | Weights are **non-commercial** (commercial needs a paid BRIA agreement).                                                                                                   |
+| BiRefNet                    | Code MIT, weight licence not stated separately; ~1 GB class model, far too slow per video frame.                                                                           |
+| MODNet                      | Apache-2.0 for code **and** models (README "License"), good portrait matting. Weights only on Google Drive (no pinnable URL); candidate for a later "high quality" option. |
+| PP-HumanSeg (PaddleSeg)     | Apache-2.0, fine licence, but needs a Paddle-to-ONNX conversion we'd have to host; MediaPipe is smaller.                                                                   |
+| MediaPipe Selfie Multiclass | Apache-2.0, but 256x256 multiclass is slower and we only need person vs. background.                                                                                       |
