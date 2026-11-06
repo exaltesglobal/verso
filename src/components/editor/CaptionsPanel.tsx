@@ -1,3 +1,8 @@
+import { useEntitlements } from "../../lib/entitlements";
+import { ProBadge } from "../account/ProBadge";
+
+/** The first caption styles are free; the rest are part of Pro. */
+const FREE_STYLE_COUNT = 3;
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../Icon";
 import { Button, type ToastMessage } from "../ui";
@@ -44,6 +49,7 @@ const fmt = (t: number) => {
 };
 
 export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }: CaptionsPanelProps) {
+  const { can, openUpgrade } = useEntitlements();
   const [language, setLanguage] = useState<CaptionLanguage>("hinglish");
   const [accuracy, setAccuracy] = useState<Accuracy>("balanced");
   const [models, setModels] = useState<ModelStatus[]>([]);
@@ -265,16 +271,22 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
 
       <h3 className="section-label">Caption style</h3>
       <div className="cap-styles">
-        {CAPTION_STYLES.map((s) => (
+        {CAPTION_STYLES.map((s, i) => (
           <button
             key={s.id}
             type="button"
             className={s.id === styleId ? "cap-style is-selected" : "cap-style"}
-            onClick={() => onStyleChange(s.id)}
+            onClick={() =>
+              i >= FREE_STYLE_COUNT && !can("caption_styles_pro")
+                ? openUpgrade(`The ${s.name} caption style is part of Verso Pro.`)
+                : onStyleChange(s.id)
+            }
             aria-pressed={s.id === styleId}
           >
             <CaptionStylePreview style={s} playing={s.id === styleId} />
-            <span className="cap-style__name">{s.name}</span>
+            <span className="cap-style__name">
+              {s.name} {i >= FREE_STYLE_COUNT && !can("caption_styles_pro") && <ProBadge />}
+            </span>
           </button>
         ))}
       </div>

@@ -1,3 +1,4 @@
+import { useEntitlements } from "../../lib/entitlements";
 import { useState } from "react";
 import { Icon } from "../Icon";
 import { Button } from "../ui";
@@ -38,6 +39,7 @@ export function AutoCutPanel({
   onOpenProject,
   onMakeAll,
 }: AutoCutPanelProps) {
+  const { can, openUpgrade } = useEntitlements();
   const videos = media.filter((m) => m.hasVideo && m.hasAudio);
   const [path, setPath] = useState<string | undefined>(videos[0]?.path);
   const source = videos.find((m) => m.path === path) ?? videos[0];
@@ -46,6 +48,10 @@ export function AutoCutPanel({
 
   const run = async () => {
     if (!source || !transcribe) return;
+    if (!can("auto_clips")) {
+      openUpgrade("Auto-cut finds the best moments in long videos for you. It is part of Verso Pro.");
+      return;
+    }
     setPhase({ kind: "working", percent: 0, stage: "Listening to your video…" });
     try {
       const [words, peaks] = await Promise.all([

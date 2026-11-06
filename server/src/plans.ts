@@ -7,7 +7,10 @@ export const PLANS = {
   free: {
     features: {
       export_4k: false,
-      watermark_free: false,
+      auto_clips: false,
+      speaker_reframe: false,
+      // Every plan exports without a watermark.
+      watermark_free: true,
       caption_styles_pro: false,
       templates_pro: false,
     },
@@ -20,6 +23,8 @@ export const PLANS = {
   pro: {
     features: {
       export_4k: true,
+      auto_clips: true,
+      speaker_reframe: true,
       watermark_free: true,
       caption_styles_pro: true,
       templates_pro: true,

@@ -1,3 +1,5 @@
+import { useEntitlements } from "../../lib/entitlements";
+import { ProBadge } from "../account/ProBadge";
 import { useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Button } from "../ui";
@@ -31,6 +33,7 @@ interface ReframePanelProps {
 
 /** Inspector section: find speakers in the clip, pick how the camera follows them. */
 export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
+  const { can, openUpgrade } = useEntitlements();
   const source = clip.source;
   const [mode, setMode] = useState<ReframeMode>("centre");
   const [speakerId, setSpeakerId] = useState<number | undefined>();
@@ -76,6 +79,10 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
 
   async function findSpeakers() {
     if (!source) return;
+    if (!can("speaker_reframe")) {
+      openUpgrade("Following speakers and showing both people is part of Verso Pro.");
+      return;
+    }
     setError(null);
     try {
       for (const m of models.filter((x) => x.required && !x.installed)) {
@@ -183,6 +190,7 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
       ) : (
         <Button icon="subject-track" onClick={findSpeakers}>
           {analysis ? "Find speakers again" : "Find speakers"}
+          {!can("speaker_reframe") && <ProBadge />}
         </Button>
       )}
 

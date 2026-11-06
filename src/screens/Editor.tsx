@@ -24,7 +24,6 @@ import {
 } from "../lib/project";
 import { autosaveProject, saveProject, saveProjectAs } from "../lib/persist";
 import { useHistory } from "../lib/useHistory";
-import { useEntitlements } from "../lib/entitlements";
 import { replaceCaptions } from "../lib/captions";
 import type { CropPath } from "../lib/reframe";
 
@@ -66,7 +65,6 @@ export function Editor({
   );
   const [zoom, setZoom] = useState(1);
   const [exporting, setExporting] = useState(false);
-  const { can } = useEntitlements();
   const last = useRef<number | null>(null);
   /**
    * Timeline time reported by the playing <video>, or null when no real media
@@ -367,7 +365,7 @@ export function Editor({
           project={project}
           aspect={aspect}
           notify={notify}
-          watermark={!can("watermark_free")}
+          watermark={false}
           onClose={() => setExporting(false)}
         />
       )}

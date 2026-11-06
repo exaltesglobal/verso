@@ -14,7 +14,14 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { API_URL, accountsConfigured, serverPage } from "./config";
 
 /** Feature flags from server/src/plans.ts. */
-export type Feature = "export_4k" | "watermark_free" | "caption_styles_pro" | "templates_pro";
+export type Feature =
+  | "export_4k"
+  | "auto_clips"
+  | "speaker_reframe"
+  | "caption_styles_pro"
+  | "templates_pro"
+  /** Kept for compatibility: every plan exports without a watermark. */
+  | "watermark_free";
 
 export interface Entitlements {
   plan: "free" | "pro";
@@ -28,7 +35,15 @@ export interface Entitlements {
 
 export const FREE: Entitlements = {
   plan: "free",
-  features: { export_4k: false, watermark_free: false, caption_styles_pro: false, templates_pro: false },
+  // Free = full editor, 1080p export, no watermark. Pro adds the features below.
+  features: {
+    export_4k: false,
+    auto_clips: false,
+    speaker_reframe: false,
+    caption_styles_pro: false,
+    templates_pro: false,
+    watermark_free: true,
+  },
   limits: { auto_clips_per_month: 10, max_devices: 1, max_export_height: 1080 },
   signedIn: false,
   email: null,

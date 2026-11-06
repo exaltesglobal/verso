@@ -1,3 +1,4 @@
+import { useEntitlements } from "../../lib/entitlements";
 import { useState, type CSSProperties } from "react";
 import { Icon } from "../Icon";
 import { Button } from "../ui";
@@ -18,6 +19,7 @@ export interface TemplatesPanelProps {
 
 /** Templates tab: browse packs, then fill a template's slots with your clips. */
 export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps) {
+  const { can, openUpgrade } = useEntitlements();
   const [pack, setPack] = useState<PackId | "all">("all");
   const [picked, setPicked] = useState<Template | null>(null);
 
@@ -64,7 +66,16 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
       </div>
       <div className="tpl-grid">
         {shown.map((t) => (
-          <button key={t.id} type="button" className="tpl-card" onClick={() => setPicked(t)}>
+          <button
+            key={t.id}
+            type="button"
+            className="tpl-card"
+            onClick={() =>
+              t.pro && !can("templates_pro")
+                ? openUpgrade(`The "${t.name}" template is part of Verso Pro.`)
+                : setPicked(t)
+            }
+          >
             <TemplatePreview template={t} />
             <span className="tpl-card__name">
               {t.name}
