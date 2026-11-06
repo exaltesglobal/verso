@@ -11,16 +11,19 @@ import type { Config } from './config.js';
 import { loadKeys } from './crypto.js';
 import { ApiError, type Ctx } from './ctx.js';
 import { createDb, type Db } from './db.js';
+import { creditsPricing } from './credits.js';
 import { createMailer, type Mailer } from './mailer.js';
 import { apiRoutes } from './routes-api.js';
+import { creditsRoutes } from './routes-credits.js';
 import { pageRoutes } from './routes-pages.js';
 import { webhookRoutes } from './routes-webhooks.js';
-import { CSS } from './views.js';
+import { CREDITS_CHECKOUT_JS, CSS } from './views.js';
 
 const require = createRequire(import.meta.url);
 const fontFile = require.resolve('@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2');
 
 export async function buildApp(config: Config, overrides: { db?: Db; mailer?: Mailer } = {}) {
+  creditsPricing(config); // fail fast on a malformed CREDITS_COSTS / CREDITS_PACKS
   const app = Fastify({
     trustProxy: config.TRUST_PROXY,
     bodyLimit: 256 * 1024,
@@ -85,7 +88,12 @@ export async function buildApp(config: Config, overrides: { db?: Db; mailer?: Ma
   );
   app.get('/assets/app.css', (_req, reply) => reply.header('Cache-Control', 'public, max-age=3600').type('text/css').send(CSS));
 
+  app.get('/assets/credits-checkout.js', (_req, reply) =>
+    reply.header('Cache-Control', 'public, max-age=3600').type('text/javascript').send(CREDITS_CHECKOUT_JS),
+  );
+
   await app.register(apiRoutes(ctx));
+  await app.register(creditsRoutes(ctx));
   await app.register(webhookRoutes(ctx));
   await app.register(pageRoutes(ctx));
   return { app, ctx };

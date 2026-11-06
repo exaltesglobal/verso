@@ -18,7 +18,9 @@
     "razorpay:plans": "tsx src/razorpay-plans.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "invite:create": "tsx src/invite-create.ts"
+    "invite:create": "tsx src/invite-create.ts",
+    "credits:grant": "tsx src/credits-grant.ts",
+    "credits:reset": "tsx src/credits-reset.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -167,4 +167,55 @@ export const migrations: Record<string, Migration> = {
       await k.schema.dropTableIfExists('crash_reports');
     },
   },
+  '003_credits': {
+    async up(k) {
+      // Append-only. The balance row below is updated in the same transaction as every insert here.
+      await k.schema.createTable('credit_ledger', (t) => {
+        t.bigIncrements('id');
+        userFk(t);
+        t.integer('delta').notNullable();
+        t.string('bucket', 16).notNullable(); // allowance | purchased
+        t.string('kind', 16).notNullable(); // grant | debit | refund | reset | admin
+        t.string('reason', 160);
+        t.string('action', 40);
+        t.string('ref', 160).notNullable(); // idempotency key, order id or reset id
+        t.text('meta');
+        t.bigInteger('created_at').notNullable();
+        // A debit split across both buckets writes two rows with the same ref.
+        t.unique(['user_id', 'kind', 'ref', 'bucket']);
+        t.index(['user_id', 'id']);
+      });
+
+      await k.schema.createTable('credit_balances', (t) => {
+        t.string('user_id', 36).primary().references('id').inTable('users').onDelete('CASCADE');
+        t.integer('allowance').notNullable().defaultTo(0);
+        t.integer('purchased').notNullable().defaultTo(0);
+        t.string('plan', 16).notNullable().defaultTo('none'); // plan the allowance was granted for
+        t.bigInteger('period_start').notNullable().defaultTo(0);
+        t.bigInteger('period_end').notNullable().defaultTo(0);
+        t.bigInteger('updated_at').notNullable();
+        t.index(['period_end']);
+      });
+
+      // Razorpay one-time orders for top-up packs.
+      await k.schema.createTable('credit_orders', (t) => {
+        t.string('id', 64).primary(); // Razorpay order id
+        userFk(t);
+        t.string('pack_id', 32).notNullable();
+        t.integer('credits').notNullable();
+        t.integer('amount').notNullable(); // smallest currency unit
+        t.string('currency', 8).notNullable();
+        t.string('status', 16).notNullable(); // created | paid
+        t.string('payment_id', 64);
+        t.bigInteger('created_at').notNullable();
+        t.bigInteger('paid_at');
+        t.index(['user_id']);
+      });
+    },
+    async down(k) {
+      await k.schema.dropTableIfExists('credit_orders');
+      await k.schema.dropTableIfExists('credit_balances');
+      await k.schema.dropTableIfExists('credit_ledger');
+    },
+  },
 };

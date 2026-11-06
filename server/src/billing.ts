@@ -3,11 +3,12 @@ import type { Config } from './config.js';
 import { ApiError, type Ctx } from './ctx.js';
 import { hmacSha256Hex, safeEqual, sha256, uuid } from './crypto.js';
 import { now } from './db.js';
+import { fulfilOrder } from './credits.js';
 import type { BillingPlan } from './plans.js';
 
 const API = 'https://api.razorpay.com/v1';
 
-async function razorpay<T>(config: Config, method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+export async function razorpay<T>(config: Config, method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   if (!config.RAZORPAY_KEY_ID || !config.RAZORPAY_KEY_SECRET) throw new ApiError(503, 'payments_not_configured', "Payments aren't set up yet.");
   const res = await fetch(`${API}${path}`, {
     method,
@@ -69,13 +70,22 @@ export function verifyRazorpaySignature(secret: string, rawBody: Buffer | string
 }
 
 type RzpSubscription = { id: string; plan_id?: string; status: string; current_end?: number | null; notes?: Record<string, string> };
-type RzpPayment = { id: string; amount?: number; currency?: string; status: string; subscription_id?: string; notes?: Record<string, string> };
+type RzpPayment = { id: string; amount?: number; currency?: string; status: string; subscription_id?: string; order_id?: string; notes?: Record<string, string> };
 export type RazorpayEvent = {
   event: string;
-  payload: { subscription?: { entity: RzpSubscription }; payment?: { entity: RzpPayment } };
+  payload: { subscription?: { entity: RzpSubscription }; payment?: { entity: RzpPayment }; order?: { entity: { id: string; amount_paid?: number } } };
 };
 
-const HANDLED = new Set(['subscription.activated', 'subscription.charged', 'subscription.cancelled', 'subscription.halted', 'payment.failed']);
+const HANDLED = new Set([
+  'subscription.activated',
+  'subscription.charged',
+  'subscription.cancelled',
+  'subscription.halted',
+  'payment.failed',
+  // One-time credit top-ups. Both may arrive for the same order; fulfilOrder grants once.
+  'payment.captured',
+  'order.paid',
+]);
 
 /**
  * Applies a verified webhook event once. The event id is recorded in the same transaction as its effects,
@@ -113,7 +123,8 @@ export async function handleRazorpayEvent(ctx: Ctx, log: FastifyBaseLogger, even
     if (p) {
       const subId = p.subscription_id ?? s?.id ?? null;
       const owner = subId ? await trx('subscriptions').where({ provider_subscription_id: subId }).first() : undefined;
-      const userId = owner?.user_id ?? p.notes?.user_id ?? null;
+      const creditOrder = p.order_id ? await trx('credit_orders').where({ id: p.order_id }).first() : undefined;
+      const userId = owner?.user_id ?? creditOrder?.user_id ?? p.notes?.user_id ?? null;
       const status = evt.event === 'payment.failed' ? 'failed' : p.status;
       const row = await trx('payments').where({ provider_payment_id: p.id }).first();
       if (row) await trx('payments').where({ id: row.id }).update({ status });
@@ -128,6 +139,12 @@ export async function handleRazorpayEvent(ctx: Ctx, log: FastifyBaseLogger, even
           status,
           created_at: t,
         });
+    }
+    const paidOrder = evt.payload.order?.entity;
+    const orderId = p?.order_id ?? paidOrder?.id;
+    if (orderId && (evt.event === 'payment.captured' || evt.event === 'order.paid')) {
+      const r = await fulfilOrder(trx, ctx.config, orderId, p?.id ?? null, p?.amount ?? paidOrder?.amount_paid);
+      if ('reason' in r) log.warn({ orderId, reason: r.reason }, 'credit order not fulfilled');
     }
     return { processed: true };
   });
