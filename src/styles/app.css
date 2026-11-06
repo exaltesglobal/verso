@@ -3194,3 +3194,108 @@ input[type="range"]::-webkit-slider-thumb {
 .editor {
   grid-template-rows: var(--vs-size-topbar) minmax(0, 1fr) 286px;
 }
+
+/* ---------- Voice ---------- */
+.voice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-3);
+}
+
+.voice-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.voice-field__label {
+  font-size: var(--vs-font-size-small);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.voice-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-1);
+}
+
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-2);
+  padding-left: var(--vs-space-3);
+  border: 1px solid var(--vs-color-role-border);
+  border-radius: var(--vs-radius-md);
+}
+
+.voice-row.is-active {
+  border-color: var(--vs-color-role-text-primary);
+  background: var(--vs-color-role-bg-raised);
+}
+
+.voice-row__pick {
+  flex: 1;
+  min-width: 0;
+  height: var(--vs-size-control-sm);
+  text-align: left;
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-primary);
+}
+
+.voice-script {
+  width: 100%;
+  resize: vertical;
+  padding: var(--vs-space-2) var(--vs-space-3);
+  border: 1px solid var(--vs-color-role-border);
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-app);
+  color: var(--vs-color-role-text-primary);
+  font: inherit;
+  font-size: var(--vs-font-size-body);
+  line-height: var(--vs-font-line-height-snug);
+}
+
+.voice-script:focus {
+  outline: none;
+  border-color: var(--vs-color-role-border-strong);
+}
+
+.voice-link {
+  align-self: flex-start;
+  font-size: var(--vs-font-size-small);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--vs-color-role-text-secondary);
+  text-decoration: underline;
+}
+
+.voice-link:hover {
+  color: var(--vs-color-role-text-primary);
+}
+
+.voice-downloads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.voice-download {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+  padding: var(--vs-space-3);
+  border: 1px dashed var(--vs-color-role-border-strong);
+  border-radius: var(--vs-radius-md);
+}
+
+.voice-download__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-muted);
+}
+
+.voice-download__text strong {
+  color: var(--vs-color-role-text-primary);
+}
