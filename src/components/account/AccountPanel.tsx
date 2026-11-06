@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { API_URL } from "../../lib/config";
+import { useCredits } from "../../lib/credits";
+import { UsageHistory } from "../credits/UsageHistory";
 import { useEntitlements } from "../../lib/entitlements";
 import { timeAgo } from "../../lib/persist";
 import { Button } from "../ui";
@@ -20,6 +22,7 @@ const dateFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "sho
 export function AccountDetails() {
   const { ent, configured, signingIn, error, signIn, cancelSignIn, signOut, openUpgrade, openServerPage } =
     useEntitlements();
+  const credits = useCredits();
   const [devices, setDevices] = useState<Device[] | null>(null);
 
   useEffect(() => {
@@ -87,6 +90,17 @@ export function AccountDetails() {
       )}
       {error && <p className="acct-error">{error}</p>}
 
+      <h3 className="acct-subtitle">AI credits</h3>
+      {credits.balance && (
+        <p className="acct-muted">
+          {Math.max(0, credits.balance.total)} credits
+          {credits.balance.resetsAt &&
+            ` · monthly credits refill ${dateFmt.format(new Date(credits.balance.resetsAt))}`}
+          {credits.balance.offline && " · offline"}
+        </p>
+      )}
+      <UsageHistory />
+
       <h3 className="acct-subtitle">
         Devices{maxDevices > 0 && devices ? ` (${devices.length} of ${maxDevices})` : ""}
       </h3>
@@ -108,6 +122,11 @@ export function AccountDetails() {
 
       <div className="acct-actions">
         {!pro && <Button onClick={() => openUpgrade()}>Upgrade to Pro</Button>}
+        {credits.configured && (
+          <Button variant="ghost" onClick={credits.openBuy}>
+            Get more credits
+          </Button>
+        )}
         <Button variant={pro ? "secondary" : "ghost"} onClick={() => openServerPage("/account")}>
           Manage subscription
         </Button>
