@@ -93,3 +93,89 @@ hashes while downloading, and only renames into place if the SHA-256 matches.
 | `face_sface` | `github.com/opencv/opencv_zoo/raw/48b10fa5…/models/face_recognition_sface/face_recognition_sface_2021dec.onnx` | `0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79` |
 
 Before launch, mirror the three files on our own CDN and point the URLs there (same hashes).
+
+# Voice and translation
+
+Voiceover and dubbing run **on-device and offline** after three one-time downloads into
+`<app data>/models/voice/<pack>/` (registry: `src-tauri/src/voice/models.rs`, same pinned-URL + SHA-256 +
+`.part` rename flow as reframe; each file's hash is in the registry). Licences checked November 2026 against
+each source; re-check before each release.
+
+## What we ship
+
+| Pack          | Job                               | Model / data                                                                                     | Licence    | Size    |
+| ------------- | --------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- | ------- |
+| `voice`       | Text to speech (en, hi; mr\*)     | Kokoro-82M v1.0, ONNX int8 (`onnx-community/Kokoro-82M-v1.0-ONNX@1939ad2a`, `model_quantized`)    | Apache-2.0 | 92.4 MB |
+| `voice`       | 8 voices (style vectors)          | `af_heart`, `am_michael`, `bf_emma`, `bm_george`, `hf_alpha`, `hf_beta`, `hm_omega`, `hm_psi`    | Apache-2.0 | 4.2 MB  |
+| `voice`       | English pronunciations            | misaki `us_gold.json` + `us_silver.json` (`hexgrad/misaki@fba12365`)                             | Apache-2.0 | 6.1 MB  |
+| `mt_en_indic` | English → Hindi/Marathi (+20 more) | IndicTrans2 en-indic distilled 200M, ONNX int8 (`hari31416/…-en-indic-dist-200M-ONNX-int8@1eaa43a3`) | MIT        | 304 MB  |
+| `mt_indic_en` | Hindi/Marathi/Hinglish → English  | IndicTrans2 indic-en distilled 200M, ONNX int8 (`hari31416/…-indic-en-dist-200M-ONNX-int8@a7ecdc0b`) | MIT        | 260 MB  |
+| library       | Translator tokenizers             | `tokenizers` crate 0.23 (+ Oniguruma via `onig`)                                                  | Apache-2.0 (Oniguruma BSD-2) | linked in |
+
+\* No permissively licensed Marathi voice exists. Marathi is read by the Hindi voices with our Devanagari rules:
+understandable, with a Hindi accent.
+
+Licence sources:
+
+- Kokoro-82M: <https://huggingface.co/hexgrad/Kokoro-82M> (Apache-2.0; voices included). ONNX export:
+  <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX> (Apache-2.0).
+- misaki: <https://github.com/hexgrad/misaki/blob/main/LICENSE> (Apache-2.0).
+- IndicTrans2: code <https://github.com/AI4Bharat/IndicTrans2/blob/main/LICENSE> (MIT); weights
+  <https://huggingface.co/ai4bharat/indictrans2-en-indic-dist-200M> and
+  <https://huggingface.co/ai4bharat/indictrans2-indic-en-dist-200M> (MIT). ONNX int8 exports by Hari31416
+  (MIT, <https://github.com/Hari31416/indictrans2-onnx-export>).
+- `tokenizers`: <https://github.com/huggingface/tokenizers/blob/main/LICENSE> (Apache-2.0).
+
+### Attribution (ship in `licenses/` and the About screen)
+
+> Speech: Kokoro-82M by hexgrad, Apache License 2.0. English pronunciations: misaki by hexgrad, Apache License 2.0.
+> Translation: IndicTrans2 by AI4Bharat (Gala et al., 2023, "IndicTrans2: Towards High-Quality and Accessible
+> Machine Translation Models for all 22 Scheduled Languages of India", TMLR), MIT License; ONNX conversion by
+> Hari31416, MIT License. Tokenizers by Hugging Face, Apache License 2.0.
+
+## How it works
+
+- **Phonemes without espeak-ng.** Kokoro and Piper were trained on espeak-ng phonemes, but espeak-ng is
+  **GPL-3**, so it is never linked or shipped. `src-tauri/src/voice/g2p.rs` replaces it:
+  - English: misaki gold/silver dictionaries (~180k words, already in Kokoro's alphabet), suffix rules
+    (-s, -ed, -ing, -ly), acronyms spelled out, numbers to words, and a crude letter-to-sound fallback.
+  - Hindi/Marathi: our rule-based Devanagari reader: consonant/vowel tables, nukta, anusvara (homorganic
+    nasal or nasal vowel), chandrabindu, visarga, and Hindi schwa deletion (final + VCəCV, kept after nasal
+    codas). Hindi numbers are read digit by digit (shortcut).
+  - Mixed text works: each word is read by its script, so Hinglish in Devanagari + English words is fine.
+- **Speech.** Phoneme ids (≤ 510 per chunk; we split at sentences around 400) + voice style row + speed →
+  24 kHz mono. Chunks are joined with a 0.12 s pause. Hindi voices reading English give an Indian accent.
+- **Translation.** IndicTrans2 input is `"<src_tag> <tgt_tag> text"` (e.g. `eng_Latn hin_Deva …`), greedy
+  decoding without KV cache (shortcut: fine for caption lines; add `decoder_with_past_model.onnx` for long
+  text). Hinglish (Latin letters) is first transliterated to Devanagari by rules, keeping dictionary English
+  words, then translated as Hindi. Hindi ↔ Marathi directly is not offered (would need the 320M indic-indic
+  model, also MIT).
+- **Dubbing.** Each caption line is translated, spoken, then fitted into its slot with FFmpeg `atempo`
+  (0.8–1.25×). Longer lines are sped to 1.25× and may run into the following silence, then trimmed with a
+  40 ms fade; shorter lines keep natural speed and are padded. One WAV is mixed, original Sound clips under
+  it are muted (volume 0), caption text is replaced and timings kept.
+
+## Quality notes (honest)
+
+- English (misaki voices `af_heart`, `bf_emma`): very natural; unknown names can be mispronounced by the
+  fallback rules.
+- Hindi: Kokoro's Hindi voices are graded C by their author (fewer training hours) and our rules are simpler
+  than espeak's, so expect clear but slightly flat, occasionally wrong stress/vowel length. Good enough for
+  reels; not studio narration.
+- Marathi: Hindi accent (see above).
+- Translation: IndicTrans2 is the best open model for Indian languages; int8 keeps ~90 BLEU of FP32 on the
+  exporter's fixtures. Slang and Hinglish are the weak spot: users should review captions after dubbing.
+- Not runtime-smoke-tested in this branch (model downloads skipped); verify the first run on a dev machine.
+
+## Rejected (and why)
+
+| Option                                       | Why not                                                                                                   |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| espeak-ng (phonemizer for Piper/Kokoro)      | **GPL-3**.                                                                                                |
+| Piper `hi_IN` pratham / priyamvada            | Voice data **CC BY-NC-SA 4.0** (non-commercial).                                                          |
+| Piper `hi_IN` rohan                           | Trained on IIT Madras IndicTTS, custom licence requiring an agreement; not clearly commercial. Also needs espeak phonemes. |
+| Piper (engine, MIT) in general               | Per-voice licences vary, no Marathi, quality below Kokoro; the newer piper1 repo is GPL-3.                |
+| Coqui XTTS-v2                                | **CPML** (non-commercial).                                                                                |
+| Meta NLLB-200 / SeamlessM4T                  | **CC BY-NC 4.0** (non-commercial).                                                                        |
+| Opus-MT (Helsinki-NLP, CC-BY-4.0)            | Licence OK (attribution), but en↔hi/mr quality is far below IndicTrans2. Fallback candidate.              |
+| AI4Bharat IndicF5 / Indic Parler-TTS         | Better Indian voices but large (>800 MB) and/or dataset terms unclear; revisit.                           |
