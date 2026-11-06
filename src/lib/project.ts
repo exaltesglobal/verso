@@ -64,6 +64,17 @@ export interface Clip {
   slotId?: string;
   /** Music: "Cut to the beat" is on for this clip. */
   beatSync?: boolean;
+  /** Video: play this processed copy instead of source (see background.ts). source stays the original. */
+  videoOverride?: VideoOverride;
+}
+
+export interface VideoOverride {
+  path: string;
+  kind: "background";
+  mode: string;
+  /** Source seconds the copy covers: copy time = source time - start. Outside it, play the original. */
+  start: number;
+  end: number;
 }
 
 export interface Track {
