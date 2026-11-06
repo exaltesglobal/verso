@@ -87,7 +87,12 @@ pub fn installed(dir: &Path, id: &str) -> Option<PathBuf> {
 }
 
 pub fn status(dir: &Path) -> Vec<ModelStatus> {
-    MODELS
+    status_of(dir, MODELS)
+}
+
+/// Status of any model list (reframe, background, ...).
+pub fn status_of(dir: &Path, models: &[ModelSpec]) -> Vec<ModelStatus> {
+    models
         .iter()
         .map(|m| ModelStatus {
             id: m.id.into(),

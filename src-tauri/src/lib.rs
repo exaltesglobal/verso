@@ -1,5 +1,6 @@
 mod captions;
 mod analysis;
+mod background;
 mod account;
 mod commands;
 mod crash;
@@ -56,6 +57,10 @@ pub fn run() {
             commands::analysis::detect_silences,
             commands::analysis::detect_emphasis,
             commands::analysis::detect_beats,
+            commands::background::background_models,
+            commands::background::download_background_model,
+            commands::background::render_background,
+            commands::background::cancel_background,
             account::start_sign_in,
             account::sign_out,
             account::get_session,

@@ -26,7 +26,7 @@ fn env() -> Result<&'static Environment, String> {
     .map_err(Clone::clone)
 }
 
-fn load(path: &Path) -> Result<Session, String> {
+pub(crate) fn load(path: &Path) -> Result<Session, String> {
     let fail =
         |e: ort::Error| format!("We couldn't load an AI model ({e}). Try downloading it again.");
     #[allow(unused_mut)]
@@ -43,7 +43,7 @@ fn load(path: &Path) -> Result<Session, String> {
         .map_err(fail)
 }
 
-fn run_err(e: ort::Error) -> String {
+pub(crate) fn run_err(e: ort::Error) -> String {
     format!("The AI model stopped unexpectedly ({e}).")
 }
 

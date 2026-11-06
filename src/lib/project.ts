@@ -80,6 +80,8 @@ export interface Clip {
   speedRamp?: { t: number; speed: number }[];
   /** Video: a freeze frame. Preview shows the PNG, export loops it. */
   still?: { path: string };
+  /** Video: play this processed copy instead of source (see background.ts). source stays the original. */
+  videoOverride?: VideoOverride;
 }
 
 export interface ClipColor {
@@ -96,6 +98,15 @@ export interface ClipColor {
   /** Rough look of the LUT in slider units, for the CSS preview (export applies the real LUT). */
   lutLook?: { brightness: number; contrast: number; saturation: number; temperature: number };
   preset?: string;
+}
+
+export interface VideoOverride {
+  path: string;
+  kind: "background";
+  mode: string;
+  /** Source seconds the copy covers: copy time = source time - start. Outside it, play the original. */
+  start: number;
+  end: number;
 }
 
 export interface Track {
