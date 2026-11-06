@@ -1,4 +1,7 @@
+import type { MutableRefObject } from "react";
 import { Icon } from "../Icon";
+import { VideoLayer } from "./VideoLayer";
+import { MusicLayer, TextOverlays } from "./Overlays";
 import { Button, IconButton } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration } from "../../lib/media";
@@ -11,6 +14,7 @@ interface PreviewProps {
   time: number;
   playing: boolean;
   onTogglePlay: () => void;
+  mediaClockRef: MutableRefObject<number | null>;
   onSeek: (t: number) => void;
   onImport: () => void;
   importing: boolean;
@@ -29,6 +33,7 @@ export function Preview({
   time,
   playing,
   onTogglePlay,
+  mediaClockRef,
   onSeek,
   onImport,
   importing,
@@ -63,6 +68,9 @@ export function Preview({
               {!empty && <div className="frame__subject" />}
             </div>
           )}
+          <VideoLayer clip={clip} time={time} playing={playing} mediaClockRef={mediaClockRef} />
+          <TextOverlays project={project} time={time} />
+          <MusicLayer project={project} time={time} playing={playing} />
           <div className="frame__safe" />
           {empty && (
             <div className="frame__empty">

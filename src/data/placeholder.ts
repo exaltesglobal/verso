@@ -1,7 +1,7 @@
 // Sample content: the "Podcast Ep. 42" demo project and panel placeholders.
 // Real projects are built from imported media (see lib/project.ts).
 
-import type { Project, Track } from "../lib/project";
+import { normalizeProject, type Project, type Track } from "../lib/project";
 
 const sampleTracks: Track[] = [
   {
@@ -39,7 +39,11 @@ const sampleTracks: Track[] = [
 
 /** Demo project shown by "Make clips from long video" until auto-cut exists. */
 export function sampleProject(): Project {
-  return { name: "Podcast Ep. 42", subtitle: "Reel 1 of 4", tracks: structuredClone(sampleTracks) };
+  return normalizeProject({
+    name: "Podcast Ep. 42",
+    subtitle: "Reel 1 of 4",
+    tracks: structuredClone(sampleTracks),
+  });
 }
 
 export interface Moment {

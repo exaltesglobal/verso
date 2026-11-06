@@ -5,6 +5,7 @@ import type { PanelTab } from "../../screens/Editor";
 import { audioTracks, moments, templates } from "../../data/placeholder";
 import { useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration, formatResolution, formatSize, type MediaInfo } from "../../lib/media";
+import type { TextStyle } from "../../lib/project";
 
 const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
   { id: "media", label: "Media", icon: "folder" },
@@ -22,6 +23,7 @@ interface LeftPanelProps {
   importing: boolean;
   onImport: () => Promise<void>;
   onAddToTimeline: (m: MediaInfo) => void;
+  onAddText: (preset: TextStyle["preset"], text: string) => void;
   notify: (m: ToastMessage) => void;
 }
 
@@ -32,6 +34,7 @@ export function LeftPanel({
   importing,
   onImport,
   onAddToTimeline,
+  onAddText,
   notify,
 }: LeftPanelProps) {
   return (
@@ -61,7 +64,7 @@ export function LeftPanel({
         )}
         {tab === "autocut" && <AutoCutTab notify={notify} />}
         {tab === "templates" && <TemplatesTab />}
-        {tab === "text" && <TextTab />}
+        {tab === "text" && <TextTab onAdd={onAddText} />}
         {tab === "captions" && <CaptionsTab />}
         {tab === "audio" && <AudioTab />}
       </aside>
@@ -224,37 +227,59 @@ function TemplatesTab() {
   );
 }
 
-function TextTab() {
-  const presets = [
-    { label: "Add a title", cls: "text-preset--title" },
-    { label: "Add a subtitle", cls: "text-preset--subtitle" },
-    { label: "Add body text", cls: "text-preset--body" },
+function TextTab({ onAdd }: { onAdd: (preset: TextStyle["preset"], text: string) => void }) {
+  const presets: { label: string; cls: string; preset: TextStyle["preset"]; text: string }[] = [
+    { label: "Add a title", cls: "text-preset--title", preset: "title", text: "Your big idea" },
+    {
+      label: "Add a subtitle",
+      cls: "text-preset--subtitle",
+      preset: "subtitle",
+      text: "Say it in a few words",
+    },
+    { label: "Add body text", cls: "text-preset--body", preset: "body", text: "Add more detail here" },
+  ];
+  const looks: { label: string; preset: TextStyle["preset"] }[] = [
+    { label: "Bold", preset: "title" },
+    { label: "Outline", preset: "outline" },
+    { label: "Neon", preset: "neon" },
+    { label: "Boxed", preset: "boxed" },
+    { label: "Subtitle", preset: "subtitle" },
+    { label: "Body", preset: "body" },
   ];
   return (
     <div className="panel__body">
       <PanelHead icon="text" title="Text">
-        Add words on screen. Drag them onto the timeline.
+        Add words on screen. They start at the playhead; drag them on the timeline.
       </PanelHead>
       <div className="stack">
         {presets.map((p) => (
-          <button key={p.label} type="button" className={`text-preset ${p.cls}`}>
+          <button
+            key={p.label}
+            type="button"
+            className={`text-preset ${p.cls}`}
+            onClick={() => onAdd(p.preset, p.text)}
+          >
             {p.label}
           </button>
         ))}
       </div>
-      <h3 className="section-label">Styles</h3>
+      <h3 className="section-label">Looks</h3>
       <div className="style-grid">
-        {["Bold", "Outline", "Neon", "Boxed", "Serif", "Mono"].map((s) => (
-          <button key={s} type="button" className={`style-tile style-tile--${s.toLowerCase()}`}>
+        {looks.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            className={`style-tile text-look--${s.preset}`}
+            onClick={() => onAdd(s.preset, s.label)}
+          >
             Aa
-            <span>{s}</span>
+            <span>{s.label}</span>
           </button>
         ))}
       </div>
     </div>
   );
 }
-
 function CaptionsTab() {
   const [style, setStyle] = useState("Bold");
   return (

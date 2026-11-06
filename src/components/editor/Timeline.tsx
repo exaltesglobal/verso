@@ -1,21 +1,37 @@
-import { useMemo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Icon, type IconName } from "../Icon";
 import { IconButton } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
+import { useWaveform } from "../../lib/waveform";
 import { formatDuration } from "../../lib/media";
-import { MIN_TIMELINE_SECONDS, type Clip, type Project, type TrackKind } from "../../lib/project";
+import {
+  linkedIds,
+  MIN_TIMELINE_SECONDS,
+  snapPoints,
+  type Clip,
+  type Project,
+  type TrackKind,
+} from "../../lib/project";
 
 /** Width the timeline aims to fill at zoom 1, so short and long projects both fit. */
 const FIT_WIDTH = 1100;
 const MAX_PX_PER_SEC = 34;
 const GUTTER = 12;
+const EDGE_PX = 8;
+const SNAP_PX = 8;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
   video: "play",
-  audio: "music",
+  audio: "volume",
+  music: "music",
 };
 const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
+
+export type TimelineEdit =
+  | { type: "move"; id: string; delta: number }
+  | { type: "trim"; id: string; edge: "start" | "end"; time: number }
+  | { type: "end" };
 
 interface TimelineProps {
   project: Project;
@@ -26,19 +42,14 @@ interface TimelineProps {
   onZoom: (z: number) => void;
   selectedClip: string;
   onSelectClip: (id: string) => void;
+  onEdit: (e: TimelineEdit) => void;
+  onSplit: () => void;
+  onDelete: () => void;
 }
 
-export function Timeline({
-  project,
-  duration,
-  time,
-  onSeek,
-  zoom,
-  onZoom,
-  selectedClip,
-  onSelectClip,
-}: TimelineProps) {
-  const viewSeconds = Math.max(MIN_TIMELINE_SECONDS, duration * 1.08 + 2);
+export function Timeline(props: TimelineProps) {
+  const { project, duration, time, onSeek, zoom, onZoom, selectedClip, onSelectClip, onEdit } = props;
+  const viewSeconds = Math.max(MIN_TIMELINE_SECONDS, duration * 1.15 + 4);
   const pps = Math.min(MAX_PX_PER_SEC, FIT_WIDTH / viewSeconds) * zoom;
   const width = viewSeconds * pps + GUTTER * 2;
 
@@ -53,22 +64,43 @@ export function Timeline({
 
   const seekFromPointer = (e: ReactPointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const t = (e.clientX - rect.left) / pps;
-    onSeek(Math.min(duration, Math.max(0, t)));
+    onSeek(Math.min(duration, Math.max(0, (e.clientX - rect.left) / pps)));
+  };
+
+  /** Snaps `t` to a nearby clip edge or the playhead. */
+  const snapper = (exclude: Set<string>) => {
+    const pts = snapPoints(project, exclude, time);
+    const tol = SNAP_PX / pps;
+    return (t: number) => {
+      let best = t;
+      let dist = tol;
+      for (const p of pts) {
+        const d = Math.abs(p - t);
+        if (d < dist) {
+          dist = d;
+          best = p;
+        }
+      }
+      return best;
+    };
   };
 
   const empty = duration === 0;
+  const rows = `32px repeat(${project.tracks.length}, minmax(40px, 1fr))`;
 
   return (
     <section className="timeline" aria-label="Timeline">
       <div className="timeline__toolbar">
         <div className="timeline__tools">
-          <IconButton icon="split" label="Split at playhead (S)" />
-          <IconButton icon="trim" label="Trim" />
-          <IconButton icon="delete" label="Delete" />
+          <IconButton icon="split" label="Split at playhead (S)" onClick={props.onSplit} disabled={empty} />
+          <IconButton
+            icon="delete"
+            label="Delete clip (Delete)"
+            onClick={props.onDelete}
+            disabled={!selectedClip}
+          />
           <span className="timeline__sep" />
-          <IconButton icon="transitions" label="Add transition" />
-          <IconButton icon="layers" label="Layers" />
+          <span className="timeline__hint">Drag clips to move them. Drag their edges to trim.</span>
         </div>
         <div className="timeline__zoom">
           <button
@@ -101,7 +133,7 @@ export function Timeline({
       </div>
 
       <div className="timeline__body">
-        <div className="timeline__labels">
+        <div className="timeline__labels" style={{ gridTemplateRows: rows }}>
           <div className="timeline__label-spacer" />
           {project.tracks.map((t) => (
             <div key={t.kind} className="track-label">
@@ -112,7 +144,7 @@ export function Timeline({
         </div>
 
         <div className="timeline__scroll">
-          <div className="timeline__content" style={{ width }}>
+          <div className="timeline__content" style={{ width, gridTemplateRows: rows }}>
             <div
               className="ruler"
               onPointerDown={(e) => {
@@ -138,7 +170,13 @@ export function Timeline({
             </div>
 
             {project.tracks.map((t) => (
-              <div key={t.kind} className={`track track--${t.kind}`}>
+              <div
+                key={t.kind}
+                className={`track track--${t.kind}`}
+                onPointerDown={(e) => {
+                  if (e.target === e.currentTarget) onSelectClip("");
+                }}
+              >
                 {t.clips.map((c) => (
                   <ClipView
                     key={c.id}
@@ -147,6 +185,8 @@ export function Timeline({
                     pps={pps}
                     selected={c.id === selectedClip}
                     onSelect={() => onSelectClip(c.id)}
+                    onEdit={onEdit}
+                    makeSnapper={() => snapper(linkedIds(project, c.id))}
                   />
                 ))}
                 {empty && t.kind === "video" && (
@@ -180,30 +220,104 @@ interface ClipViewProps {
   pps: number;
   selected: boolean;
   onSelect: () => void;
+  onEdit: (e: TimelineEdit) => void;
+  makeSnapper: () => (t: number) => number;
 }
 
-function ClipView({ clip: c, kind, pps, selected, onSelect }: ClipViewProps) {
+type Drag = {
+  mode: "move" | "start" | "end";
+  x0: number;
+  start0: number;
+  end0: number;
+  applied: number;
+  moved: boolean;
+  snap: (t: number) => number;
+};
+
+function ClipView({ clip: c, kind, pps, selected, onSelect, onEdit, makeSnapper }: ClipViewProps) {
+  const drag = useRef<Drag | null>(null);
   const widthPx = Math.max(18, (c.end - c.start) * pps - 4);
   const colour = c.variant === "effect" ? "effects" : kind;
   const hasFilmstrip = kind === "video" && !!c.source?.hasVideo;
+  const hasWave = (kind === "audio" || kind === "music") && !!c.source;
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    onSelect();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const mode = x < EDGE_PX ? "start" : x > rect.width - EDGE_PX ? "end" : "move";
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = {
+      mode,
+      x0: e.clientX,
+      start0: c.start,
+      end0: c.end,
+      applied: 0,
+      moved: false,
+      snap: makeSnapper(),
+    };
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x0;
+    if (!d.moved && Math.abs(dx) < 3) return;
+    d.moved = true;
+    const dt = dx / pps;
+    if (d.mode === "move") {
+      // Snap whichever edge is closer to a snap point.
+      let start = d.start0 + dt;
+      const len = d.end0 - d.start0;
+      const s1 = d.snap(start);
+      const s2 = d.snap(start + len) - len;
+      start = Math.abs(s1 - start) <= Math.abs(s2 - start) ? s1 : s2;
+      const target = Math.max(0, start) - d.start0;
+      onEdit({ type: "move", id: c.id, delta: target - d.applied });
+      d.applied = target;
+    } else {
+      const edgeTime = d.snap((d.mode === "start" ? d.start0 : d.end0) + dt);
+      onEdit({ type: "trim", id: c.id, edge: d.mode, time: edgeTime });
+    }
+  };
+
+  const onPointerUp = () => {
+    if (drag.current?.moved) onEdit({ type: "end" });
+    drag.current = null;
+  };
+
   return (
     <button
       type="button"
-      className={["clip", `clip--${colour}`, hasFilmstrip && "has-filmstrip", selected && "is-selected"]
+      className={[
+        "clip",
+        `clip--${colour}`,
+        hasFilmstrip && "has-filmstrip",
+        c.transitionIn && "has-transition",
+        selected && "is-selected",
+      ]
         .filter(Boolean)
         .join(" ")}
       style={{ left: c.start * pps, width: widthPx }}
-      onClick={onSelect}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
       aria-pressed={selected}
-      title={c.source ? `${c.label} · ${formatDuration(c.end - c.start)}` : c.label}
+      title={`${c.text ?? c.label} · ${formatDuration(c.end - c.start)}`}
     >
       {hasFilmstrip && <Filmstrip clip={c} pps={pps} widthPx={widthPx} />}
-      {kind === "audio" && <Waveform />}
+      {hasWave && <Waveform clip={c} />}
+      {(kind === "audio" || kind === "music") && !c.source && <FakeWave />}
+      {c.transitionIn && <span className="clip__transition" title={`${c.transitionIn.kind} in`} />}
       {c.variant === "effect" ? (
         <Icon name="transitions" size={16} />
       ) : (
-        <span className="clip__label">{c.label}</span>
+        <span className="clip__label">{c.text ?? c.label}</span>
       )}
+      <span className="clip__handle clip__handle--start" aria-hidden="true" />
+      <span className="clip__handle clip__handle--end" aria-hidden="true" />
     </button>
   );
 }
@@ -215,7 +329,7 @@ function Filmstrip({ clip, pps, widthPx }: { clip: Clip; pps: number; widthPx: n
   if (!source) return null;
   const aspect = source.width && source.height ? source.width / source.height : 16 / 9;
   const tileW = Math.max(24, Math.round(40 * aspect)); // clip content is about 40px tall
-  const count = Math.max(1, Math.ceil(widthPx / tileW));
+  const count = Math.min(400, Math.max(1, Math.ceil(widthPx / tileW)));
   if (!frames.length) return <span className="filmstrip is-loading" aria-hidden="true" />;
   return (
     <span className="filmstrip" aria-hidden="true">
@@ -235,8 +349,34 @@ function Filmstrip({ clip, pps, widthPx }: { clip: Clip; pps: number; widthPx: n
   );
 }
 
-/** Placeholder waveform until real audio peaks land (next Phase 2 step). */
-function Waveform() {
+/** Real audio peaks for the visible part of the file. */
+function Waveform({ clip }: { clip: Clip }) {
+  const peaks = useWaveform(clip.source);
+  const source = clip.source;
+  if (!source || !peaks.length) return <FakeWave />;
+  const per = peaks.length / Math.max(0.001, source.durationSec);
+  const from = Math.floor((clip.inPoint ?? 0) * per);
+  const to = Math.min(peaks.length, Math.ceil(((clip.inPoint ?? 0) + clip.end - clip.start) * per));
+  const slice = peaks.slice(from, Math.max(from + 1, to));
+  const step = Math.max(1, Math.floor(slice.length / 600));
+  const bars: number[] = [];
+  for (let i = 0; i < slice.length; i += step) {
+    let m = 0;
+    for (let j = i; j < Math.min(slice.length, i + step); j++) m = Math.max(m, slice[j]);
+    bars.push(m);
+  }
+  return (
+    <svg className="waveform" viewBox={`0 0 ${bars.length} 1`} preserveAspectRatio="none" aria-hidden="true">
+      {bars.map((h, i) => {
+        const v = Math.max(0.04, Math.min(1, h * (clip.volume ?? 1)));
+        return <rect key={i} x={i + 0.15} y={(1 - v) / 2} width={0.7} height={v} />;
+      })}
+    </svg>
+  );
+}
+
+/** Placeholder waveform for sample clips without a real file. */
+function FakeWave() {
   const bars = useMemo(
     () =>
       Array.from({ length: 220 }, (_, i) => {

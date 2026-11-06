@@ -3,6 +3,9 @@ import { Icon, type IconName } from "../components/Icon";
 import { AgapeCredit } from "../components/AgapeCredit";
 import { IconButton } from "../components/ui";
 import { recentProjects } from "../data/placeholder";
+import { useFilmstrip } from "../lib/filmstrip";
+import { formatDuration } from "../lib/media";
+import { timeAgo, type ProjectSummary } from "../lib/persist";
 
 interface WelcomeProps {
   importing: boolean;
@@ -11,6 +14,9 @@ interface WelcomeProps {
   onMakeClips: () => void;
   onOpenSample: () => void;
   onAbout: () => void;
+  recents: ProjectSummary[];
+  onOpenRecent: (id: string) => void;
+  onOpenFile: () => void;
 }
 
 interface Action {
@@ -29,6 +35,9 @@ export function Welcome({
   onMakeClips,
   onOpenSample,
   onAbout,
+  recents,
+  onOpenRecent,
+  onOpenFile,
 }: WelcomeProps) {
   const actions: Action[] = [
     {
@@ -91,22 +100,29 @@ export function Welcome({
 
         <section className="recent" aria-labelledby="recent-title">
           <div className="recent__head">
-            <h2 id="recent-title">Recent projects</h2>
-            <span className="muted">Sample projects</span>
+            <h2 id="recent-title">{recents.length ? "Recent projects" : "Try a sample"}</h2>
+            <button type="button" className="btn btn--ghost" onClick={onOpenFile}>
+              <Icon name="folder" size={20} />
+              <span>Open a project</span>
+            </button>
           </div>
           <div className="recent__list">
-            {recentProjects.map((p) => (
-              <button key={p.id} type="button" className="recent-card" onClick={onOpenSample}>
-                <span
-                  className="recent-card__thumb"
-                  style={{ background: `linear-gradient(160deg, ${p.tint[0]}, ${p.tint[1]})` }}
-                />
-                <span className="recent-card__text">
-                  <span className="recent-card__name">{p.name}</span>
-                  <span className="recent-card__detail">{p.detail}</span>
-                </span>
-              </button>
+            {recents.slice(0, 6).map((p) => (
+              <RecentCard key={p.id} project={p} onOpen={() => onOpenRecent(p.id)} />
             ))}
+            {!recents.length &&
+              recentProjects.map((p) => (
+                <button key={p.id} type="button" className="recent-card" onClick={onOpenSample}>
+                  <span
+                    className="recent-card__thumb"
+                    style={{ background: `linear-gradient(160deg, ${p.tint[0]}, ${p.tint[1]})` }}
+                  />
+                  <span className="recent-card__text">
+                    <span className="recent-card__name">{p.name}</span>
+                    <span className="recent-card__detail">{p.detail}</span>
+                  </span>
+                </button>
+              ))}
           </div>
         </section>
       </main>
@@ -116,5 +132,21 @@ export function Welcome({
         <AgapeCredit />
       </footer>
     </div>
+  );
+}
+
+function RecentCard({ project: p, onOpen }: { project: ProjectSummary; onOpen: () => void }) {
+  const frames = useFilmstrip(p.coverSource ?? undefined);
+  const cover = frames[Math.floor(frames.length / 2)];
+  return (
+    <button type="button" className="recent-card" onClick={onOpen}>
+      <span className="recent-card__thumb">{cover && <img src={cover} alt="" />}</span>
+      <span className="recent-card__text">
+        <span className="recent-card__name">{p.name}</span>
+        <span className="recent-card__detail">
+          {formatDuration(p.durationSec)} � edited {timeAgo(p.updatedAt)}
+        </span>
+      </span>
+    </button>
   );
 }
