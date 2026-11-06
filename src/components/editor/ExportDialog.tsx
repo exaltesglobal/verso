@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { basename, dirname, join, videoDir } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { Button, Progress } from "../ui";
+import { Button, Progress, Segmented } from "../ui";
+import { HandoffPanel } from "./HandoffPanel";
 import { Modal } from "../Modal";
 import { ProBadge } from "../account/ProBadge";
 import { PublishDialog } from "../publish/PublishDialog";
@@ -17,6 +18,8 @@ import {
   startExport,
   type ExportQuality,
 } from "../../lib/export";
+
+const TABS = ["Video", "Hand off to a pro editor"] as const;
 
 const QUALITIES: { value: ExportQuality; title: string; hint: string }[] = [
   { value: "draft", title: "Quick preview", hint: "Smaller file, made fast. Good for checking your edit." },
@@ -62,6 +65,8 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
   const [publishing, setPublishing] = useState(false);
   const [background, setBackground] = useState(false);
+  const [tab, setTab] = useState<(typeof TABS)[number]>("Video");
+  const handoff = tab === TABS[1];
   const jobId = useRef<string | null>(null);
   const running = phase.step === "running";
 
@@ -172,7 +177,11 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
     );
 
   const footer =
-    phase.step === "setup" ? (
+    phase.step === "setup" && handoff ? (
+      <Button variant="ghost" onClick={onClose}>
+        Close
+      </Button>
+    ) : phase.step === "setup" ? (
       <>
         <Button variant="ghost" onClick={onClose}>
           Cancel
@@ -220,6 +229,12 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
         className="export"
       >
         {phase.step === "setup" && (
+          <Segmented options={TABS} value={tab} onChange={setTab} label="Export as" />
+        )}
+        {phase.step === "setup" && handoff && (
+          <HandoffPanel project={project} notify={notify} onPickVideo={() => setTab("Video")} />
+        )}
+        {phase.step === "setup" && !handoff && (
           <>
             <label className="export__label" htmlFor="export-name">
               File name
