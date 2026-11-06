@@ -27,3 +27,5 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+# FFmpeg sidecars are downloaded by scripts/fetch-ffmpeg.mjs, never committed
+src-tauri/binaries/

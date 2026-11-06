@@ -1,12 +1,15 @@
 //! Media commands: inspect files with ffprobe.
 //!
-//! Phase 1 expects `ffprobe` on PATH. A later phase will bundle FFmpeg as a
-//! Tauri sidecar so end users never have to install it.
+//! Uses the bundled ffprobe sidecar, or ffprobe on PATH in development
+//! (see `crate::tools`).
 
 use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
 use std::path::Path;
-use std::process::Command;
+
+use tauri::Manager;
+
+use crate::tools::{self, Tool};
 
 /// What the UI needs to show a file in the media bin.
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -65,18 +68,6 @@ fn parse_rate(rate: &str) -> Option<f64> {
         return None;
     }
     Some((num / den * 1000.0).round() / 1000.0)
-}
-
-fn ffprobe() -> Command {
-    #[allow(unused_mut)]
-    let mut cmd = Command::new("ffprobe");
-    #[cfg(windows)]
-    {
-        // CREATE_NO_WINDOW: don't flash a console window on every probe.
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000);
-    }
-    cmd
 }
 
 /// Turn raw ffprobe JSON into [`MediaInfo`]. Split out so it can be unit tested
@@ -145,7 +136,7 @@ pub fn probe(path: &str) -> Result<MediaInfo, String> {
         return Err("We couldn't find that file. It may have been moved or deleted.".into());
     }
 
-    let output = ffprobe()
+    let output = tools::command(Tool::Ffprobe)
         .args([
             "-v",
             "error",
@@ -157,10 +148,7 @@ pub fn probe(path: &str) -> Result<MediaInfo, String> {
         .arg(p)
         .output()
         .map_err(|e| match e.kind() {
-            ErrorKind::NotFound => {
-                "Verso needs FFmpeg to read videos, and we couldn't find it on this computer."
-                    .to_string()
-            }
+            ErrorKind::NotFound => tools::missing_message(),
             _ => format!("We couldn't open the file reader ({e})."),
         })?;
 
@@ -180,11 +168,18 @@ pub fn probe(path: &str) -> Result<MediaInfo, String> {
 }
 
 /// `invoke("probe_media", { path })` from the frontend.
+///
+/// On success the file is also allowed on the asset protocol, so the preview
+/// can play it with `convertFileSrc()`. Nothing else on disk is exposed.
 #[tauri::command]
-pub async fn probe_media(path: String) -> Result<MediaInfo, String> {
-    tauri::async_runtime::spawn_blocking(move || probe(&path))
+pub async fn probe_media(app: tauri::AppHandle, path: String) -> Result<MediaInfo, String> {
+    let info = tauri::async_runtime::spawn_blocking(move || probe(&path))
         .await
-        .map_err(|e| format!("Something went wrong while reading the file ({e})."))?
+        .map_err(|e| format!("Something went wrong while reading the file ({e})."))??;
+    app.asset_protocol_scope()
+        .allow_file(&info.path)
+        .map_err(|e| format!("We couldn't open that file for preview ({e})."))?;
+    Ok(info)
 }
 
 #[cfg(test)]

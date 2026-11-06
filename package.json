@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "fmt:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml"
+    "fmt:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
+    "build:app": "node scripts/fetch-ffmpeg.mjs \u0026\u0026 tauri build --config src-tauri/tauri.sidecar.conf.json"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

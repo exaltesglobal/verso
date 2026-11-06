@@ -20,7 +20,7 @@ turns them vertical, and finishes them in one click.
 | Backend  | Rust (stable, MSVC toolchain on Windows)                |
 | Frontend | React 19 + TypeScript + Vite                            |
 | Styling  | Plain CSS on the Verso design tokens (brand kit)        |
-| Media    | FFmpeg / ffprobe (on PATH for now, sidecar later)       |
+| Media    | FFmpeg 9.0 LGPL build, bundled as Tauri sidecars        |
 | Package  | pnpm                                                    |
 
 ## Dev setup
@@ -32,7 +32,7 @@ Prerequisites:
 3. **Windows:** Visual Studio Build Tools with the "Desktop development with C++" workload, plus the
    WebView2 runtime (preinstalled on Windows 11).
    **macOS:** Xcode Command Line Tools (`xcode-select --install`).
-4. **FFmpeg** with `ffprobe` on your PATH (Windows: `winget install Gyan.FFmpeg`, macOS: `brew install ffmpeg`).
+4. **FFmpeg sidecars:** run `pnpm fetch:ffmpeg` once. It downloads the LGPL build into `src-tauri/binaries/` (see [FFmpeg and licensing](#ffmpeg-and-licensing)). Until then, dev builds fall back to `ffmpeg`/`ffprobe` on your PATH.
 
 Then:
 
@@ -45,16 +45,18 @@ The first run compiles the Rust side and takes a few minutes. Later runs are fas
 
 ## Scripts
 
-| Command            | What it does                                     |
-| ------------------ | ------------------------------------------------ |
-| `pnpm tauri dev`   | Run the desktop app with hot reload              |
-| `pnpm tauri build` | Build installers (`.msi`/`.exe`, `.dmg` on Mac)  |
-| `pnpm dev`         | Run only the web UI in a browser (no Rust calls) |
-| `pnpm typecheck`   | TypeScript check                                 |
-| `pnpm lint`        | ESLint                                           |
-| `pnpm format`      | Prettier (write)                                 |
-| `pnpm test:rust`   | Rust unit tests                                  |
-| `pnpm fmt:rust`    | rustfmt                                          |
+| Command             | What it does                                     |
+| ------------------- | ------------------------------------------------ |
+| `pnpm tauri dev`    | Run the desktop app with hot reload              |
+| `pnpm tauri build`  | Build installers (`.msi`/`.exe`, `.dmg` on Mac)  |
+| `pnpm dev`          | Run only the web UI in a browser (no Rust calls) |
+| `pnpm typecheck`    | TypeScript check                                 |
+| `pnpm lint`         | ESLint                                           |
+| `pnpm format`       | Prettier (write)                                 |
+| `pnpm test:rust`    | Rust unit tests                                  |
+| `pnpm fmt:rust`     | rustfmt                                          |
+| `pnpm fetch:ffmpeg` | Download the LGPL FFmpeg sidecars (once)         |
+| `pnpm build:app`    | Fetch sidecars, then build installers with them  |
 
 ## Architecture
 
@@ -81,7 +83,10 @@ verso/
 │  ├─ src/lib.rs              Builder: plugins (dialog, opener) + command registry
 │  ├─ src/commands/
 │  │  ├─ mod.rs               One module per area
-│  │  └─ media.rs             probe_media: runs ffprobe, returns MediaInfo JSON
+│  │  ├─ media.rs             probe_media: runs ffprobe, returns MediaInfo JSON
+│  │  └─ thumbnails.rs        media_filmstrip: cached frames for the media bin and timeline
+│  ├─ src/tools.rs            Finds the FFmpeg sidecar (falls back to PATH in dev)
+│  ├─ binaries/               FFmpeg sidecars from `pnpm fetch:ffmpeg` (git-ignored)
 │  ├─ capabilities/           Tauri permissions (core, dialog, opener)
 │  ├─ icons/                  App icons from the brand kit
 │  └─ tauri.conf.json         Window, bundle and identifier config
@@ -107,10 +112,39 @@ Error messages from Rust are written in plain language and shown directly in a t
 - Icons come from `03-Iconography` and take the colour of their text.
 - Plain language, sentence case, verbs on buttons. Undo everything; never touch the original file.
 
+## FFmpeg and licensing
+
+Verso uses FFmpeg to read, preview and (later) export video. FFmpeg runs as a separate program (a Tauri
+**sidecar**); it is never linked into Verso's own code.
+
+- **Build:** [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds), release branch **n9.0**, **LGPL**
+  variant (`ffmpeg-n9.0-latest-win64-lgpl-9.0.zip`).
+- **Why LGPL, not GPL:** the "full"/GPL builds include GPL-only encoders (x264, x265 and others). Shipping
+  them would put Verso itself under GPL obligations. The LGPL build lets Verso stay closed source and
+  freemium, as long as we:
+  1. ship FFmpeg as its own replaceable executable (the sidecar does this),
+  2. include the FFmpeg licence text (`licenses/FFMPEG-LICENSE.txt` in the installer), and
+  3. credit FFmpeg and point to its source code (planned for the About panel).
+- **H.264 export:** the LGPL build has no x264. Export (a later phase) will use hardware encoders (NVENC,
+  Quick Sync, AMF, and VideoToolbox on Mac), which the LGPL build includes. Check H.264/HEVC patent
+  licensing separately before a paid launch.
+- **Download step:** `pnpm fetch:ffmpeg` (`scripts/fetch-ffmpeg.mjs`) downloads the archive, verifies it
+  against the release's `checksums.sha256`, and installs `ffmpeg-<target-triple>.exe` and
+  `ffprobe-<target-triple>.exe` in `src-tauri/binaries/`. That folder is git-ignored, so binaries are never
+  committed.
+- **Release builds:** `pnpm build:app` fetches the sidecars, then runs `tauri build` with
+  `src-tauri/tauri.sidecar.conf.json`, which adds them as `externalBin` and bundles the licence.
+- **macOS:** BtbN has no Mac builds. Before the Mac release, build FFmpeg with `--disable-gpl` (and without
+  `--enable-nonfree`), then place `ffmpeg-<mac-triple>` and `ffprobe-<mac-triple>` in `src-tauri/binaries/`.
+
+At runtime, `src-tauri/src/tools.rs` looks for the sidecar next to the Verso executable first, then falls
+back to PATH (development only).
+
 ## Roadmap
 
-1. **Foundation** (this phase): shell, design system, Rust command pipeline.
-2. Media engine: real preview playback, thumbnails, waveform, timeline editing, FFmpeg sidecar.
+1. **Foundation** (done): shell, design system, Rust command pipeline.
+2. Media engine (in progress): FFmpeg sidecar, real thumbnails and filmstrips, real clips on the timeline,
+   preview playback, waveforms, timeline editing.
 3. Auto-cut and reframe: find moments in long videos, follow the speaker, 9:16 cutout.
 4. Captions, templates and one-click edits.
 5. Export, freemium licensing, auto-update, macOS build and signing.
