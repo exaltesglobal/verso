@@ -36,12 +36,15 @@ export interface Look {
   grain?: number;
   /** 0..1 edge darkening. */
   vignette?: number;
-  letterbox?: "2.39" | "1.85" | null;
-  leak?: { style: "warm" | "rose" | "cool" | "gold"; strength: number };
+  letterbox?: "2.39" | "2.00" | "1.85" | null;
+  /** `at`: timeline seconds of short leak flashes (~1 s each); omitted = a slow continuous drift. */
+  leak?: { style: "warm" | "rose" | "cool" | "gold"; strength: number; at?: number[] };
   /** Anamorphic streak; `color` is #RRGGBB. */
   flare?: { strength: number; color: string };
   /** Colour grade preset id (see GRADES in lib/looks.ts). */
   grade?: string;
+  /** Grade strength, 0..1.5 (default 1). */
+  gradeAmount?: number;
   /** Seconds of dip-to-black at the very start and end. */
   dip?: number;
 }
@@ -87,7 +90,7 @@ export interface Clip {
   /** Music: "Cut to the beat" is on for this clip. */
   beatSync?: boolean;
   /** Video: template motion. `push` = slow push-in, extra zoom reached by the clip end (0.08 = 8%). */
-  fx?: { push?: number };
+  fx?: { push?: number; ramp?: { t: number; speed: number }[] };
 }
 
 export interface Track {

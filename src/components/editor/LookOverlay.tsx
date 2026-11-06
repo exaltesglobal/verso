@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { LEAK_COLORS, dipAmount, letterboxBar } from "../../lib/looks";
+import { LEAK_COLORS, dipAmount, leakOpacity, letterboxBar } from "../../lib/looks";
 import type { AspectRatio, Look } from "../../lib/project";
 
 // Film grain tile: SVG fractal noise, no image files.
@@ -41,7 +41,7 @@ export function LookOverlay({
               "--l1": LEAK_COLORS[look.leak.style][0],
               "--l2": LEAK_COLORS[look.leak.style][1],
               "--lx": `${(0.5 + 0.4 * Math.sin((TAU * time) / 7)) * 100}%`,
-              opacity: look.leak.strength * (0.55 + 0.45 * Math.sin((TAU * time) / 5)),
+              opacity: leakOpacity(look.leak, time),
             } as CSSProperties
           }
         />

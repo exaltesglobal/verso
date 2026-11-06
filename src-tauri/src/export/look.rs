@@ -12,6 +12,9 @@ pub struct Leak {
     /// "warm" | "rose" | "cool" | "gold".
     pub style: String,
     pub strength: f64,
+    /// Timeline seconds of short flashes; empty = slow continuous drift.
+    #[serde(default)]
+    pub at: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -69,11 +72,20 @@ fn leak_colors(style: &str) -> (&'static str, &'static str) {
 pub fn letterbox_bar(ratio: Option<&str>, aspect: Aspect) -> f64 {
     let r: f64 = match ratio {
         Some("2.39") => 2.39,
+        Some("2.00") => 2.0,
         Some("1.85") => 1.85,
         _ => return 0.0,
     };
     let a: f64 = match aspect {
-        Aspect::Vertical => return if r > 2.0 { 0.12 } else { 0.08 },
+        Aspect::Vertical => {
+            return if r > 2.1 {
+                0.12
+            } else if r > 1.9 {
+                0.1
+            } else {
+                0.08
+            };
+        }
         Aspect::Square => 1.0,
         Aspect::Wide => 16.0 / 9.0,
     };
@@ -130,7 +142,17 @@ pub fn light_layers(
         let (c1, c2) = (rgb(c1), rgb(c2));
         // Same curves as LookOverlay: centre drifts on a 7 s cycle, brightness on 5 s.
         let lx = "(0.5+0.4*sin(2*PI*T/7))";
-        let amp = format!("{}*(0.55+0.45*sin(2*PI*T/5))", num(l.strength));
+        // Flashes: ~1 s bells at the given times (mirrors leakOpacity in looks.ts).
+        let amp = if l.at.is_empty() {
+            format!("{}*(0.55+0.45*sin(2*PI*T/5))", num(l.strength))
+        } else {
+            let bells: Vec<String> = l.at.iter().map(|a| format!("exp(-pow((T-{})/0.35,2))", num(*a))).collect();
+            let mut env = bells[0].clone();
+            for b in &bells[1..] {
+                env = format!("max({env},{b})");
+            }
+            format!("{}*{env}", num(l.strength))
+        };
         let b1 = format!("exp(-(pow(X/W-{lx},2)/0.045+pow(Y/H-0.3,2)/0.09))");
         let b2 = format!("0.6*exp(-(pow(X/W-1+{lx},2)/0.025+pow(Y/H-0.75,2)/0.045))");
         for (i, (a, bb)) in [(c1.0, c2.0), (c1.1, c2.1), (c1.2, c2.2)].into_iter().enumerate() {
@@ -295,7 +317,7 @@ mod tests {
     fn light_layers_only_when_needed() {
         assert!(light_layers(&Look::default(), 1080, 1920, 30, 10.0, "o1", "lk").is_none());
         let look = Look {
-            leak: Some(Leak { style: "warm".into(), strength: 0.4 }),
+            leak: Some(Leak { style: "warm".into(), strength: 0.4, at: vec![1.0, 4.0] }),
             ..Default::default()
         };
         let g = light_layers(&look, 1080, 1920, 30, 10.0, "o1", "lk").unwrap();

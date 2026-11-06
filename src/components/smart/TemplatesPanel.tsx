@@ -13,7 +13,9 @@ import {
   TEMPLATES,
   applyTemplate,
   swapSlotMedia,
+  templateLangs,
   type Template,
+  type TemplateLang,
   type TemplateSlot,
 } from "../../templates";
 import type { PackId } from "../../templates/types";
@@ -26,6 +28,15 @@ export interface TemplatesPanelProps {
   /** Applies the filled template as one undoable change and shows `message`. */
   onApply: (next: Project, message: string) => void;
 }
+
+const LANG_NAMES: Record<TemplateLang, string> = {
+  en: "English",
+  hi: "हिंदी",
+  ta: "தமிழ்",
+  ml: "മലയാളം",
+  bn: "বাংলা",
+  mr: "मराठी",
+};
 
 const matches = (t: Template, q: string) =>
   !q || `${t.name} ${t.blurb} ${t.musicMood} ${t.pack}`.toLowerCase().includes(q);
@@ -47,9 +58,9 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
         media={media.filter((m) => m.hasVideo)}
         dropError={dropError}
         onBack={() => setPicked(null)}
-        onUse={(chosen) => {
+        onUse={(chosen, lang) => {
           onApply(
-            applyTemplate(picked, chosen, project),
+            applyTemplate(picked, chosen, project, lang),
             `"${picked.name}" is ready. Drag a clip onto a slot to change it.`,
           );
           setPicked(null);
@@ -60,7 +71,10 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
 
   const q = query.trim().toLowerCase();
   const shown = TEMPLATES.filter((t) => (pack === "all" || t.pack === pack) && matches(t, q));
-  const slotted = project?.tracks.find((t) => t.kind === "video")?.clips.filter((c) => c.slotId) ?? [];
+  // One row per slot (split layouts put several pieces of one slot on the track).
+  const slotted = (project?.tracks.find((t) => t.kind === "video")?.clips ?? []).filter(
+    (c, i, all) => c.slotId && all.findIndex((x) => x.slotId === c.slotId) === i,
+  );
   return (
     <div className="panel__body">
       <div className="panel__head">
@@ -257,8 +271,10 @@ function SlotFiller({
   media: MediaInfo[];
   dropError: string;
   onBack: () => void;
-  onUse: (chosen: MediaInfo[]) => void;
+  onUse: (chosen: MediaInfo[], lang: TemplateLang) => void;
 }) {
+  const langs = templateLangs(t);
+  const [lang, setLang] = useState<TemplateLang>("en");
   const [chosen, setChosen] = useState<(MediaInfo | undefined)[]>(() =>
     t.slots.map((_, i) => (media.length ? media[i % media.length] : undefined)),
   );
@@ -277,7 +293,25 @@ function SlotFiller({
         <p className="panel__lede">
           {t.blurb} Music idea: {t.musicMood.toLowerCase()}.
         </p>
+        {t.layout && (
+          <p className="tpl-swap__hint">Made for a split screen: for now your clips take turns on screen.</p>
+        )}
       </div>
+      {langs.length > 1 && (
+        <div className="chips" role="group" aria-label="Text language">
+          {langs.map((l) => (
+            <button
+              key={l}
+              type="button"
+              className={l === lang ? "chip is-active" : "chip"}
+              aria-pressed={l === lang}
+              onClick={() => setLang(l)}
+            >
+              {LANG_NAMES[l]}
+            </button>
+          ))}
+        </div>
+      )}
       {media.length > 0 ? (
         <ClipTray media={media} />
       ) : (
@@ -304,7 +338,7 @@ function SlotFiller({
         size="lg"
         className="btn--block"
         disabled={filled.length === 0}
-        onClick={() => onUse(filled)}
+        onClick={() => onUse(filled, lang)}
       >
         Make my reel
       </Button>

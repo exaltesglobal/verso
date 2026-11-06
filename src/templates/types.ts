@@ -23,6 +23,16 @@ export interface TemplateSlot {
   speed?: number;
   /** Punch-in zooms, seconds from the slot start (on the beat). */
   punch?: number[];
+  /** Punch-in scale (default 1.12). */
+  punchZoom?: number;
+  /** Speed curve: speed (1 = normal) at seconds from the slot start. */
+  ramp?: { t: number; speed: number }[];
+  /** Prayer or ritual footage: no punch-ins, ramps or stickers. */
+  sacred?: boolean;
+  /** Split layouts: which panel this slot belongs to. */
+  region?: "top" | "middle" | "bottom";
+  /** Split layouts: timeline pieces this slot shows (cuts alternate between panels). */
+  segments?: [number, number][];
 }
 
 export interface TemplateText {
@@ -39,7 +49,15 @@ export interface TemplateText {
   color?: string;
   animation?: TextStyle["animation"];
   font?: TextStyle["font"];
+  align?: TextStyle["align"];
+  /** Hindi / Hinglish copy, used when the user picks Hindi. */
+  hi?: string;
+  /** Regional copy (Tamil, Malayalam, Bengali, Marathi). */
+  regional?: Partial<Record<RegionalLang, string>>;
 }
+
+export type RegionalLang = "ta" | "ml" | "bn" | "mr";
+export type TemplateLang = "en" | "hi" | RegionalLang;
 
 export interface Template {
   id: string;
@@ -63,6 +81,8 @@ export interface Template {
   look?: Look;
   /** Shows a "New" badge on the card. */
   isNew?: boolean;
+  /** Designed for a split screen; until the canvas supports panels, panels take turns. */
+  layout?: "split-v" | "split-h" | "triptych-v" | "pip";
 }
 
 export interface TemplatePack {
