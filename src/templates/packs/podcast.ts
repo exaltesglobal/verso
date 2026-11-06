@@ -35,6 +35,17 @@ const clipChapters = seq("cc", [
   [5, "Where to listen", { kind: "photo", transition: { kind: "fade", duration: 0.3 } }],
 ]);
 
+const hotTake = seq("ht", [
+  [12, "Your hot take, in one go", { crop: { x: 0.5, y: 0.42 }, punch: [0.2, 6] }],
+  [3, "Guest reacts", { crop: { x: 0.5, y: 0.42, zoom: 1.1 }, transition: { kind: "fade", duration: 0.2 } }],
+]);
+
+const guestIntro = seq("gi", [
+  [3, "Guest's best moment", { crop: { x: 0.5, y: 0.4, zoom: 1.1 } }],
+  [4, "Who they are", { kind: "photo", push: 0.06, transition: { kind: "dissolve", duration: 0.3 } }],
+  [6, "Why you'll want to listen", { crop: { x: 0.5, y: 0.42 }, transition: { kind: "slide", duration: 0.25 } }],
+]);
+
 export const podcastPack: TemplatePack = {
   id: "podcast",
   name: "Podcast highlights",
@@ -113,6 +124,41 @@ export const podcastPack: TemplatePack = {
       musicMood: "Bright, steady",
       accents: ["#2FD4A3", "#0F2A22"],
       pro: true,
+    },
+    {
+      id: "podcast-hot-take",
+      name: "Hot take",
+      pack: "podcast",
+      blurb: "One strong opinion with big captions and two punch-ins.",
+      aspect: "9:16",
+      duration: total(hotTake),
+      slots: hotTake,
+      texts: [
+        { id: "ht-t1", text: "Unpopular opinion", start: 0, end: 2.5, preset: "boxed", y: 0.14, size: 0.04, animation: "bounce" },
+      ],
+      captionStyle: "karaoke",
+      musicMood: "Low, tense pad",
+      accents: ["#FF6B3D", "#2A0E05"],
+      isNew: true,
+    },
+    {
+      id: "podcast-guest-intro",
+      name: "Guest intro card",
+      pack: "podcast",
+      blurb: "Tease the guest, a name card, then why it matters.",
+      aspect: "9:16",
+      duration: total(guestIntro),
+      slots: guestIntro,
+      texts: [
+        { id: "gi-t1", text: "This week's guest", start: 3, end: 7, preset: "body", y: 0.7, animation: "slide-up" },
+        { id: "gi-t2", text: "Dr. Meera Iyer", start: 3.3, end: 7, preset: "title", y: 0.78, font: "serif", animation: "blur-in" },
+        { id: "gi-t3", text: "Full episode · link in bio", start: 10, end: 13, preset: "boxed", y: 0.16, size: 0.032, animation: "pop" },
+      ],
+      captionStyle: "clean",
+      musicMood: "Warm lo-fi",
+      accents: ["#9DB4FF", "#0E1430"],
+      look: { vignette: 0.3 },
+      isNew: true,
     },
   ] satisfies Template[],
 };

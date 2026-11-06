@@ -1,14 +1,25 @@
 // Template packs plus the transforms that turn a template into a project.
+import { withGrade } from "../lib/looks";
 import type { MediaInfo } from "../lib/media";
 import { emptyProject, uid, type Clip, type Project, type TrackKind } from "../lib/project";
 import { creatorPack } from "./packs/creator";
 import { festivePack } from "./packs/festive";
+import { businessPack } from "./packs/business";
+import { cinematicPack } from "./packs/cinematic";
 import { podcastPack } from "./packs/podcast";
+import { trendingPack } from "./packs/trending";
 import type { Template, TemplatePack, TemplateSlot } from "./types";
 
 export type { Template, TemplatePack, TemplateSlot } from "./types";
 
-export const TEMPLATE_PACKS: TemplatePack[] = [podcastPack, creatorPack, festivePack];
+export const TEMPLATE_PACKS: TemplatePack[] = [
+  trendingPack,
+  cinematicPack,
+  podcastPack,
+  creatorPack,
+  festivePack,
+  businessPack,
+];
 export const TEMPLATES: Template[] = TEMPLATE_PACKS.flatMap((p) => p.templates);
 
 const stripExtension = (name: string) => name.replace(/\.[^.]+$/, "");
@@ -28,6 +39,9 @@ function slotClips(
     slotId: slot.id,
     zoom: slot.crop?.zoom,
     transitionIn: slot.transition,
+    fx: slot.push ? { push: slot.push } : undefined,
+    speed: slot.speed,
+    zoomKeys: slot.punch?.map((t) => ({ t, zoom: 1.12 })),
   };
   if (!m) return { video: base };
   const linkId = m.hasAudio ? uid("l") : undefined;
@@ -73,7 +87,7 @@ export function applyTemplate(template: Template, media: MediaInfo[], project?: 
       cursor.set(m.path, inPoint + len);
     }
     const { video, audio } = slotClips(slot, m, inPoint);
-    added.video.push(video);
+    added.video.push(withGrade(video, template.look?.grade));
     if (audio) added.audio.push(audio);
   });
 
@@ -90,6 +104,8 @@ export function applyTemplate(template: Template, media: MediaInfo[], project?: 
         size: t.size ?? (t.preset === "title" ? 0.065 : t.preset === "body" ? 0.032 : 0.045),
         color: t.color ?? (t.preset === "boxed" || t.preset === "neon" ? template.accents[0] : "#F5F4F0"),
         align: "center",
+        animation: t.animation,
+        font: t.font,
       },
     });
   }
@@ -99,6 +115,7 @@ export function applyTemplate(template: Template, media: MediaInfo[], project?: 
     ...base,
     aspect: template.aspect,
     captionStyle: template.captionStyle,
+    look: template.look,
     updatedAt: Date.now(),
     tracks: base.tracks.map((t) =>
       t.kind === "music" || t.kind === "captions" ? t : { ...t, clips: added[t.kind] },
@@ -121,7 +138,16 @@ export function swapSlotMedia(project: Project, slotId: string, media: MediaInfo
     transition: video.transitionIn,
   };
   const { video: v, audio } = slotClips(slot, media, 0);
-  const next: Clip = { ...v, id: video.id, zoomKeys: undefined };
+  // Keep the slot's motion and grade (fx, speed, colour); the new file gets a fresh crop.
+  const next: Clip = {
+    ...video,
+    ...v,
+    id: video.id,
+    fx: video.fx,
+    speed: video.speed,
+    cropPath: undefined,
+    zoomKeys: undefined,
+  };
   return {
     ...project,
     updatedAt: Date.now(),

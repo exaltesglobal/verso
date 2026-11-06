@@ -22,6 +22,28 @@ export interface TextStyle {
   size: number;
   color: string;
   align: "left" | "center" | "right";
+  /** Entrance animation (preview: AnimatedText; export: export/look.rs). */
+  animation?: TextAnimation;
+  /** "serif" = bundled Fraunces (SIL OFL), for cinematic title cards. */
+  font?: "serif";
+}
+
+export type TextAnimation = "pop" | "typewriter" | "slide-up" | "blur-in" | "bounce" | "word-by-word";
+
+/** Whole-frame look drawn over the picture (preview: LookOverlay; export: export/look.rs). */
+export interface Look {
+  /** 0..1 film grain amount. */
+  grain?: number;
+  /** 0..1 edge darkening. */
+  vignette?: number;
+  letterbox?: "2.39" | "1.85" | null;
+  leak?: { style: "warm" | "rose" | "cool" | "gold"; strength: number };
+  /** Anamorphic streak; `color` is #RRGGBB. */
+  flare?: { strength: number; color: string };
+  /** Colour grade preset id (see GRADES in lib/looks.ts). */
+  grade?: string;
+  /** Seconds of dip-to-black at the very start and end. */
+  dip?: number;
 }
 
 export interface CaptionWord {
@@ -64,6 +86,8 @@ export interface Clip {
   slotId?: string;
   /** Music: "Cut to the beat" is on for this clip. */
   beatSync?: boolean;
+  /** Video: template motion. `push` = slow push-in, extra zoom reached by the clip end (0.08 = 8%). */
+  fx?: { push?: number };
 }
 
 export interface Track {
@@ -84,6 +108,7 @@ export interface Project {
   /** Where the user saved it (.verso file), if they did. */
   filePath?: string;
   captionStyle?: string;
+  look?: Look;
 }
 
 export const TRACK_ORDER: { kind: TrackKind; label: string }[] = [
@@ -118,6 +143,7 @@ export function normalizeProject(p: Partial<Project> & { tracks: Track[]; name: 
     updatedAt: p.updatedAt ?? now,
     filePath: p.filePath,
     captionStyle: p.captionStyle ?? "bold-pop",
+    look: p.look,
   };
 }
 

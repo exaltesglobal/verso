@@ -34,6 +34,20 @@ const productDrop = seq("pd", [
   [3, "Price and where to buy", { kind: "photo" }],
 ]);
 
+const grwm = seq("gr", [
+  [2, "Bare face, coffee in hand", { crop: { x: 0.5, y: 0.42 } }],
+  [2.5, "Skin or hair", { transition: quick }],
+  [2.5, "Outfit pick", { transition: quick }],
+  [2.5, "Final touches", { transition: quick }],
+  [2.5, "The full look", { push: 0.06, transition: { kind: "zoom", duration: 0.25 } }],
+]);
+
+const qna = seq("qa", [
+  [3, "The question, on screen", { kind: "photo", push: 0.05 }],
+  [8, "Your answer to camera", { crop: { x: 0.5, y: 0.42 }, punch: [3], transition: { kind: "fade", duration: 0.25 } }],
+  [2, "Ask them for the next question", { crop: { x: 0.5, y: 0.42, zoom: 1.08 } }],
+]);
+
 export const creatorPack: TemplatePack = {
   id: "creator",
   name: "Creator basics",
@@ -107,6 +121,42 @@ export const creatorPack: TemplatePack = {
       musicMood: "Punchy electronic",
       accents: ["#FF4A2B", "#2E120C"],
       pro: true,
+    },
+    {
+      id: "creator-grwm",
+      name: "Get ready with me",
+      pack: "creator",
+      blurb: "From coffee to the full look in five quick steps.",
+      aspect: "9:16",
+      duration: total(grwm),
+      slots: grwm,
+      texts: [
+        { id: "gr-t1", text: "GRWM for a big day", start: 0, end: 2, preset: "title", y: 0.2, animation: "typewriter" },
+        { id: "gr-t2", text: "the final look", start: 9.5, end: 12, preset: "neon", y: 0.8, size: 0.06, animation: "bounce" },
+      ],
+      captionStyle: "karaoke",
+      musicMood: "Feel-good R&B",
+      accents: ["#FF9EC7", "#2B1220"],
+      look: { grade: "soft-pastel" },
+      isNew: true,
+      pro: true,
+    },
+    {
+      id: "creator-qna",
+      name: "Answering your questions",
+      pack: "creator",
+      blurb: "Put the question on screen, then answer it straight.",
+      aspect: "9:16",
+      duration: total(qna),
+      slots: qna,
+      texts: [
+        { id: "qa-t1", text: "“How did you get started?”", start: 0, end: 3, preset: "boxed", y: 0.3, size: 0.04, animation: "pop" },
+        { id: "qa-t2", text: "Ask me anything below", start: 11, end: 13, preset: "subtitle", y: 0.8, animation: "slide-up" },
+      ],
+      captionStyle: "bold-pop",
+      musicMood: "Chill hip-hop",
+      accents: ["#7DD3FC", "#0A1E2B"],
+      isNew: true,
     },
   ] satisfies Template[],
 };

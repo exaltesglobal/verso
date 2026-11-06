@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc \u0026\u0026 vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
@@ -15,9 +15,10 @@
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "fmt:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
-    "build:app": "node scripts/fetch-ffmpeg.mjs \u0026\u0026 tauri build --config src-tauri/tauri.sidecar.conf.json"
+    "build:app": "node scripts/fetch-ffmpeg.mjs && tauri build --config src-tauri/tauri.sidecar.conf.json"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.8.4",

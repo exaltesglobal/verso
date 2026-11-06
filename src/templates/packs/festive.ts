@@ -42,6 +42,58 @@ const recipe = seq("fr", [
   [2.5, "First bite", { crop: { x: 0.5, y: 0.45, zoom: 1.1 }, transition: { kind: "fade", duration: 0.3 } }],
 ]);
 
+const holi = seq("ho", [
+  [2.5, "Colours on plates or hands", { kind: "photo", push: 0.08 }],
+  [2, "The first throw, slowed down", { speed: 0.6, transition: { kind: "zoom", duration: 0.2 } }],
+  [3, "Friends covered in colour", { punch: [0.4], transition: { kind: "slide", duration: 0.2 } }],
+  [2.5, "Dancing or water fun", { punch: [0.3], transition: { kind: "slide", duration: 0.2 } }],
+  [3, "Your wishes to camera", { crop: { x: 0.5, y: 0.4 }, transition: soft }],
+]);
+
+const eid = seq("ed", [
+  [3, "Moon, lanterns or lights", { kind: "photo", push: 0.08 }],
+  [3, "Getting ready, new clothes", { transition: soft }],
+  [3, "Family at the table", { transition: soft }],
+  [3.5, "Your greeting", { crop: { x: 0.5, y: 0.4 }, transition: soft }],
+]);
+
+const ganesh = seq("gc", [
+  [3, "Ganpati at home or the pandal", { kind: "photo", push: 0.08 }],
+  [3, "Aarti and diyas", { transition: soft }],
+  [2.5, "Modak and prasad", { transition: soft }],
+  [3.5, "Procession, dhol and joy", { punch: [0.5, 1.5], transition: { kind: "slide", duration: 0.25 } }],
+]);
+
+const onam = seq("on", [
+  [3, "The pookalam, from above", { kind: "photo", push: 0.07 }],
+  [3, "Sadya on a banana leaf", { transition: soft }],
+  [3, "Dance, swing or boat race", { transition: { kind: "slide", duration: 0.25 } }],
+  [3, "Family wishes", { crop: { x: 0.5, y: 0.4 }, transition: soft }],
+]);
+
+const pongal = seq("pg", [
+  [3, "The pot boiling over", { push: 0.08 }],
+  [3, "Kolam at the doorstep", { kind: "photo", transition: soft }],
+  [3, "Sugarcane, harvest, cattle", { transition: soft }],
+  [3, "Family together", { transition: soft }],
+]);
+
+const navratri = seq("nv", [
+  [2, "Lights and decor", { kind: "photo", push: 0.06 }],
+  [1.5, "Garba circle", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [1.5, "Dandiya sticks clash", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [1.5, "Spin", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [1.5, "Group shot", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [3, "Your outfit of the night", { push: 0.06, transition: soft }],
+]);
+
+const rakhi = seq("rk", [
+  [3, "The rakhi and thali", { kind: "photo", push: 0.08 }],
+  [3, "Tying the rakhi", { transition: soft }],
+  [3, "Sweets and gifts", { transition: soft }],
+  [3, "Siblings, laughing", { transition: soft }],
+]);
+
 export const festivePack: TemplatePack = {
   id: "festive",
   name: "Festive India",
@@ -143,6 +195,134 @@ export const festivePack: TemplatePack = {
       musicMood: "Cosy tabla groove",
       accents: ["#FBBF24", "#2E2205"],
       pro: true,
+    },
+    {
+      id: "festive-holi",
+      name: "Holi colour burst",
+      pack: "festive",
+      blurb: "A slow-motion first throw, then colour everywhere.",
+      aspect: "9:16",
+      duration: total(holi),
+      slots: holi,
+      texts: [
+        { id: "ho-t1", text: "Happy Holi", start: 0, end: 2.5, preset: "neon", y: 0.3, size: 0.09, animation: "bounce" },
+        { id: "ho-t2", text: "होली की शुभकामनाएँ", start: 10, end: 13, preset: "title", y: 0.22, animation: "blur-in" },
+      ],
+      captionStyle: "bold-pop",
+      musicMood: "Festive dhol",
+      accents: ["#FF4FA3", "#2B0A1E"],
+      look: { grade: "punchy-pop", leak: { style: "rose", strength: 0.3 } },
+      isNew: true,
+    },
+    {
+      id: "festive-eid",
+      name: "Eid Mubarak",
+      pack: "festive",
+      blurb: "Soft light, family moments and your warm greeting.",
+      aspect: "9:16",
+      duration: total(eid),
+      slots: eid,
+      texts: [
+        { id: "ed-t1", text: "Eid Mubarak", start: 0.3, end: 3, preset: "title", y: 0.3, size: 0.075, font: "serif", animation: "blur-in" },
+        { id: "ed-t2", text: "عيد مبارك", start: 9, end: 12.5, preset: "title", y: 0.22, animation: "blur-in" },
+        { id: "ed-t3", text: "Peace and joy to your home", start: 9, end: 12.5, preset: "subtitle", y: 0.8, animation: "slide-up" },
+      ],
+      captionStyle: "clean",
+      musicMood: "Gentle oud and strings",
+      accents: ["#7FD1B9", "#06201A"],
+      look: { grade: "festive-warm", leak: { style: "gold", strength: 0.2 }, vignette: 0.3 },
+      isNew: true,
+    },
+    {
+      id: "festive-ganesh",
+      name: "Ganpati welcome",
+      pack: "festive",
+      blurb: "From aarti to the procession, with dhol on the cuts.",
+      aspect: "9:16",
+      duration: total(ganesh),
+      slots: ganesh,
+      texts: [
+        { id: "gc-t1", text: "Ganpati Bappa Morya", start: 0.3, end: 3, preset: "title", y: 0.25, animation: "word-by-word" },
+        { id: "gc-t2", text: "Happy Ganesh Chaturthi", start: 8.5, end: 12, preset: "boxed", y: 0.8, size: 0.04, animation: "pop" },
+      ],
+      captionStyle: "bold-pop",
+      musicMood: "Dhol tasha",
+      accents: ["#FF9933", "#2E1405"],
+      look: { grade: "festive-warm", vignette: 0.25 },
+      isNew: true,
+    },
+    {
+      id: "festive-onam",
+      name: "Onam together",
+      pack: "festive",
+      blurb: "Pookalam, sadya and the people you share it with.",
+      aspect: "9:16",
+      duration: total(onam),
+      slots: onam,
+      texts: [
+        { id: "on-t1", text: "Happy Onam", start: 0.3, end: 3, preset: "title", y: 0.25, animation: "blur-in" },
+        { id: "on-t2", text: "ഓണാശംസകൾ", start: 9, end: 12, preset: "title", y: 0.22, animation: "blur-in" },
+      ],
+      captionStyle: "clean",
+      musicMood: "Chenda and flute",
+      accents: ["#F5C542", "#1B2208"],
+      look: { grade: "golden-hour" },
+      isNew: true,
+    },
+    {
+      id: "festive-pongal",
+      name: "Pongal harvest",
+      pack: "festive",
+      blurb: "The pot boils over, kolam, harvest and family.",
+      aspect: "9:16",
+      duration: total(pongal),
+      slots: pongal,
+      texts: [
+        { id: "pg-t1", text: "Happy Pongal", start: 0.3, end: 3, preset: "title", y: 0.25, animation: "bounce" },
+        { id: "pg-t2", text: "பொங்கல் வாழ்த்துகள்", start: 9, end: 12, preset: "title", y: 0.22, animation: "blur-in" },
+      ],
+      captionStyle: "clean",
+      musicMood: "Nadaswaram and thavil",
+      accents: ["#FFB547", "#2A1C05"],
+      look: { grade: "festive-warm" },
+      isNew: true,
+    },
+    {
+      id: "festive-navratri",
+      name: "Navratri nights",
+      pack: "festive",
+      blurb: "Garba and dandiya on the beat, ending on your outfit.",
+      aspect: "9:16",
+      duration: total(navratri),
+      slots: navratri,
+      texts: [
+        { id: "nv-t1", text: "Navratri nights", start: 0, end: 2, preset: "neon", y: 0.3, size: 0.08, animation: "bounce" },
+        { id: "nv-t2", text: "Outfit of the night", start: 8, end: 11, preset: "boxed", y: 0.82, size: 0.04, animation: "slide-up" },
+      ],
+      captionStyle: "neon",
+      musicMood: "Garba beat",
+      accents: ["#E040FB", "#22062A"],
+      look: { grade: "punchy-pop", flare: { strength: 0.3, color: "#FF9DF2" }, vignette: 0.3 },
+      isNew: true,
+      pro: true,
+    },
+    {
+      id: "festive-rakhi",
+      name: "Raksha Bandhan",
+      pack: "festive",
+      blurb: "The thread, the sweets and the sibling laughs.",
+      aspect: "9:16",
+      duration: total(rakhi),
+      slots: rakhi,
+      texts: [
+        { id: "rk-t1", text: "Happy Raksha Bandhan", start: 0.3, end: 3, preset: "title", y: 0.25, animation: "word-by-word" },
+        { id: "rk-t2", text: "To my forever partner in crime", start: 9, end: 12, preset: "subtitle", y: 0.8, animation: "typewriter" },
+      ],
+      captionStyle: "clean",
+      musicMood: "Warm, playful strings",
+      accents: ["#FF7A7A", "#2A0C0C"],
+      look: { grade: "festive-warm", leak: { style: "warm", strength: 0.2 } },
+      isNew: true,
     },
   ] satisfies Template[],
 };
