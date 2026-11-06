@@ -89,7 +89,8 @@ fn cache_path(app: &AppHandle) -> Result<PathBuf, String> {
         .path()
         .app_data_dir()
         .map_err(|e| format!("We couldn't find the app data folder ({e})."))?;
-    std::fs::create_dir_all(&dir).map_err(|e| format!("We couldn't create the app data folder ({e})."))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("We couldn't create the app data folder ({e})."))?;
     Ok(dir.join("account.json"))
 }
 
@@ -109,7 +110,8 @@ fn load_cache(app: &AppHandle) -> Cache {
 
 fn save_cache(app: &AppHandle, cache: &Cache) -> Result<(), String> {
     let json = serde_json::to_string_pretty(cache).map_err(|e| e.to_string())?;
-    std::fs::write(cache_path(app)?, json).map_err(|e| format!("We couldn't save your sign-in ({e})."))
+    std::fs::write(cache_path(app)?, json)
+        .map_err(|e| format!("We couldn't save your sign-in ({e})."))
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -119,7 +121,8 @@ fn hex(bytes: &[u8]) -> String {
 // ---------- keychain ----------
 
 fn keyring() -> Result<keyring::Entry, String> {
-    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(|e| format!("We couldn't open the system keychain ({e})."))
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+        .map_err(|e| format!("We couldn't open the system keychain ({e})."))
 }
 
 pub(crate) fn stored_refresh() -> Option<String> {
@@ -158,24 +161,36 @@ pub(crate) fn send(req: ureq2::Request, body: Option<Value>) -> Result<Value, (u
     };
     match res {
         Ok(r) if r.status() == 204 => Ok(Value::Null),
-        Ok(r) => r.into_json().map_err(|_| (0, "The server sent an answer we couldn't read.".into())),
+        Ok(r) => r
+            .into_json()
+            .map_err(|_| (0, "The server sent an answer we couldn't read.".into())),
         Err(ureq2::Error::Status(code, r)) => {
             let v: Value = r.into_json().unwrap_or_default();
-            let msg = v["message"].as_str().unwrap_or("Something went wrong on our side. Please try again.");
+            let msg = v["message"]
+                .as_str()
+                .unwrap_or("Something went wrong on our side. Please try again.");
             Err((code, msg.to_string()))
         }
-        Err(_) => Err((0, "We couldn't reach Verso. Check your internet connection and try again.".into())),
+        Err(_) => Err((
+            0,
+            "We couldn't reach Verso. Check your internet connection and try again.".into(),
+        )),
     }
 }
 
 fn store_tokens(app: &AppHandle, v: &Value) -> Result<String, String> {
-    let access = v["access_token"].as_str().ok_or("The server didn't send a sign-in token.")?;
-    let refresh = v["refresh_token"].as_str().ok_or("The server didn't send a sign-in token.")?;
+    let access = v["access_token"]
+        .as_str()
+        .ok_or("The server didn't send a sign-in token.")?;
+    let refresh = v["refresh_token"]
+        .as_str()
+        .ok_or("The server didn't send a sign-in token.")?;
     keyring()?
         .set_password(refresh)
         .map_err(|e| format!("We couldn't save your sign-in to the system keychain ({e})."))?;
     let ttl = Duration::from_secs(v["expires_in"].as_u64().unwrap_or(900));
-    *app.state::<AccountState>().access.lock().unwrap() = Some((access.to_string(), Instant::now() + ttl));
+    *app.state::<AccountState>().access.lock().unwrap() =
+        Some((access.to_string(), Instant::now() + ttl));
     Ok(access.to_string())
 }
 
@@ -203,11 +218,19 @@ pub(crate) fn access_token(app: &AppHandle, api: &str) -> Result<String, String>
 
 fn authed_get(app: &AppHandle, api: &str, path: &str) -> Result<Value, String> {
     let token = access_token(app, api)?;
-    send(ureq2::get(&endpoint(api, path)?).set("Authorization", &format!("Bearer {token}")), None).map_err(|(_, m)| m)
+    send(
+        ureq2::get(&endpoint(api, path)?).set("Authorization", &format!("Bearer {token}")),
+        None,
+    )
+    .map_err(|(_, m)| m)
 }
 
-pub(crate) async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
-    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+pub(crate) async fn blocking<T: Send + 'static>(
+    f: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 // ---------- offline token ----------
@@ -245,7 +268,9 @@ fn current(app: &AppHandle) -> Entitlements {
     let cache = load_cache(app);
     out.signed_in = true;
     out.email = cache.email.clone();
-    let key = PINNED_KEY.map(String::from).or(cache.dev_public_key.clone());
+    let key = PINNED_KEY
+        .map(String::from)
+        .or(cache.dev_public_key.clone());
     let verified = match (&cache.offline_token, &key) {
         (Some(t), Some(k)) => verify(t, k, &cache.device_id),
         _ => None,
@@ -318,13 +343,18 @@ fn wait_for_code(listener: &TcpListener, state: &str) -> Result<String, String> 
         let mut line = String::new();
         let _ = BufReader::new(&stream).read_line(&mut line);
         let target = line.split_whitespace().nth(1).unwrap_or("/");
-        let Ok(url) = tauri::Url::parse(&format!("http://127.0.0.1{target}")) else { continue };
+        let Ok(url) = tauri::Url::parse(&format!("http://127.0.0.1{target}")) else {
+            continue;
+        };
         if url.path() != "/callback" {
             respond(&mut stream, "404 Not Found", "");
             continue;
         }
         let q: HashMap<String, String> = url.query_pairs().into_owned().collect();
-        return match (q.get("state").map(String::as_str) == Some(state), q.get("code")) {
+        return match (
+            q.get("state").map(String::as_str) == Some(state),
+            q.get("code"),
+        ) {
             (true, Some(code)) => {
                 respond(&mut stream, "200 OK", PAGE_OK);
                 Ok(code.clone())
@@ -344,14 +374,16 @@ fn device_name() -> String {
 }
 
 fn sign_in(app: &AppHandle, api: &str) -> Result<Entitlements, String> {
-    let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| format!("We couldn't start sign-in ({e})."))?;
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .map_err(|e| format!("We couldn't start sign-in ({e})."))?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     let verifier = B64.encode(rand::random::<[u8; 32]>());
     let challenge = B64.encode(Sha256::digest(verifier.as_bytes()));
     let state = B64.encode(rand::random::<[u8; 16]>());
     let mut cache = load_cache(app);
 
-    let mut url = tauri::Url::parse(&endpoint(api, "/desktop/sign-in")?).map_err(|e| e.to_string())?;
+    let mut url =
+        tauri::Url::parse(&endpoint(api, "/desktop/sign-in")?).map_err(|e| e.to_string())?;
     url.query_pairs_mut()
         .append_pair("port", &port.to_string())
         .append_pair("code_challenge", &challenge)
@@ -365,8 +397,10 @@ fn sign_in(app: &AppHandle, api: &str) -> Result<Entitlements, String> {
         .map_err(|e| format!("We couldn't open your browser ({e})."))?;
 
     let code = wait_for_code(&listener, &state)?;
-    let body = json!({ "grant_type": "authorization_code", "code": code, "code_verifier": verifier });
-    let tokens = send(ureq2::post(&endpoint(api, "/v1/auth/token")?), Some(body)).map_err(|(_, m)| m)?;
+    let body =
+        json!({ "grant_type": "authorization_code", "code": code, "code_verifier": verifier });
+    let tokens =
+        send(ureq2::post(&endpoint(api, "/v1/auth/token")?), Some(body)).map_err(|(_, m)| m)?;
     store_tokens(app, &tokens)?;
 
     let me = authed_get(app, api, "/v1/me")?;
@@ -403,7 +437,11 @@ pub async fn get_session(app: AppHandle, api: String) -> Result<Session, String>
             let _ = access_token(&app, &api);
         }
         let signed_in = stored_refresh().is_some();
-        let email = if signed_in { load_cache(&app).email } else { None };
+        let email = if signed_in {
+            load_cache(&app).email
+        } else {
+            None
+        };
         Ok(Session { signed_in, email })
     })
     .await

@@ -26,7 +26,11 @@ fn configured(app: &AppHandle) -> bool {
 #[tauri::command]
 pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
     if !configured(&app) {
-        return Ok(UpdateInfo { configured: false, version: None, notes: None });
+        return Ok(UpdateInfo {
+            configured: false,
+            version: None,
+            notes: None,
+        });
     }
     let update = app
         .updater()

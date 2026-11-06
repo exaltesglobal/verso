@@ -88,10 +88,22 @@ fn text_event(out: &mut String, o: &TextOverlay, family: &str, w: f64, h: f64) {
         Align::Center => (5, w * 0.5),
         Align::Right => (6, w * 0.94),
     };
+    let y = o.y.clamp(0.0, 1.0) * h;
+    let anim = o.animation.as_deref().unwrap_or("pop");
+    // Entrance animations mirror AnimatedText.tsx (motion + revealCount).
+    let place = if anim == "slide-up" {
+        format!(
+            "\\move({},{},{},{},0,400)",
+            px(x),
+            px(y + css * 0.6),
+            px(x),
+            px(y)
+        )
+    } else {
+        format!("\\pos({},{})", px(x), px(y))
+    };
     let mut tags = format!(
-        "\\an{an}\\pos({},{})\\fs{}{}",
-        px(x),
-        px(o.y.clamp(0.0, 1.0) * h),
+        "\\an{an}{place}\\fs{}{}",
         px(css * EM_TO_ASS),
         face(family, weight)
     );
@@ -124,15 +136,35 @@ fn text_event(out: &mut String, o: &TextOverlay, family: &str, w: f64, h: f64) {
             "Plain"
         }
     };
-    // Pop in over 0.25 s: fade up and grow from 92%.
-    tags += "\\fad(250,0)\\fscx92\\fscy92\\t(0,250,\\fscx100\\fscy100)";
-    let _ = writeln!(
-        out,
-        "Dialogue: 0,{},{},{style},,0,0,0,,{{{tags}}}{}",
-        time(o.start),
-        time(o.end),
-        text(&o.text)
-    );
+    match anim {
+        "slide-up" => tags += "\\fad(400,0)",
+        "blur-in" => tags += &format!("\\fad(500,0)\\blur{}\\t(0,500,\\blur0)", px(css * 0.3)),
+        "bounce" => {
+            tags += "\\fad(120,0)\\fscx0\\fscy0\\t(0,300,\\fscx112\\fscy112)\\t(300,500,\\fscx100\\fscy100)"
+        }
+        "typewriter" | "word-by-word" => {}
+        // Pop in over 0.25 s: fade up and grow from 92%.
+        _ => tags += "\\fad(250,0)\\fscx92\\fscy92\\t(0,250,\\fscx100\\fscy100)",
+    }
+    // Typewriter / word-by-word: one event per step, the unrevealed rest drawn invisible
+    // so the line keeps its final layout.
+    let steps = crate::export::look::reveal_steps(anim, &o.text, o.start, o.end);
+    for (i, (shown, from)) in steps.iter().enumerate() {
+        let to = steps.get(i + 1).map(|s| s.1).unwrap_or(o.end).max(*from);
+        let rest: String = o.text.chars().skip(shown.chars().count()).collect();
+        let hidden = if rest.is_empty() {
+            String::new()
+        } else {
+            format!("{{\\alpha&HFF&}}{}", text(&rest))
+        };
+        let _ = writeln!(
+            out,
+            "Dialogue: 0,{},{},{style},,0,0,0,,{{{tags}}}{}{hidden}",
+            time(*from),
+            time(to),
+            text(shown)
+        );
+    }
 }
 
 /// Index of the word being spoken at `at`, as the preview computes it.

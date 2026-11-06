@@ -7,6 +7,10 @@ import type { AspectRatio, Clip, Project, TextStyle, TrackKind, TransitionKind }
 import { CutToBeatToggle } from "../smart/CutToBeatToggle";
 import { formatDuration } from "../../lib/media";
 import { editSegmentText } from "../../lib/captions";
+import { EnhancePanel } from "../smart/EnhancePanel";
+import { ColorPanel } from "../smart/ColorPanel";
+import { SpeedPanel } from "../smart/SpeedPanel";
+import { BackgroundPanel } from "../smart/BackgroundPanel";
 
 interface InspectorProps {
   clip: (Clip & { kind: TrackKind }) | undefined;
@@ -16,6 +20,8 @@ interface InspectorProps {
   onCropPath: (path: CropPath | null) => void;
   project: Project;
   onApply: (next: Project, message: string) => void;
+  /** Playhead, in timeline seconds. */
+  time: number;
 }
 
 const KIND_LABEL: Record<TrackKind, string> = {
@@ -53,6 +59,7 @@ export function Inspector({
   onCropPath,
   project,
   onApply,
+  time,
 }: InspectorProps) {
   return (
     <aside className="inspector" aria-label="Properties">
@@ -79,7 +86,19 @@ export function Inspector({
           onApply={onApply}
         />
       )}
+      {clip?.kind === "video" && (
+        <section className="inspector__section">
+          <ColorPanel project={project} clipId={clip.id} onApply={onApply} />
+          <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
+          {clip.source?.hasVideo && <BackgroundPanel clip={clip} playhead={time} onChange={onChange} />}
+        </section>
+      )}
       {(clip?.kind === "audio" || clip?.kind === "music") && <AudioProps clip={clip} onChange={onChange} />}
+      {(clip?.kind === "video" || clip?.kind === "audio") && (
+        <section className="inspector__section">
+          <EnhancePanel project={project} clipId={clip.id} onApply={onApply} />
+        </section>
+      )}
       {clip?.kind === "music" && (
         <section className="inspector__section">
           <CutToBeatToggle project={project} clip={clip} onApply={onApply} />
@@ -142,7 +161,7 @@ function VideoProps({
         <Chips
           options={["0.5x", "1x", "1.5x", "2x"]}
           value={`${clip.speed ?? 1}x`}
-          onChange={(s) => onChange({ speed: parseFloat(s) })}
+          onChange={(s) => onChange({ speed: parseFloat(s), speedRamp: undefined })}
         />
         <Slider
           icon="volume"

@@ -1,7 +1,13 @@
 import type { MutableRefObject } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { Icon } from "../Icon";
 import { VideoLayer } from "./VideoLayer";
-import { BrandLogo, MusicLayer, TextOverlays } from "./Overlays";
+import { BrandLogo, MusicLayer } from "./Overlays";
+import { AnimatedText } from "./AnimatedText";
+import { LookOverlay } from "./LookOverlay";
+import { EnhancedSound } from "../smart/EnhancePanel";
+import { colorFilter, colorWashStyle } from "../../lib/color";
+import { sourceTimeAt } from "../../lib/speed";
 import { cropStyle, panelBoxes, sampleCropPath, sourceTimeFor } from "../../lib/reframe";
 import type { CSSProperties } from "react";
 import { CaptionText } from "./CaptionStylePreview";
@@ -61,9 +67,12 @@ export function Preview({
   const clip = videoClipAt(project, time);
   const frames = useFilmstrip(clip?.source);
   const frame =
-    clip?.source && frameAt(frames, clip.source.durationSec, (clip.inPoint ?? 0) + time - clip.start);
+    clip?.source && frameAt(frames, clip.source.durationSec, sourceTimeAt(clip, time));
+  const still = clip?.still ? convertFileSrc(clip.still.path) : undefined;
   // The <video> must not wait for the filmstrip (slow, or missing without FFmpeg).
-  const picture = !!frame || !!clip?.source?.hasVideo;
+  const picture = !!frame || !!clip?.source?.hasVideo || !!still;
+  const filter = colorFilter(clip?.color);
+  const wash = colorWashStyle(clip?.color);
   const empty = duration === 0;
 
   // Reframe: one crop rect per panel (two when showing both speakers).
@@ -96,23 +105,36 @@ export function Preview({
                   top: `${p.box.y * 100}%`,
                   width: `${p.box.w * 100}%`,
                   height: `${p.box.h * 100}%`,
+                  filter,
                 }}
               >
                 {/* Real frame under the video: shows instantly while scrubbing. Centre crop = vertical cutout. */}
-                {frame && <img className="frame__image" src={frame} alt="" draggable={false} style={p.style} />}
-                <VideoLayer
-                  clip={clip}
-                  time={time}
-                  playing={playing}
-                  mediaClockRef={mediaClockRef}
-                  mediaStyle={p.style}
-                  secondary={i > 0}
-                />
+                {still ? (
+                  <img className="frame__image" src={still} alt="" draggable={false} style={p.style} />
+                ) : (
+                  <>
+                    {frame && (
+                      <img className="frame__image" src={frame} alt="" draggable={false} style={p.style} />
+                    )}
+                    <VideoLayer
+                      project={project}
+                      clip={clip}
+                      time={time}
+                      playing={playing}
+                      mediaClockRef={mediaClockRef}
+                      mediaStyle={p.style}
+                      secondary={i > 0}
+                    />
+                  </>
+                )}
+                {wash && <div style={wash} />}
               </div>
             ))}
-          <TextOverlays project={project} time={time} />
+          <LookOverlay look={project.look} aspect={aspect} time={time} duration={duration} />
+          <AnimatedText project={project} time={time} />
           <BrandLogo project={project} />
           <MusicLayer project={project} time={time} playing={playing} />
+          <EnhancedSound project={project} time={time} playing={playing} />
           <div className="frame__safe" />
           {empty && (
             <div className="frame__empty">

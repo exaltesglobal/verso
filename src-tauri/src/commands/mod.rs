@@ -3,13 +3,13 @@
 
 pub mod analysis;
 pub mod background;
-pub mod export;
 pub mod captions;
 pub mod color;
 pub mod enhance;
+pub mod export;
 pub mod media;
 pub mod projects;
 pub mod reframe;
 pub mod thumbnails;
-pub mod waveform;
 pub mod voice;
+pub mod waveform;

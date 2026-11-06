@@ -108,7 +108,9 @@ export interface Clip {
   /** Video: play this processed copy instead of source (see background.ts). source stays the original. */
   videoOverride?: VideoOverride;
   /** Video: template motion. `push` = slow push-in, extra zoom reached by the clip end (0.08 = 8%). */
-  fx?: { push?: number; ramp?: { t: number; speed: number }[] };
+  fx?: { push?: number };
+  /** Text: a shape sticker (SVG data URL) drawn instead of the text (see stickers.ts). */
+  sticker?: { svg: string };
 }
 
 export interface ClipColor {

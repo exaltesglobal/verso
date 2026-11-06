@@ -50,8 +50,9 @@ function motion(anim: TextStyle["animation"], local: number): CSSProperties {
 
 function Revealed({ clip, s, local }: { clip: Clip; s: TextStyle; local: number }) {
   const text = clip.text ?? clip.label;
+  const box = clip.boxColor && s.preset === "boxed" ? { background: clip.boxColor } : undefined;
   const n = revealCount(s.animation, text, local, clip.end - clip.start);
-  if (!Number.isFinite(n)) return <span>{text}</span>;
+  if (!Number.isFinite(n)) return <span style={box}>{text}</span>;
   let cut = n;
   if (s.animation === "word-by-word") {
     // Character index after the n-th word.
@@ -59,7 +60,7 @@ function Revealed({ clip, s, local }: { clip: Clip; s: TextStyle; local: number 
     cut = m ? m[0].length : text.length;
   }
   return (
-    <span>
+    <span style={box}>
       {text.slice(0, cut)}
       <span className="frame__text-ghost">{text.slice(cut)}</span>
     </span>
@@ -86,7 +87,17 @@ export function AnimatedText({ project, time }: { project: Project; time: number
             className={`frame__text text-look--${s.preset}${s.font === "serif" ? " text-font--serif" : ""}`}
             style={style}
           >
-            <Revealed clip={c} s={s} local={local} />
+            {c.sticker ? (
+              <img
+                className="frame__sticker"
+                src={c.sticker.svg}
+                alt={c.label}
+                draggable={false}
+                style={{ height: `calc(${s.size} * 100cqh)` }}
+              />
+            ) : (
+              <Revealed clip={c} s={s} local={local} />
+            )}
           </p>
         );
       })}

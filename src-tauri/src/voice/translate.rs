@@ -37,10 +37,17 @@ impl Translator {
     /// `to_english`: the indic-en pack (big source dictionary) instead of en-indic.
     pub fn new(dir: &Path, to_english: bool) -> Result<Self, String> {
         let tok = |name: &str| {
-            Tokenizer::from_file(dir.join(name))
-                .map_err(|e| format!("We couldn't read the translator's word list ({e}). Try downloading it again."))
+            Tokenizer::from_file(dir.join(name)).map_err(|e| {
+                format!(
+                    "We couldn't read the translator's word list ({e}). Try downloading it again."
+                )
+            })
         };
-        let (src_dict, tgt_dict) = if to_english { (LARGE_DICT, SMALL_DICT) } else { (SMALL_DICT, LARGE_DICT) };
+        let (src_dict, tgt_dict) = if to_english {
+            (LARGE_DICT, SMALL_DICT)
+        } else {
+            (SMALL_DICT, LARGE_DICT)
+        };
         Ok(Self {
             encoder: crate::reframe::onnx::load(&dir.join("encoder_model.onnx"))?,
             decoder: crate::reframe::onnx::load(&dir.join("decoder_model.onnx"))?,
@@ -75,7 +82,9 @@ impl Translator {
                 "attention_mask" => Tensor::from_array(([1usize, n], mask.clone())).map_err(run_err)?
             ])
             .map_err(run_err)?;
-        let (shape, hidden) = out["last_hidden_state"].try_extract_tensor::<f32>().map_err(run_err)?;
+        let (shape, hidden) = out["last_hidden_state"]
+            .try_extract_tensor::<f32>()
+            .map_err(run_err)?;
         let dim = shape[2] as usize;
         let hidden = hidden.to_vec();
         drop(out);
@@ -110,7 +119,13 @@ impl Translator {
         }
         let ids: Vec<u32> = out_ids[1..]
             .iter()
-            .map(|&i| if (i as u32) < self.tgt_dict { i as u32 } else { UNK })
+            .map(|&i| {
+                if (i as u32) < self.tgt_dict {
+                    i as u32
+                } else {
+                    UNK
+                }
+            })
             .collect();
         let s = self
             .tgt

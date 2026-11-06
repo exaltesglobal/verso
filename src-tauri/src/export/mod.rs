@@ -11,9 +11,13 @@
 pub mod ass;
 pub mod color;
 pub mod encoders;
+// animated_drawtext stays as a drawtext fallback; text animations go through the ASS writer.
+#[allow(dead_code)]
 pub mod look;
 
 use serde::Deserialize;
+
+use color::{ClipColor, RampKey};
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 pub enum Aspect {
@@ -113,6 +117,17 @@ pub struct VideoClip {
     pub zoom_keys: Vec<ZoomKey>,
     #[serde(default)]
     pub transition_in: Option<Transition>,
+    #[serde(default)]
+    pub color: Option<ClipColor>,
+    /// Speed keyframes, `t` 0..1 across the source span (src/lib/speed.ts). Overrides `speed`.
+    #[serde(default)]
+    pub speed_ramp: Vec<RampKey>,
+    /// Freeze frame: a PNG looped for the clip's length (`path`/`in_point` unused).
+    #[serde(default)]
+    pub still: Option<String>,
+    /// VP9 copy with alpha (background "remove"): FFmpeg's native decoder drops alpha.
+    #[serde(default)]
+    pub alpha: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -135,6 +150,9 @@ pub struct AudioClip {
     /// Seconds of sound before `start` (crossfade under a video transition).
     #[serde(default)]
     pub lead_in: f64,
+    /// Same ramp as the linked video clip. Overrides `speed`.
+    #[serde(default)]
+    pub speed_ramp: Vec<RampKey>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
@@ -184,6 +202,9 @@ pub struct TextOverlay {
     /// Text colour inside the box (boxed).
     #[serde(default)]
     pub box_text_color: Option<String>,
+    /// Entrance animation (src/lib/project.ts `TextAnimation`); None = pop.
+    #[serde(default)]
+    pub animation: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -312,6 +333,9 @@ pub struct ExportRequest {
     /// TTF/OTF used by drawtext. None = the bundled or a system font.
     #[serde(default)]
     pub font_path: Option<String>,
+    /// Whole-frame look: grain, vignette, letterbox, leaks, dips (export/look.rs).
+    #[serde(default)]
+    pub look: Option<look::Look>,
 }
 
 fn one() -> f64 {
@@ -405,6 +429,16 @@ fn speed(s: f64) -> f64 {
     } else {
         1.0
     }
+}
+
+/// Pieces a speed ramp is cut into (each at its own constant speed).
+const RAMP_PIECES: usize = 24;
+
+/// Ramp segments for a clip `len` timeline seconds long, and the source span they cover.
+fn ramp_plan(keys: &[RampKey], len: f64) -> (Vec<color::RampSegment>, f64) {
+    let factor = color::ramp_duration(&color::ramp_segments(keys, 1.0, RAMP_PIECES)).max(1e-6);
+    let span = len / factor;
+    (color::ramp_segments(keys, span, RAMP_PIECES), span)
 }
 
 /// `atempo` only takes 0.5..2 per instance, so chain it.
@@ -608,23 +642,56 @@ pub fn build_plan(
     }
 
     for (i, c) in clips.iter().enumerate() {
-        let sp = speed(c.speed);
+        let ramped = !c.speed_ramp.is_empty() && c.still.is_none();
+        let held = ramped || c.still.is_some();
+        let sp = if held { 1.0 } else { speed(c.speed) };
         let len = c.end - c.start;
         // Joined clips start `lead` early so the transition overlaps the previous clip.
+        // Stills and ramped clips hold their first frame instead (tpad below).
         let lead = join[i];
-        let lead_src = lead.min(c.in_point.max(0.0) / sp);
+        let lead_src = if held {
+            0.0
+        } else {
+            lead.min(c.in_point.max(0.0) / sp)
+        };
         let t0 = (c.in_point - lead_src * sp).max(0.0);
-        let span = (len + lead_src) * sp;
-        inputs.extend([
-            "-ss".into(),
-            t(t0),
-            "-t".into(),
-            t(span),
-            "-i".into(),
-            c.path.clone(),
-        ]);
-        let head = format!("[{idx}:v]trim=duration={},setpts=PTS-STARTPTS", t(span));
-        let retime = format!("setpts=PTS/{},fps={fps}", n(sp));
+        let mut span = (len + lead_src) * sp;
+        let mut head = format!("[{idx}:v]trim=duration={},setpts=PTS-STARTPTS", t(span));
+        let mut retime = format!("setpts=PTS/{},fps={fps}", n(sp));
+        if let Some(still) = &c.still {
+            inputs.extend(color::still_input_args(still, len, fps));
+            retime = format!("fps={fps}");
+        } else {
+            if ramped {
+                // shortcut: a reframe crop path on a ramped clip is sampled on timeline time, not
+                // source time, so the crop drifts on ramps; fine for the usual unframed ramp.
+                let (segs, src_span) = ramp_plan(&c.speed_ramp, len);
+                span = src_span;
+                graph.push(format!(
+                    "[{idx}:v]trim=duration={},setpts=PTS-STARTPTS[ri{i}]",
+                    t(span)
+                ));
+                graph.push(color::ramp_video_graph(
+                    &segs,
+                    &format!("ri{i}"),
+                    &format!("rv{i}"),
+                    &format!("q{i}"),
+                ));
+                head = format!("[rv{i}]null");
+                retime = format!("fps={fps}");
+            }
+            if c.alpha {
+                inputs.extend(["-c:v".into(), "libvpx-vp9".into()]);
+            }
+            inputs.extend([
+                "-ss".into(),
+                t(t0),
+                "-t".into(),
+                t(span),
+                "-i".into(),
+                c.path.clone(),
+            ]);
+        }
         let fit = |pw: u32, ph: u32| {
             format!("scale={pw}:{ph}:force_original_aspect_ratio=increase,crop={pw}:{ph},setsar=1")
         };
@@ -693,7 +760,17 @@ pub fn build_plan(
                 post.push(format!("fade=t=in:st=0:d={}", t(d)));
             }
         }
-        graph.push(format!("[g{i}]{}[v{i}]", post.join(",")));
+        let mut g = format!("g{i}");
+        if let Some(col) = &c.color {
+            graph.push(color::color_graph(
+                col,
+                &g,
+                &format!("gc{i}"),
+                &format!("c{i}"),
+            ));
+            g = format!("gc{i}");
+        }
+        graph.push(format!("[{g}]{}[v{i}]", post.join(",")));
         idx += 1;
     }
 
@@ -736,6 +813,13 @@ pub fn build_plan(
     }
 
     let mut draws: Vec<String> = Vec::new();
+    if let Some(lk) = &req.look {
+        if let Some(lines) = look::light_layers(lk, w, h, fps, total, &last, "lk") {
+            graph.extend(lines);
+            last = "lk".into();
+        }
+        draws.extend(look::finishing_filters(lk, req.aspect, total));
+    }
     if let Some(s) = subs {
         draws.push(format!(
             "ass=filename={}:fontsdir={}",
@@ -764,13 +848,17 @@ pub fn build_plan(
         if len <= 0.0 {
             continue;
         }
-        let sp = speed(c.speed);
-        let lead = c
-            .lead_in
-            .clamp(0.0, c.start.max(0.0))
-            .min(c.in_point.max(0.0) / sp);
+        let ramp = (!c.speed_ramp.is_empty()).then(|| ramp_plan(&c.speed_ramp, len));
+        let sp = if ramp.is_some() { 1.0 } else { speed(c.speed) };
+        let lead = if ramp.is_some() {
+            0.0
+        } else {
+            c.lead_in
+                .clamp(0.0, c.start.max(0.0))
+                .min(c.in_point.max(0.0) / sp)
+        };
         let t0 = c.in_point - lead * sp;
-        let span = (len + lead) * sp;
+        let span = ramp.as_ref().map(|r| r.1).unwrap_or((len + lead) * sp);
         inputs.extend([
             "-ss".into(),
             t(t0),
@@ -779,11 +867,25 @@ pub fn build_plan(
             "-i".into(),
             c.path.clone(),
         ]);
-        let mut chain = vec![
-            format!("atrim=duration={}", t(span)),
-            "asetpts=PTS-STARTPTS".into(),
-        ];
-        chain.extend(atempo(sp));
+        let mut src = format!("{idx}:a");
+        let mut chain = Vec::new();
+        if let Some((segs, _)) = &ramp {
+            graph.push(format!(
+                "[{idx}:a]atrim=duration={},asetpts=PTS-STARTPTS[ai{k}]",
+                t(span)
+            ));
+            graph.push(color::ramp_audio_graph(
+                segs,
+                &format!("ai{k}"),
+                &format!("ar{k}"),
+                &format!("qa{k}"),
+            ));
+            src = format!("ar{k}");
+        } else {
+            chain.push(format!("atrim=duration={}", t(span)));
+            chain.push("asetpts=PTS-STARTPTS".into());
+            chain.extend(atempo(sp));
+        }
         chain.push("aresample=48000".into());
         chain.push("aformat=sample_fmts=fltp:channel_layouts=stereo".into());
         chain.push(format!("volume={}", n(c.volume.clamp(0.0, 1.5))));
@@ -800,7 +902,7 @@ pub fn build_plan(
             "adelay={}:all=1",
             ((c.start - lead).max(0.0) * 1000.0).round() as u64
         ));
-        graph.push(format!("[{idx}:a]{}[a{k}]", chain.join(",")));
+        graph.push(format!("[{src}]{}[a{k}]", chain.join(",")));
         mixed.push(format!("[a{k}]"));
         idx += 1;
     }

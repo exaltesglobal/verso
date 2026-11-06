@@ -21,7 +21,9 @@ static TTS: LazyLock<Mutex<Option<Kokoro>>> = LazyLock::new(Default::default);
 static MT: LazyLock<Mutex<HashMap<bool, Translator>>> = LazyLock::new(Default::default);
 
 fn with_tts<R>(root: &Path, f: impl FnOnce(&mut Kokoro) -> Result<R, String>) -> Result<R, String> {
-    let mut guard = TTS.lock().map_err(|_| "The voice engine is busy. Try again.".to_string())?;
+    let mut guard = TTS
+        .lock()
+        .map_err(|_| "The voice engine is busy. Try again.".to_string())?;
     if guard.is_none() {
         *guard = Some(Kokoro::new(&models::require(root, models::VOICE)?)?);
     }
@@ -60,7 +62,14 @@ fn stamp() -> u128 {
 }
 
 /// Speaks `text` and saves a WAV in `cache`. Returns its path.
-pub fn synthesize(root: &Path, cache: &Path, text: &str, voice: &str, speed: f32, progress: &mut dyn FnMut(f64)) -> Result<PathBuf, String> {
+pub fn synthesize(
+    root: &Path,
+    cache: &Path,
+    text: &str,
+    voice: &str,
+    speed: f32,
+    progress: &mut dyn FnMut(f64),
+) -> Result<PathBuf, String> {
     let audio = with_tts(root, |k| k.speak(text, voice, speed, progress))?;
     let path = cache.join(format!("voiceover-{}.wav", stamp()));
     write_wav(&path, &audio)?;
@@ -68,7 +77,13 @@ pub fn synthesize(root: &Path, cache: &Path, text: &str, voice: &str, speed: f32
 }
 
 /// Translates each line. `from` may be "hinglish" (Hindi in English letters).
-pub fn translate_all(root: &Path, texts: &[String], from: &str, to: &str, progress: &mut dyn FnMut(f64)) -> Result<Vec<String>, String> {
+pub fn translate_all(
+    root: &Path,
+    texts: &[String],
+    from: &str,
+    to: &str,
+    progress: &mut dyn FnMut(f64),
+) -> Result<Vec<String>, String> {
     if from == to {
         return Ok(texts.to_vec());
     }
@@ -78,19 +93,34 @@ pub fn translate_all(root: &Path, texts: &[String], from: &str, to: &str, progre
         return Err("Translate between English and an Indian language (Hindi ↔ Marathi isn't supported yet).".into());
     }
     let to_english = to == "en";
-    let pack = if to_english { models::INDIC_EN } else { models::EN_INDIC };
+    let pack = if to_english {
+        models::INDIC_EN
+    } else {
+        models::EN_INDIC
+    };
     let dir = models::require(root, pack)?;
     // Hinglish: keep English words, write the Hindi ones in Devanagari first.
     let prepared: Vec<String> = if from == "hinglish" {
-        let dict = TTS.lock().ok().and_then(|g| g.as_ref().map(|k| k.dict.clone())).or_else(|| {
-            let v = models::installed(root, models::VOICE)?;
-            g2p::EnglishDict::load(&v.join("us_gold.json"), &v.join("us_silver.json")).ok().map(std::sync::Arc::new)
-        });
-        texts.iter().map(|t| g2p::hinglish_to_devanagari(t, dict.as_deref())).collect()
+        let dict = TTS
+            .lock()
+            .ok()
+            .and_then(|g| g.as_ref().map(|k| k.dict.clone()))
+            .or_else(|| {
+                let v = models::installed(root, models::VOICE)?;
+                g2p::EnglishDict::load(&v.join("us_gold.json"), &v.join("us_silver.json"))
+                    .ok()
+                    .map(std::sync::Arc::new)
+            });
+        texts
+            .iter()
+            .map(|t| g2p::hinglish_to_devanagari(t, dict.as_deref()))
+            .collect()
     } else {
         texts.to_vec()
     };
-    let mut guard = MT.lock().map_err(|_| "The translator is busy. Try again.".to_string())?;
+    let mut guard = MT
+        .lock()
+        .map_err(|_| "The translator is busy. Try again.".to_string())?;
     if !guard.contains_key(&to_english) {
         guard.insert(to_english, Translator::new(&dir, to_english)?);
     }
@@ -117,7 +147,17 @@ fn atempo(samples: &[f32], tempo: f64, tmp: &Path) -> Result<Vec<f32>, String> {
     let out = tools::command(Tool::Ffmpeg)
         .args(["-v", "error", "-i"])
         .arg(tmp)
-        .args(["-filter:a", &format!("atempo={tempo:.4}"), "-f", "f32le", "-ac", "1", "-ar", "24000", "pipe:1"])
+        .args([
+            "-filter:a",
+            &format!("atempo={tempo:.4}"),
+            "-f",
+            "f32le",
+            "-ac",
+            "1",
+            "-ar",
+            "24000",
+            "pipe:1",
+        ])
         .output()
         .map_err(|_| tools::missing_message())?;
     let _ = std::fs::remove_file(tmp);
@@ -145,7 +185,11 @@ pub fn dub(
     voice: &str,
     progress: &mut dyn FnMut(f64, &str),
 ) -> Result<PathBuf, String> {
-    let mut segs: Vec<DubSegment> = segments.iter().filter(|s| s.end > s.start && !s.text.trim().is_empty()).cloned().collect();
+    let mut segs: Vec<DubSegment> = segments
+        .iter()
+        .filter(|s| s.end > s.start && !s.text.trim().is_empty())
+        .cloned()
+        .collect();
     if segs.is_empty() {
         return Err("Write captions first: dubbing follows your caption lines.".into());
     }
@@ -154,7 +198,9 @@ pub fn dub(
     let texts = if from == to {
         texts
     } else {
-        translate_all(root, &texts, from, to, &mut |p| progress(p * 0.3, "translating"))?
+        translate_all(root, &texts, from, to, &mut |p| {
+            progress(p * 0.3, "translating")
+        })?
     };
 
     let sr = f64::from(SAMPLE_RATE);
@@ -167,7 +213,10 @@ pub fn dub(
         let mut speech = with_tts(root, |k| k.speak(text, voice, 1.0, &mut |_| {}))?;
         let slot = seg.end - seg.start;
         // A line may run into the silence before the next one, never over it.
-        let room = segs.get(i + 1).map_or(slot + 1.0, |next| next.start - seg.start).max(slot);
+        let room = segs
+            .get(i + 1)
+            .map_or(slot + 1.0, |next| next.start - seg.start)
+            .max(slot);
         let ratio = speech.len() as f64 / sr / slot;
         if (0.8..=1.25).contains(&ratio) {
             speech = atempo(&speech, ratio, &tmp)?;

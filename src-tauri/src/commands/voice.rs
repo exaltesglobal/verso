@@ -37,7 +37,9 @@ fn emit(app: &AppHandle, task: &str, id: &str, percent: f64, stage: &str) {
     );
 }
 
-async fn blocking<R: Send + 'static>(f: impl FnOnce() -> Result<R, String> + Send + 'static) -> Result<R, String> {
+async fn blocking<R: Send + 'static>(
+    f: impl FnOnce() -> Result<R, String> + Send + 'static,
+) -> Result<R, String> {
     tauri::async_runtime::spawn_blocking(f)
         .await
         .map_err(|e| format!("Something went wrong ({e})."))?
@@ -66,7 +68,13 @@ pub fn voice_models(app: AppHandle) -> Result<VoiceModels, String> {
         packs: models::status(&models_dir(&app)?),
         voices: models::VOICES
             .iter()
-            .map(|v| VoiceInfo { id: v.id, name: v.name, lang: v.lang, accent: v.accent, gender: v.gender })
+            .map(|v| VoiceInfo {
+                id: v.id,
+                name: v.name,
+                lang: v.lang,
+                accent: v.accent,
+                gender: v.gender,
+            })
             .collect(),
     })
 }
@@ -82,7 +90,12 @@ pub async fn download_voice_model(app: AppHandle, id: String) -> Result<(), Stri
 
 /// Speaks `text` with `voice_id` at `speed` (1 = normal). Returns the WAV path.
 #[tauri::command]
-pub async fn synthesize(app: AppHandle, text: String, voice_id: String, speed: f32) -> Result<String, String> {
+pub async fn synthesize(
+    app: AppHandle,
+    text: String,
+    voice_id: String,
+    speed: f32,
+) -> Result<String, String> {
     let (root, cache) = (models_dir(&app)?, cache_dir(&app)?);
     blocking(move || {
         voice::synthesize(&root, &cache, &text, &voice_id, speed, &mut |p| {
@@ -95,10 +108,17 @@ pub async fn synthesize(app: AppHandle, text: String, voice_id: String, speed: f
 
 /// Translates each line. Languages: en, hi, mr, hinglish (source only).
 #[tauri::command]
-pub async fn translate(app: AppHandle, texts: Vec<String>, from: String, to: String) -> Result<Vec<String>, String> {
+pub async fn translate(
+    app: AppHandle,
+    texts: Vec<String>,
+    from: String,
+    to: String,
+) -> Result<Vec<String>, String> {
     let root = models_dir(&app)?;
     blocking(move || {
-        voice::translate_all(&root, &texts, &from, &to, &mut |p| emit(&app, "translate", &to, p, "translating"))
+        voice::translate_all(&root, &texts, &from, &to, &mut |p| {
+            emit(&app, "translate", &to, p, "translating")
+        })
     })
     .await
 }
@@ -116,9 +136,15 @@ pub async fn dub(
 ) -> Result<String, String> {
     let (root, cache) = (models_dir(&app)?, cache_dir(&app)?);
     blocking(move || {
-        voice::dub(&root, &cache, &segments, &from, &to, &voice_id, &mut |p, stage| {
-            emit(&app, "dub", &to, p, stage)
-        })
+        voice::dub(
+            &root,
+            &cache,
+            &segments,
+            &from,
+            &to,
+            &voice_id,
+            &mut |p, stage| emit(&app, "dub", &to, p, stage),
+        )
         .map(|p| p.to_string_lossy().into_owned())
     })
     .await

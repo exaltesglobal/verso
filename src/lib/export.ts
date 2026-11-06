@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { AspectRatio, CaptionWord, Clip, Project, TextStyle, Transition } from "./project";
+import type { AspectRatio, CaptionWord, Clip, ClipColor, Look, Project, TextStyle, Transition } from "./project";
+import { soundSource } from "./enhance";
 import type { CropPath } from "./reframe";
 import { captionStyle } from "./captionStyles";
 
@@ -17,6 +18,12 @@ export interface ExportVideoClip {
   zoom: number;
   zoomKeys: { t: number; zoom: number }[];
   transitionIn?: Transition;
+  color?: ClipColor;
+  speedRamp?: { t: number; speed: number }[];
+  /** Freeze-frame PNG; `path`/`inPoint` are unused then. */
+  still?: string;
+  /** Background-removed VP9 copy: decode with libvpx-vp9 to keep alpha. */
+  alpha?: boolean;
 }
 
 export interface ExportAudioClip {
@@ -31,6 +38,7 @@ export interface ExportAudioClip {
   fadeOut: number;
   /** Seconds of sound before `start` (crossfade under a video transition). */
   leadIn: number;
+  speedRamp?: { t: number; speed: number }[];
 }
 
 export interface ExportText {
@@ -47,6 +55,7 @@ export interface ExportText {
   /** Box colour (boxed) or glow colour (neon). */
   accent: string;
   boxTextColor: string;
+  animation?: TextStyle["animation"];
 }
 
 export interface ExportCaption {
@@ -86,6 +95,7 @@ export interface ExportRequest {
   watermark: boolean;
   outputPath: string;
   fontPath?: string;
+  look?: Look;
 }
 
 export interface ExportProgress {
@@ -156,7 +166,7 @@ export function buildExportRequest(
       .filter((t) => t.kind === kind)
       .flatMap((t) => t.clips.filter((c) => c.end > c.start))
       .sort((a, b) => a.start - b.start);
-  const video = clipsOf("video").filter((c) => c.source?.hasVideo && !c.variant);
+  const video = clipsOf("video").filter((c) => (c.source?.hasVideo || c.still) && !c.variant);
 
   // Video clips whose transition joins them to the clip before (same rule as the Rust side).
   const joined = new Map<string, number>();
@@ -185,8 +195,9 @@ export function buildExportRequest(
   });
 
   const audioClip = (c: Clip): ExportAudioClip => ({
-    path: c.source!.path,
-    inPoint: c.inPoint ?? 0,
+    // Cleaned copy when the clip sits inside its range (see enhance.ts).
+    path: soundSource(c)!.path,
+    inPoint: soundSource(c)!.inPoint,
     start: c.start,
     end: c.end,
     volume: Math.max(0, Math.min(1.5, c.volume ?? 1)),
@@ -194,10 +205,14 @@ export function buildExportRequest(
     fadeIn: Math.max(c.fadeIn ?? 0, leadFor.get(c.id) ?? 0),
     fadeOut: Math.max(c.fadeOut ?? 0, fadeOutFor.get(c.id) ?? 0),
     leadIn: leadFor.get(c.id) ?? 0,
+    speedRamp: c.speedRamp ?? linkedVideo(c)?.speedRamp,
   });
 
+  // shortcut: SVG shape stickers are preview-only for now; rasterise them in Rust to export them.
+  const stickers = clipsOf("text").filter((c) => c.sticker);
+  if (stickers.length) console.info(`Export skips ${stickers.length} shape sticker(s).`);
   const textOverlays: ExportText[] = clipsOf("text")
-    .filter((c) => (c.text ?? c.label).trim())
+    .filter((c) => !c.sticker && (c.text ?? c.label).trim())
     .map((c) => {
       const s = c.style ?? { preset: "subtitle", y: 0.7, size: 0.045, color: "#F5F4F0", align: "center" };
       return {
@@ -213,6 +228,7 @@ export function buildExportRequest(
           s.preset === "neon" ? "var(--vs-color-track-captions)" : "var(--vs-color-track-text)",
         ),
         boxTextColor: hexColor("var(--vs-color-role-bg-app)", "#0B0B0FFF"),
+        animation: s.animation,
       };
     });
 
@@ -232,17 +248,27 @@ export function buildExportRequest(
     aspect,
     quality: options.quality,
     fps: options.fps ?? 30,
-    videoClips: video.map((c) => ({
-      path: c.source!.path,
-      inPoint: c.inPoint ?? 0,
-      start: c.start,
-      end: c.end,
-      speed: c.speed ?? 1,
-      cropPath: c.cropPath,
-      zoom: c.zoom ?? 1,
-      zoomKeys: c.zoomKeys ?? [],
-      transitionIn: c.transitionIn,
-    })),
+    videoClips: video.map((c) => {
+      // A background copy covers source seconds start..end of the original (see background.ts).
+      const o = c.videoOverride;
+      const inPoint = c.inPoint ?? 0;
+      const useCopy = !!o && inPoint >= o.start - 1e-3 && inPoint <= o.end + 1e-3;
+      return {
+        path: useCopy ? o.path : (c.source?.path ?? ""),
+        inPoint: useCopy ? inPoint - o.start : inPoint,
+        start: c.start,
+        end: c.end,
+        speed: c.speed ?? 1,
+        cropPath: c.cropPath,
+        zoom: c.zoom ?? 1,
+        zoomKeys: c.zoomKeys ?? [],
+        transitionIn: c.transitionIn,
+        color: c.color,
+        speedRamp: c.speedRamp,
+        still: c.still?.path,
+        alpha: useCopy && o.mode === "remove",
+      };
+    }),
     audioClips: [...sound, ...clipsOf("music").filter((c) => c.source?.hasAudio)].map(audioClip),
     textOverlays,
     captions,
@@ -264,6 +290,7 @@ export function buildExportRequest(
     watermark: options.watermark ?? false,
     outputPath: options.outputPath,
     fontPath: options.fontPath,
+    look: project.look,
   };
 }
 

@@ -2,35 +2,6 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { clipsAt, type Clip, type Project } from "../../lib/project";
 
-/** Text clips under the playhead, drawn over the frame. */
-export function TextOverlays({ project, time }: { project: Project; time: number }) {
-  const clips = clipsAt(project, "text", time);
-  return (
-    <>
-      {clips.map((c) => {
-        const s = c.style ?? { preset: "subtitle", y: 0.7, size: 0.045, color: "#F5F4F0", align: "center" };
-        // Pop in over the first 0.25 s.
-        const t = Math.min(1, (time - c.start) / 0.25);
-        const style = {
-          top: `${s.y * 100}%`,
-          fontSize: `calc(${s.size} * 100cqh)`,
-          color: s.color,
-          textAlign: s.align,
-          opacity: t,
-          transform: `translateY(-50%) scale(${0.92 + 0.08 * t})`,
-        } as CSSProperties;
-        return (
-          <p key={c.id} className={`frame__text text-look--${s.preset}`} style={style}>
-            <span style={c.boxColor && s.preset === "boxed" ? { background: c.boxColor } : undefined}>
-              {c.text ?? c.label}
-            </span>
-          </p>
-        );
-      })}
-    </>
-  );
-}
-
 /**
  * Plays the music clip under the playhead in sync with the timeline, with its
  * volume and fades. Video sound comes from the <video> itself.

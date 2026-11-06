@@ -374,6 +374,7 @@ export function Editor({
         onCropPath={setCropPath}
         project={project}
         onApply={applySmart}
+        time={time}
       />
       <Timeline
         project={project}

@@ -50,12 +50,17 @@ pub struct Look {
 fn num(x: f64) -> String {
     let s = format!("{:.4}", x);
     let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s.is_empty() || s == "-" { "0".into() } else { s.into() }
+    if s.is_empty() || s == "-" {
+        "0".into()
+    } else {
+        s.into()
+    }
 }
 
 fn rgb(hex: &str) -> (f64, f64, f64) {
     let h = hex.trim().trim_start_matches('#');
-    let p = |i: usize| u8::from_str_radix(h.get(i..i + 2).unwrap_or("ff"), 16).unwrap_or(255) as f64;
+    let p =
+        |i: usize| u8::from_str_radix(h.get(i..i + 2).unwrap_or("ff"), 16).unwrap_or(255) as f64;
     (p(0), p(2), p(4))
 }
 
@@ -103,12 +108,21 @@ pub fn finishing_filters(look: &Look, aspect: Aspect, total: f64) -> Vec<String>
     }
     if let Some(g) = look.grain.filter(|g| *g > 0.0) {
         // Temporal noise: a new pattern every frame, like film.
-        f.push(format!("noise=alls={}:allf=t", (g.min(1.0) * 28.0).round().max(1.0)));
+        f.push(format!(
+            "noise=alls={}:allf=t",
+            (g.min(1.0) * 28.0).round().max(1.0)
+        ));
     }
     let bar = letterbox_bar(look.letterbox.as_deref(), aspect);
     if bar > 0.0 {
-        f.push(format!("drawbox=x=0:y=0:w=iw:h=ih*{b}:color=black:t=fill", b = num(bar)));
-        f.push(format!("drawbox=x=0:y=ih-ih*{b}:w=iw:h=ih*{b}:color=black:t=fill", b = num(bar)));
+        f.push(format!(
+            "drawbox=x=0:y=0:w=iw:h=ih*{b}:color=black:t=fill",
+            b = num(bar)
+        ));
+        f.push(format!(
+            "drawbox=x=0:y=ih-ih*{b}:w=iw:h=ih*{b}:color=black:t=fill",
+            b = num(bar)
+        ));
     }
     if let Some(d) = look.dip.filter(|d| *d > 0.0 && total > 0.0) {
         let d = d.min(total / 2.0);
@@ -146,7 +160,10 @@ pub fn light_layers(
         let amp = if l.at.is_empty() {
             format!("{}*(0.55+0.45*sin(2*PI*T/5))", num(l.strength))
         } else {
-            let bells: Vec<String> = l.at.iter().map(|a| format!("exp(-pow((T-{})/0.35,2))", num(*a))).collect();
+            let bells: Vec<String> =
+                l.at.iter()
+                    .map(|a| format!("exp(-pow((T-{})/0.35,2))", num(*a)))
+                    .collect();
             let mut env = bells[0].clone();
             for b in &bells[1..] {
                 env = format!("max({env},{b})");
@@ -155,7 +172,10 @@ pub fn light_layers(
         };
         let b1 = format!("exp(-(pow(X/W-{lx},2)/0.045+pow(Y/H-0.3,2)/0.09))");
         let b2 = format!("0.6*exp(-(pow(X/W-1+{lx},2)/0.025+pow(Y/H-0.75,2)/0.045))");
-        for (i, (a, bb)) in [(c1.0, c2.0), (c1.1, c2.1), (c1.2, c2.2)].into_iter().enumerate() {
+        for (i, (a, bb)) in [(c1.0, c2.0), (c1.1, c2.1), (c1.2, c2.2)]
+            .into_iter()
+            .enumerate()
+        {
             terms[i].push(format!("{amp}*({}*{b1}+{}*{b2})", num(a), num(bb)));
         }
     }
@@ -317,7 +337,11 @@ mod tests {
     fn light_layers_only_when_needed() {
         assert!(light_layers(&Look::default(), 1080, 1920, 30, 10.0, "o1", "lk").is_none());
         let look = Look {
-            leak: Some(Leak { style: "warm".into(), strength: 0.4, at: vec![1.0, 4.0] }),
+            leak: Some(Leak {
+                style: "warm".into(),
+                strength: 0.4,
+                at: vec![1.0, 4.0],
+            }),
             ..Default::default()
         };
         let g = light_layers(&look, 1080, 1920, 30, 10.0, "o1", "lk").unwrap();

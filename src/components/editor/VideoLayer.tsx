@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import type { Clip } from "../../lib/project";
+import type { Clip, Project } from "../../lib/project";
+import { playbackRateAt, sourceTimeAt, timelineTimeAt } from "../../lib/speed";
+import { videoSourceAt } from "../../lib/background";
+import { hasEnhancedSound } from "../../lib/enhance";
 
 interface VideoLayerProps {
+  project: Project;
   /** The video clip under the playhead, if it has a real file. */
   clip: Clip | undefined;
   time: number;
@@ -23,18 +27,25 @@ const SEEK_EPSILON = 0.03;
  * While playing, the video drives the timeline clock; while paused, the
  * timeline drives the video (scrubbing).
  */
-export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, secondary }: VideoLayerProps) {
+export function VideoLayer({ project, clip, time, playing, mediaClockRef, mediaStyle, secondary }: VideoLayerProps) {
   const ref = useRef<HTMLVideoElement>(null);
-  const src = clip?.source?.hasVideo ? convertFileSrc(clip.source.path) : undefined;
+  // Speed (constant or ramped) maps timeline time to source time; a background copy may stand in for the file.
+  const srcTime = clip ? sourceTimeAt(clip, time) : 0;
+  const rate = clip ? playbackRateAt(clip, time) : 1;
+  const media = clip?.source?.hasVideo ? videoSourceAt(clip, srcTime) : undefined;
+  const src = media ? convertFileSrc(media.path) : undefined;
   const [readySrc, setReadySrc] = useState<string | undefined>();
-  const inPoint = clip?.inPoint ?? 0;
-  const sourceTime = clip ? inPoint + (time - clip.start) : 0;
+  /** Position in the playing file (the copy starts at the override's start). */
+  const sourceTime = media?.time ?? 0;
+  const offset = srcTime - sourceTime;
+  // Cleaned sound plays from its own <audio> (EnhancedSound), so the picture goes quiet.
+  const enhanced = hasEnhancedSound(project, time);
 
   // Keep the latest values for the animation loop without restarting it.
-  const live = useRef({ clip, inPoint });
+  const live = useRef({ clip, offset });
   useEffect(() => {
-    live.current = { clip, inPoint };
-  }, [clip, inPoint]);
+    live.current = { clip, offset };
+  }, [clip, offset]);
 
   // Play / pause, and keep the picture on the playhead while paused.
   const lastClipId = useRef<string | undefined>(undefined);
@@ -42,6 +53,7 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
     const v = ref.current;
     if (!v || !src) return;
     v.volume = Math.max(0, Math.min(1, clip?.volume ?? 1));
+    if (Math.abs(v.playbackRate - rate) > 0.01) v.playbackRate = rate;
     // Entering another clip of the same file (after a split or a removed pause) must jump
     // exactly to its in point, or the cut-out part plays and the clock runs backwards.
     const entered = clip?.id !== lastClipId.current;
@@ -53,7 +65,7 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
       if (!v.paused) v.pause();
       if (Math.abs(v.currentTime - sourceTime) > SEEK_EPSILON) v.currentTime = sourceTime;
     }
-  }, [src, playing, sourceTime, clip?.volume, clip?.id]);
+  }, [src, playing, sourceTime, rate, clip?.volume, clip?.id]);
 
   // While playing, report the video's position as timeline time.
   useEffect(() => {
@@ -65,9 +77,9 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
     let raf = 0;
     const tick = () => {
       const v = ref.current;
-      const { clip: c, inPoint: ip } = live.current;
+      const { clip: c, offset: off } = live.current;
       if (v && c && !v.paused && v.readyState >= 2) {
-        const t = c.start + (v.currentTime - ip);
+        const t = timelineTimeAt(c, v.currentTime + off);
         // Past the clip's out point: hand over to the next clip. Before its start the
         // seek hasn't landed yet: let the editor clock carry on rather than jump back.
         mediaClockRef.current = t >= c.end ? c.end : t < c.start - 0.05 ? null : t;
@@ -91,12 +103,13 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
       className={readySrc === src ? "frame__video is-ready" : "frame__video"}
       src={src}
       style={mediaStyle}
-      muted={secondary || (clip?.volume ?? 1) === 0}
+      muted={secondary || enhanced || (clip?.volume ?? 1) === 0}
       preload="auto"
       playsInline
       disablePictureInPicture
       onLoadedData={(e) => {
         e.currentTarget.currentTime = sourceTime;
+        e.currentTarget.playbackRate = rate;
         setReadySrc(src);
         if (playing) void e.currentTarget.play().catch(() => {});
       }}

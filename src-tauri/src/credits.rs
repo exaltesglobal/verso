@@ -50,7 +50,8 @@ fn store_path(app: &AppHandle) -> Result<PathBuf, String> {
         .path()
         .app_data_dir()
         .map_err(|e| format!("We couldn't find the app data folder ({e})."))?;
-    std::fs::create_dir_all(&dir).map_err(|e| format!("We couldn't create the app data folder ({e})."))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("We couldn't create the app data folder ({e})."))?;
     Ok(dir.join("credits.json"))
 }
 
@@ -108,17 +109,36 @@ fn load(app: &AppHandle) -> Store {
 fn save(app: &AppHandle, s: &mut Store) -> Result<(), String> {
     s.mac = mac_of(s);
     let json = serde_json::to_string_pretty(s).map_err(|e| e.to_string())?;
-    std::fs::write(store_path(app)?, json).map_err(|e| format!("We couldn't save your credits ({e})."))
+    std::fs::write(store_path(app)?, json)
+        .map_err(|e| format!("We couldn't save your credits ({e})."))
 }
 
 // ---------- server calls ----------
 
 /// Authed request. Status 0 means offline (or the session couldn't be refreshed offline).
-fn call(app: &AppHandle, api: &str, method: &str, path: &str, body: Option<Value>) -> Result<Value, (u16, String)> {
-    let token = account::access_token(app, api)
-        .map_err(|m| (if account::stored_refresh().is_some() { 0 } else { 401 }, m))?;
+fn call(
+    app: &AppHandle,
+    api: &str,
+    method: &str,
+    path: &str,
+    body: Option<Value>,
+) -> Result<Value, (u16, String)> {
+    let token = account::access_token(app, api).map_err(|m| {
+        (
+            if account::stored_refresh().is_some() {
+                0
+            } else {
+                401
+            },
+            m,
+        )
+    })?;
     let url = endpoint(api, path).map_err(|m| (400, m))?;
-    let req = if method == "POST" { ureq2::post(&url) } else { ureq2::get(&url) };
+    let req = if method == "POST" {
+        ureq2::post(&url)
+    } else {
+        ureq2::get(&url)
+    };
     send(req.set("Authorization", &format!("Bearer {token}")), body)
 }
 
@@ -162,19 +182,31 @@ fn reconcile(app: &AppHandle, api: &str, s: &mut Store) -> Result<(), (u16, Stri
         .iter()
         .map(|p| json!({ "action": p.action, "units": p.units, "idempotencyKey": p.idempotency_key, "at": p.at }))
         .collect();
-    let v = call(app, api, "POST", "/v1/credits/reconcile", Some(json!({ "items": items })))?;
+    let v = call(
+        app,
+        api,
+        "POST",
+        "/v1/credits/reconcile",
+        Some(json!({ "items": items })),
+    )?;
     let done: Vec<&str> = v["results"]
         .as_array()
-        .map(|r| r.iter().filter_map(|x| x["idempotencyKey"].as_str()).collect())
+        .map(|r| {
+            r.iter()
+                .filter_map(|x| x["idempotencyKey"].as_str())
+                .collect()
+        })
         .unwrap_or_default();
-    s.pending.retain(|p| !done.contains(&p.idempotency_key.as_str()));
+    s.pending
+        .retain(|p| !done.contains(&p.idempotency_key.as_str()));
     let _ = save(app, s);
     Ok(())
 }
 
 fn balance(app: &AppHandle, api: &str) -> Result<Value, String> {
     let mut s = load(app);
-    let online = reconcile(app, api, &mut s).and_then(|_| call(app, api, "GET", "/v1/credits/balance", None));
+    let online = reconcile(app, api, &mut s)
+        .and_then(|_| call(app, api, "GET", "/v1/credits/balance", None));
     match online {
         Ok(mut v) => {
             s.grant = v["offlineGrant"].as_str().map(String::from);
@@ -198,7 +230,13 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-fn debit(app: &AppHandle, api: &str, action: String, units: f64, key: String) -> Result<Value, String> {
+fn debit(
+    app: &AppHandle,
+    api: &str,
+    action: String,
+    units: f64,
+    key: String,
+) -> Result<Value, String> {
     let mut s = load(app);
     let _ = reconcile(app, api, &mut s);
     let body = json!({ "action": action, "units": units, "idempotencyKey": key });
@@ -208,20 +246,34 @@ fn debit(app: &AppHandle, api: &str, action: String, units: f64, key: String) ->
         Err((402, m)) => Err(format!("insufficient: {m}")),
         Err((0, _)) => {
             if let Some(p) = s.pending.iter().find(|p| p.idempotency_key == key) {
-                return Ok(json!({ "charged": p.credits, "duplicate": true, "balance": offline_balance(app, &s) }));
+                return Ok(
+                    json!({ "charged": p.credits, "duplicate": true, "balance": offline_balance(app, &s) }),
+                );
             }
             let credits = estimate(&s.pricing, &action, units)
                 .ok_or("offline: You're offline. Connect to the internet to use AI tools.")?;
             let used: i64 = s.pending.iter().map(|p| p.credits).sum();
-            let buf = if s.tampered { 0 } else { grant(app, &s).map_or(0, |g| g.0) };
+            let buf = if s.tampered {
+                0
+            } else {
+                grant(app, &s).map_or(0, |g| g.0)
+            };
             if used + credits > buf {
                 return Err(format!(
                     "offline: You're offline and this needs about {credits} credits. Connect to the internet to keep going."
                 ));
             }
-            s.pending.push(Pending { action, units, idempotency_key: key, at: now_ms(), credits });
+            s.pending.push(Pending {
+                action,
+                units,
+                idempotency_key: key,
+                at: now_ms(),
+                credits,
+            });
             save(app, &mut s)?;
-            Ok(json!({ "charged": credits, "duplicate": false, "balance": offline_balance(app, &s) }))
+            Ok(
+                json!({ "charged": credits, "duplicate": false, "balance": offline_balance(app, &s) }),
+            )
         }
         Err((_, m)) => Err(m),
     }
@@ -232,9 +284,18 @@ fn refund(app: &AppHandle, api: &str, key: String) -> Result<Value, String> {
     if let Some(i) = s.pending.iter().position(|p| p.idempotency_key == key) {
         let p = s.pending.remove(i);
         save(app, &mut s)?;
-        return Ok(json!({ "refunded": p.credits, "duplicate": false, "balance": offline_balance(app, &s) }));
+        return Ok(
+            json!({ "refunded": p.credits, "duplicate": false, "balance": offline_balance(app, &s) }),
+        );
     }
-    call(app, api, "POST", "/v1/credits/refund", Some(json!({ "idempotencyKey": key }))).map_err(|(_, m)| m)
+    call(
+        app,
+        api,
+        "POST",
+        "/v1/credits/refund",
+        Some(json!({ "idempotencyKey": key })),
+    )
+    .map_err(|(_, m)| m)
 }
 
 // ---------- commands ----------
@@ -274,14 +335,23 @@ pub async fn credits_debit(
 }
 
 #[tauri::command]
-pub async fn credits_refund(app: AppHandle, api: String, idempotency_key: String) -> Result<Value, String> {
+pub async fn credits_refund(
+    app: AppHandle,
+    api: String,
+    idempotency_key: String,
+) -> Result<Value, String> {
     blocking(move || refund(&app, &api, idempotency_key)).await
 }
 
 #[tauri::command]
-pub async fn credits_history(app: AppHandle, api: String, cursor: Option<String>) -> Result<Value, String> {
+pub async fn credits_history(
+    app: AppHandle,
+    api: String,
+    cursor: Option<String>,
+) -> Result<Value, String> {
     blocking(move || {
-        let path = match cursor.filter(|c| c.chars().all(|ch| ch.is_ascii_digit()) && !c.is_empty()) {
+        let path = match cursor.filter(|c| c.chars().all(|ch| ch.is_ascii_digit()) && !c.is_empty())
+        {
             Some(c) => format!("/v1/credits/history?cursor={c}"),
             None => "/v1/credits/history".into(),
         };

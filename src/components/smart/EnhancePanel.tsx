@@ -14,6 +14,7 @@ import {
   type EnhanceStrength,
 } from "../../lib/enhance";
 import { Listening, SmartCard } from "./parts";
+import { playbackRateAt, sourceTimeAt } from "../../lib/speed";
 
 export interface EnhancePanelProps {
   project: Project;
@@ -133,13 +134,15 @@ export function EnhancedSound({
   // Outside the cleaned range the <video> plays the original sound itself.
   const src = found && found.path === clip.audioOverride?.path ? found : undefined;
   const ref = useRef<HTMLAudioElement>(null);
-  const sourceTime = clip && src ? src.inPoint + (time - clip.start) : 0;
+  const sourceTime = clip && src ? src.inPoint + sourceTimeAt(clip, time) - (clip.inPoint ?? 0) : 0;
+  const rate = clip ? playbackRateAt(clip, time) : 1;
   const volume = Math.max(0, Math.min(1, clip?.volume ?? 1));
 
   useEffect(() => {
     const a = ref.current;
     if (!a) return;
     a.volume = volume;
+    if (Math.abs(a.playbackRate - rate) > 0.01) a.playbackRate = rate;
     if (playing) {
       if (Math.abs(a.currentTime - sourceTime) > 0.3) a.currentTime = sourceTime;
       if (a.paused) void a.play().catch(() => {});
@@ -147,7 +150,7 @@ export function EnhancedSound({
       if (!a.paused) a.pause();
       if (Math.abs(a.currentTime - sourceTime) > 0.05) a.currentTime = sourceTime;
     }
-  }, [playing, sourceTime, volume]);
+  }, [playing, sourceTime, volume, rate]);
 
   return src ? <audio key={src.path} ref={ref} src={convertFileSrc(src.path)} preload="auto" /> : null;
 }

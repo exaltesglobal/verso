@@ -22,12 +22,17 @@ impl EnglishDict {
         for p in [silver, gold] {
             let bytes = std::fs::read(p)
                 .map_err(|e| format!("We couldn't read the pronunciation list ({e}). Try downloading the voices again."))?;
-            let map: HashMap<String, serde_json::Value> = serde_json::from_slice(&bytes)
-                .map_err(|_| "The pronunciation list is damaged. Try downloading the voices again.".to_string())?;
+            let map: HashMap<String, serde_json::Value> =
+                serde_json::from_slice(&bytes).map_err(|_| {
+                    "The pronunciation list is damaged. Try downloading the voices again."
+                        .to_string()
+                })?;
             for (k, v) in map {
                 let ph = match v {
                     serde_json::Value::String(s) => Some(s),
-                    serde_json::Value::Object(o) => o.get("DEFAULT").and_then(|d| d.as_str()).map(String::from),
+                    serde_json::Value::Object(o) => {
+                        o.get("DEFAULT").and_then(|d| d.as_str()).map(String::from)
+                    }
                     _ => None,
                 };
                 if let Some(ph) = ph {
@@ -67,7 +72,15 @@ impl EnglishDict {
             return w.chars().map(letter_name).collect::<Vec<_>>().join("");
         }
         let lower = w.to_lowercase();
-        for (suffix, add) in [("'s", "z"), ("s", "z"), ("es", "ɪz"), ("ed", "d"), ("d", "d"), ("ing", "ɪŋ"), ("ly", "li")] {
+        for (suffix, add) in [
+            ("'s", "z"),
+            ("s", "z"),
+            ("es", "ɪz"),
+            ("ed", "d"),
+            ("d", "d"),
+            ("ing", "ɪŋ"),
+            ("ly", "li"),
+        ] {
             if let Some(stem) = lower.strip_suffix(suffix)
                 && stem.len() > 1
                 && let Some(p) = self.lookup(stem)
@@ -114,13 +127,55 @@ fn letter_name(c: char) -> &'static str {
 /// slang); swap for a small permissive G2P model if users report bad readings.
 fn letters_to_sound(w: &str) -> String {
     const RULES: &[(&str, &str)] = &[
-        ("tion", "ʃən"), ("ough", "ʌf"), ("igh", "I"), ("sch", "sk"), ("ch", "ʧ"), ("sh", "ʃ"),
-        ("th", "θ"), ("ph", "f"), ("ng", "ŋ"), ("ck", "k"), ("qu", "kw"), ("wh", "w"), ("ee", "i"),
-        ("ea", "i"), ("oo", "u"), ("ai", "A"), ("ay", "A"), ("oa", "O"), ("ow", "W"), ("ou", "W"),
-        ("oi", "Y"), ("oy", "Y"), ("aa", "ɑ"), ("a", "æ"), ("b", "b"), ("c", "k"), ("d", "d"),
-        ("e", "ɛ"), ("f", "f"), ("g", "ɡ"), ("h", "h"), ("i", "ɪ"), ("j", "ʤ"), ("k", "k"),
-        ("l", "l"), ("m", "m"), ("n", "n"), ("o", "ɑ"), ("p", "p"), ("q", "k"), ("r", "ɹ"),
-        ("s", "s"), ("t", "t"), ("u", "ʌ"), ("v", "v"), ("w", "w"), ("x", "ks"), ("y", "i"), ("z", "z"),
+        ("tion", "ʃən"),
+        ("ough", "ʌf"),
+        ("igh", "I"),
+        ("sch", "sk"),
+        ("ch", "ʧ"),
+        ("sh", "ʃ"),
+        ("th", "θ"),
+        ("ph", "f"),
+        ("ng", "ŋ"),
+        ("ck", "k"),
+        ("qu", "kw"),
+        ("wh", "w"),
+        ("ee", "i"),
+        ("ea", "i"),
+        ("oo", "u"),
+        ("ai", "A"),
+        ("ay", "A"),
+        ("oa", "O"),
+        ("ow", "W"),
+        ("ou", "W"),
+        ("oi", "Y"),
+        ("oy", "Y"),
+        ("aa", "ɑ"),
+        ("a", "æ"),
+        ("b", "b"),
+        ("c", "k"),
+        ("d", "d"),
+        ("e", "ɛ"),
+        ("f", "f"),
+        ("g", "ɡ"),
+        ("h", "h"),
+        ("i", "ɪ"),
+        ("j", "ʤ"),
+        ("k", "k"),
+        ("l", "l"),
+        ("m", "m"),
+        ("n", "n"),
+        ("o", "ɑ"),
+        ("p", "p"),
+        ("q", "k"),
+        ("r", "ɹ"),
+        ("s", "s"),
+        ("t", "t"),
+        ("u", "ʌ"),
+        ("v", "v"),
+        ("w", "w"),
+        ("x", "ks"),
+        ("y", "i"),
+        ("z", "z"),
     ];
     let mut out = String::from("ˈ");
     let mut rest = w.trim_end_matches('e');
@@ -144,18 +199,46 @@ fn letters_to_sound(w: &str) -> String {
 
 fn english_number(n: u64) -> String {
     const ONES: [&str; 20] = [
-        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven",
-        "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+        "eleven",
+        "twelve",
+        "thirteen",
+        "fourteen",
+        "fifteen",
+        "sixteen",
+        "seventeen",
+        "eighteen",
+        "nineteen",
     ];
-    const TENS: [&str; 10] = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+    const TENS: [&str; 10] = [
+        "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+    ];
     match n {
         0..=19 => ONES[n as usize].into(),
         20..=99 => {
             let t = TENS[(n / 10) as usize];
-            if n % 10 == 0 { t.into() } else { format!("{t} {}", ONES[(n % 10) as usize]) }
+            if n % 10 == 0 {
+                t.into()
+            } else {
+                format!("{t} {}", ONES[(n % 10) as usize])
+            }
         }
         100..=999 => {
-            let rest = if n % 100 == 0 { String::new() } else { format!(" {}", english_number(n % 100)) };
+            let rest = if n % 100 == 0 {
+                String::new()
+            } else {
+                format!(" {}", english_number(n % 100))
+            };
             format!("{} hundred{rest}", ONES[(n / 100) as usize])
         }
         _ => {
@@ -166,7 +249,11 @@ fn english_number(n: u64) -> String {
             } else {
                 (1_000, "thousand")
             };
-            let rest = if n % div == 0 { String::new() } else { format!(" {}", english_number(n % div)) };
+            let rest = if n % div == 0 {
+                String::new()
+            } else {
+                format!(" {}", english_number(n % div))
+            };
             format!("{} {name}{rest}", english_number(n / div))
         }
     }
@@ -197,16 +284,49 @@ struct Syl {
 
 fn consonant(c: char) -> Option<&'static str> {
     Some(match c {
-        'क' => "k", 'ख' => "kʰ", 'ग' => "ɡ", 'घ' => "ɡʰ", 'ङ' => "ŋ",
-        'च' => "ʧ", 'छ' => "ʧʰ", 'ज' => "ʤ", 'झ' => "ʤʰ", 'ञ' => "ɲ",
-        'ट' => "ʈ", 'ठ' => "ʈʰ", 'ड' => "ɖ", 'ढ' => "ɖʰ", 'ण' => "ɳ",
-        'त' => "t", 'थ' => "tʰ", 'द' => "d", 'ध' => "dʰ", 'न' => "n",
-        'प' => "p", 'फ' => "pʰ", 'ब' => "b", 'भ' => "bʰ", 'म' => "m",
-        'य' => "j", 'र' => "ɾ", 'ल' => "l", 'ळ' => "l", 'व' => "ʋ",
-        'श' => "ʃ", 'ष' => "ʂ", 'स' => "s", 'ह' => "h",
+        'क' => "k",
+        'ख' => "kʰ",
+        'ग' => "ɡ",
+        'घ' => "ɡʰ",
+        'ङ' => "ŋ",
+        'च' => "ʧ",
+        'छ' => "ʧʰ",
+        'ज' => "ʤ",
+        'झ' => "ʤʰ",
+        'ञ' => "ɲ",
+        'ट' => "ʈ",
+        'ठ' => "ʈʰ",
+        'ड' => "ɖ",
+        'ढ' => "ɖʰ",
+        'ण' => "ɳ",
+        'त' => "t",
+        'थ' => "tʰ",
+        'द' => "d",
+        'ध' => "dʰ",
+        'न' => "n",
+        'प' => "p",
+        'फ' => "pʰ",
+        'ब' => "b",
+        'भ' => "bʰ",
+        'म' => "m",
+        'य' => "j",
+        'र' => "ɾ",
+        'ल' => "l",
+        'ळ' => "l",
+        'व' => "ʋ",
+        'श' => "ʃ",
+        'ष' => "ʂ",
+        'स' => "s",
+        'ह' => "h",
         // Precomposed nukta letters (qa, khha, ghha, za, dddha, rha, fa, yya).
-        '\u{0958}' => "q", '\u{0959}' => "x", '\u{095A}' => "ɣ", '\u{095B}' => "z",
-        '\u{095C}' => "ɽ", '\u{095D}' => "ɽʰ", '\u{095E}' => "f", '\u{095F}' => "j",
+        '\u{0958}' => "q",
+        '\u{0959}' => "x",
+        '\u{095A}' => "ɣ",
+        '\u{095B}' => "z",
+        '\u{095C}' => "ɽ",
+        '\u{095D}' => "ɽʰ",
+        '\u{095E}' => "f",
+        '\u{095F}' => "j",
         _ => return None,
     })
 }
@@ -227,9 +347,20 @@ fn with_nukta(c: &'static str) -> &'static str {
 
 fn vowel(c: char) -> Option<&'static str> {
     Some(match c {
-        'अ' => "ə", 'आ' | 'ा' => "aː", 'इ' | 'ि' => "ɪ", 'ई' | 'ी' => "iː", 'उ' | 'ु' => "ʊ",
-        'ऊ' | 'ू' => "uː", 'ऋ' | 'ृ' => "ɾɪ", 'ए' | 'े' => "eː", 'ऐ' | 'ै' => "ɛː", 'ओ' | 'ो' => "oː",
-        'औ' | 'ौ' => "ɔː", 'ऑ' | 'ॉ' => "ɔ", 'ऍ' | 'ॅ' => "æ", 'ॲ' => "æ",
+        'अ' => "ə",
+        'आ' | 'ा' => "aː",
+        'इ' | 'ि' => "ɪ",
+        'ई' | 'ी' => "iː",
+        'उ' | 'ु' => "ʊ",
+        'ऊ' | 'ू' => "uː",
+        'ऋ' | 'ृ' => "ɾɪ",
+        'ए' | 'े' => "eː",
+        'ऐ' | 'ै' => "ɛː",
+        'ओ' | 'ो' => "oː",
+        'औ' | 'ौ' => "ɔː",
+        'ऑ' | 'ॉ' => "ɔ",
+        'ऍ' | 'ॅ' => "æ",
+        'ॲ' => "æ",
         _ => return None,
     })
 }
@@ -242,7 +373,12 @@ fn devanagari_word(word: &str) -> String {
     let mut syls: Vec<Syl> = Vec::new();
     for c in word.chars() {
         if let Some(k) = consonant(c) {
-            syls.push(Syl { cons: k, v: V::Schwa, nasal: Nasal::No, coda: "" });
+            syls.push(Syl {
+                cons: k,
+                v: V::Schwa,
+                nasal: Nasal::No,
+                coda: "",
+            });
         } else if c == '\u{093C}' {
             if let Some(s) = syls.last_mut() {
                 s.cons = with_nukta(s.cons);
@@ -250,7 +386,12 @@ fn devanagari_word(word: &str) -> String {
         } else if let Some(v) = vowel(c) {
             match syls.last_mut() {
                 Some(s) if is_matra(c) && !s.cons.is_empty() && s.v == V::Schwa => s.v = V::Full(v),
-                _ => syls.push(Syl { cons: "", v: if v == "ə" { V::Schwa } else { V::Full(v) }, nasal: Nasal::No, coda: "" }),
+                _ => syls.push(Syl {
+                    cons: "",
+                    v: if v == "ə" { V::Schwa } else { V::Full(v) },
+                    nasal: Nasal::No,
+                    coda: "",
+                }),
             }
         } else if c == '\u{094D}' {
             if let Some(s) = syls.last_mut() {
@@ -258,7 +399,11 @@ fn devanagari_word(word: &str) -> String {
             }
         } else if c == 'ं' || c == 'ँ' {
             if let Some(s) = syls.last_mut() {
-                s.nasal = if c == 'ं' { Nasal::Anusvara } else { Nasal::Chandra };
+                s.nasal = if c == 'ं' {
+                    Nasal::Anusvara
+                } else {
+                    Nasal::Chandra
+                };
             }
         } else if c == 'ः'
             && let Some(s) = syls.last_mut()
@@ -277,10 +422,16 @@ fn devanagari_word(word: &str) -> String {
         }
     }
     for i in (1..n.saturating_sub(1)).rev() {
-        let deletable = syls[i].v == V::Schwa && !syls[i].cons.is_empty() && syls[i].nasal == Nasal::No;
+        let deletable =
+            syls[i].v == V::Schwa && !syls[i].cons.is_empty() && syls[i].nasal == Nasal::No;
         // Keep it after a nasal/visarga coda (zindagi): deleting would make three consonants.
         let open_prev = syls[i - 1].nasal != Nasal::Anusvara && syls[i - 1].coda.is_empty();
-        if deletable && open_prev && has_v(&syls[i - 1]) && has_v(&syls[i + 1]) && !syls[i + 1].cons.is_empty() {
+        if deletable
+            && open_prev
+            && has_v(&syls[i - 1])
+            && has_v(&syls[i + 1])
+            && !syls[i + 1].cons.is_empty()
+        {
             syls[i].v = V::Gone;
         }
     }
@@ -312,7 +463,18 @@ fn devanagari_word(word: &str) -> String {
     out
 }
 
-const HINDI_DIGITS: [&str; 10] = ["शून्य", "एक", "दो", "तीन", "चार", "पाँच", "छह", "सात", "आठ", "नौ"];
+const HINDI_DIGITS: [&str; 10] = [
+    "शून्य",
+    "एक",
+    "दो",
+    "तीन",
+    "चार",
+    "पाँच",
+    "छह",
+    "सात",
+    "आठ",
+    "नौ",
+];
 
 fn is_devanagari(c: char) -> bool {
     ('\u{0900}'..='\u{097F}').contains(&c) && !matches!(c, '।' | '॥')
@@ -335,30 +497,51 @@ pub fn phonemize(text: &str, dict: &EnglishDict) -> String {
         let c = chars[i];
         let start = i;
         if is_devanagari(c) && !('\u{0966}'..='\u{096F}').contains(&c) {
-            while i < chars.len() && is_devanagari(chars[i]) && !('\u{0966}'..='\u{096F}').contains(&chars[i]) {
+            while i < chars.len()
+                && is_devanagari(chars[i])
+                && !('\u{0966}'..='\u{096F}').contains(&chars[i])
+            {
                 i += 1;
             }
             let w: String = chars[start..i].iter().collect();
             push_word(&mut out, &devanagari_word(&w));
         } else if c.is_ascii_alphabetic() {
-            while i < chars.len() && (chars[i].is_ascii_alphabetic() || (chars[i] == '\'' && i + 1 < chars.len() && chars[i + 1].is_ascii_alphabetic())) {
+            while i < chars.len()
+                && (chars[i].is_ascii_alphabetic()
+                    || (chars[i] == '\''
+                        && i + 1 < chars.len()
+                        && chars[i + 1].is_ascii_alphabetic()))
+            {
                 i += 1;
             }
             let w: String = chars[start..i].iter().collect();
             push_word(&mut out, &dict.word(&w));
         } else if c.is_ascii_digit() || ('\u{0966}'..='\u{096F}').contains(&c) {
-            while i < chars.len() && (chars[i].is_ascii_digit() || ('\u{0966}'..='\u{096F}').contains(&chars[i]) || chars[i] == ',') {
+            while i < chars.len()
+                && (chars[i].is_ascii_digit()
+                    || ('\u{0966}'..='\u{096F}').contains(&chars[i])
+                    || chars[i] == ',')
+            {
                 i += 1;
             }
             let digits: String = chars[start..i]
                 .iter()
                 .filter(|c| *c != &',')
-                .map(|&c| if c.is_ascii_digit() { c } else { char::from(b'0' + (c as u32 - 0x0966) as u8) })
+                .map(|&c| {
+                    if c.is_ascii_digit() {
+                        c
+                    } else {
+                        char::from(b'0' + (c as u32 - 0x0966) as u8)
+                    }
+                })
                 .collect();
             if indic {
                 // shortcut: Hindi numbers are read digit by digit; add a number-word table if needed.
                 for d in digits.bytes() {
-                    push_word(&mut out, &devanagari_word(HINDI_DIGITS[(d - b'0') as usize]));
+                    push_word(
+                        &mut out,
+                        &devanagari_word(HINDI_DIGITS[(d - b'0') as usize]),
+                    );
                 }
             } else if let Ok(n) = digits.parse::<u64>() {
                 for w in english_number(n).split(' ') {
@@ -385,11 +568,12 @@ pub fn phonemize(text: &str, dict: &EnglishDict) -> String {
 // ---------- Hinglish (Latin letters) to Devanagari ----------
 
 const HINGLISH_WORDS: &[&str] = &[
-    "hai", "hain", "main", "mein", "me", "ka", "ki", "ke", "ko", "se", "to", "bhi", "kya", "nahi", "nahin",
-    "aur", "ye", "yeh", "wo", "woh", "hum", "tum", "aap", "ho", "tha", "thi", "the", "kar", "karo", "raha",
-    "rahi", "rahe", "bhai", "yaar", "accha", "acha", "theek", "thik", "bahut", "kuch", "sab", "abhi", "phir",
-    "kaise", "kyun", "kyon", "apna", "apni", "apne", "mera", "meri", "mere", "tera", "teri", "tere", "jo",
-    "jab", "tab", "par", "pe", "liye", "wala", "wali", "wale", "haan", "na", "mat", "ek", "do", "hoga", "hogi",
+    "hai", "hain", "main", "mein", "me", "ka", "ki", "ke", "ko", "se", "to", "bhi", "kya", "nahi",
+    "nahin", "aur", "ye", "yeh", "wo", "woh", "hum", "tum", "aap", "ho", "tha", "thi", "the",
+    "kar", "karo", "raha", "rahi", "rahe", "bhai", "yaar", "accha", "acha", "theek", "thik",
+    "bahut", "kuch", "sab", "abhi", "phir", "kaise", "kyun", "kyon", "apna", "apni", "apne",
+    "mera", "meri", "mere", "tera", "teri", "tere", "jo", "jab", "tab", "par", "pe", "liye",
+    "wala", "wali", "wale", "haan", "na", "mat", "ek", "do", "hoga", "hogi",
 ];
 
 /// Turns Hindi typed in English letters into Devanagari so the translator can
@@ -404,8 +588,13 @@ pub fn hinglish_to_devanagari(text: &str, dict: Option<&EnglishDict>) -> String 
             return;
         }
         let lower = word.to_lowercase();
-        let keep = !HINGLISH_WORDS.contains(&lower.as_str()) && dict.is_some_and(|d| d.contains(&lower));
-        out.push_str(&if keep { word.clone() } else { roman_word(&lower) });
+        let keep =
+            !HINGLISH_WORDS.contains(&lower.as_str()) && dict.is_some_and(|d| d.contains(&lower));
+        out.push_str(&if keep {
+            word.clone()
+        } else {
+            roman_word(&lower)
+        });
         word.clear();
     };
     for c in text.chars() {
@@ -422,15 +611,51 @@ pub fn hinglish_to_devanagari(text: &str, dict: Option<&EnglishDict>) -> String 
 
 fn roman_word(w: &str) -> String {
     const CONS: &[(&str, &str)] = &[
-        ("chh", "छ"), ("kh", "ख"), ("gh", "घ"), ("ch", "च"), ("jh", "झ"), ("th", "थ"), ("dh", "ध"),
-        ("ph", "फ"), ("bh", "भ"), ("sh", "श"), ("k", "क"), ("g", "ग"), ("c", "क"), ("j", "ज"), ("t", "त"),
-        ("d", "द"), ("n", "न"), ("p", "प"), ("f", "फ़"), ("b", "ब"), ("m", "म"), ("y", "य"), ("r", "र"),
-        ("l", "ल"), ("v", "व"), ("w", "व"), ("s", "स"), ("h", "ह"), ("z", "ज़"), ("q", "क़"), ("x", "क्स"),
+        ("chh", "छ"),
+        ("kh", "ख"),
+        ("gh", "घ"),
+        ("ch", "च"),
+        ("jh", "झ"),
+        ("th", "थ"),
+        ("dh", "ध"),
+        ("ph", "फ"),
+        ("bh", "भ"),
+        ("sh", "श"),
+        ("k", "क"),
+        ("g", "ग"),
+        ("c", "क"),
+        ("j", "ज"),
+        ("t", "त"),
+        ("d", "द"),
+        ("n", "न"),
+        ("p", "प"),
+        ("f", "फ़"),
+        ("b", "ब"),
+        ("m", "म"),
+        ("y", "य"),
+        ("r", "र"),
+        ("l", "ल"),
+        ("v", "व"),
+        ("w", "व"),
+        ("s", "स"),
+        ("h", "ह"),
+        ("z", "ज़"),
+        ("q", "क़"),
+        ("x", "क्स"),
     ];
     const VOWELS: &[(&str, &str, &str)] = &[
-        ("aa", "आ", "ा"), ("ai", "ऐ", "ै"), ("au", "औ", "ौ"), ("ee", "ई", "ी"), ("ii", "ई", "ी"),
-        ("oo", "ऊ", "ू"), ("uu", "ऊ", "ू"), ("a", "अ", ""), ("i", "इ", "ि"), ("u", "उ", "ु"),
-        ("e", "ए", "े"), ("o", "ओ", "ो"),
+        ("aa", "आ", "ा"),
+        ("ai", "ऐ", "ै"),
+        ("au", "औ", "ौ"),
+        ("ee", "ई", "ी"),
+        ("ii", "ई", "ी"),
+        ("oo", "ऊ", "ू"),
+        ("uu", "ऊ", "ू"),
+        ("a", "अ", ""),
+        ("i", "इ", "ि"),
+        ("u", "उ", "ु"),
+        ("e", "ए", "े"),
+        ("o", "ओ", "ो"),
     ];
     let mut out = String::new();
     let mut rest = w;

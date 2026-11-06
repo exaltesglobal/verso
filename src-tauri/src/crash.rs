@@ -42,8 +42,12 @@ fn scrub(text: &str) -> String {
 }
 
 fn reports() -> Vec<PathBuf> {
-    let Some(dir) = CRASH_DIR.get() else { return vec![] };
-    let Ok(entries) = std::fs::read_dir(dir) else { return vec![] };
+    let Some(dir) = CRASH_DIR.get() else {
+        return vec![];
+    };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return vec![];
+    };
     entries
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| p.extension().is_some_and(|x| x == "json"))
@@ -55,7 +59,10 @@ fn write(kind: &str, message: &str, stack: &str) {
     if reports().len() >= MAX_REPORTS || std::fs::create_dir_all(dir).is_err() {
         return;
     }
-    let ts = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
     let report = json!({
         "kind": kind,
         "appVersion": VERSION.get().cloned().unwrap_or_default(),
@@ -96,7 +103,10 @@ pub async fn send_crash_reports(api: String) -> Result<usize, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut sent = 0;
         for path in reports() {
-            let Some(report) = std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str::<Value>(&s).ok()) else {
+            let Some(report) = std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+            else {
                 let _ = std::fs::remove_file(&path);
                 continue;
             };
@@ -108,7 +118,11 @@ pub async fn send_crash_reports(api: String) -> Result<usize, String> {
                     let _ = std::fs::remove_file(&path);
                     sent += 1;
                 }
-                Err(_) => return Err("We couldn't send the report. We'll ask again next time.".to_string()),
+                Err(_) => {
+                    return Err(
+                        "We couldn't send the report. We'll ask again next time.".to_string()
+                    );
+                }
             }
         }
         Ok(sent)

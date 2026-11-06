@@ -65,9 +65,11 @@ function slotClips(
     slotId: slot.id,
     zoom: slot.crop?.zoom,
     transitionIn: slot.transition,
-    fx:
-      slot.push || (lively && slot.ramp)
-        ? { push: slot.push, ramp: lively ? slot.ramp : undefined }
+    fx: slot.push ? { push: slot.push } : undefined,
+    // Slot ramps are in slot seconds; Clip.speedRamp keys are 0..1 across the clip (see speed.ts).
+    speedRamp:
+      lively && slot.ramp?.length
+        ? slot.ramp.map((k) => ({ t: Math.min(1, Math.max(0, k.t / slotLen)), speed: k.speed }))
         : undefined,
     speed: lively ? slot.speed : undefined,
     zoomKeys: lively ? slot.punch?.map((t) => ({ t, zoom: slot.punchZoom ?? 1.12 })) : undefined,
@@ -204,6 +206,7 @@ export function swapSlotMedia(project: Project, slotId: string, media: MediaInfo
       id: video.id,
       fx: video.fx,
       speed: video.speed,
+      speedRamp: video.speedRamp,
       cropPath: undefined,
       zoomKeys: undefined,
     });

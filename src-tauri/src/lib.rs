@@ -1,10 +1,10 @@
-mod captions;
+mod account;
 mod analysis;
 mod background;
-mod account;
+mod captions;
 mod commands;
-mod credits;
 mod crash;
+mod credits;
 mod export;
 mod reframe;
 mod surecast;

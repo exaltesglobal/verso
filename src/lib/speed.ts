@@ -77,7 +77,8 @@ export function rampTimeFactor(keys: RampKey[]): number {
 
 /** Source seconds the clip covers. */
 export function sourceSpan(clip: Clip): number {
-  return (clip.end - clip.start) / rampTimeFactor(clip.speedRamp ?? []);
+  if (!clip.speedRamp?.length) return (clip.end - clip.start) * (clip.speed ?? 1);
+  return (clip.end - clip.start) / rampTimeFactor(clip.speedRamp);
 }
 
 /** Source time shown at timeline `time` (inverse of the ramp). */
@@ -85,7 +86,7 @@ export function sourceTimeAt(clip: Clip, time: number): number {
   const inPoint = clip.inPoint ?? 0;
   const local = Math.max(0, time - clip.start);
   const keys = clip.speedRamp ?? [];
-  if (!keys.length) return inPoint + local;
+  if (!keys.length) return inPoint + local * (clip.speed ?? 1);
   const span = sourceSpan(clip);
   const du = 1 / STEPS;
   let acc = 0;
@@ -100,9 +101,27 @@ export function sourceTimeAt(clip: Clip, time: number): number {
 /** `video.playbackRate` for the clip at timeline `time`. */
 export function playbackRateAt(clip: Clip, time: number): number {
   const keys = clip.speedRamp ?? [];
-  if (!keys.length) return 1;
+  if (!keys.length) return clip.speed ?? 1;
   const span = sourceSpan(clip);
   return rampSpeedAt(keys, span > 0 ? (sourceTimeAt(clip, time) - (clip.inPoint ?? 0)) / span : 0);
+}
+
+/** Timeline time at which source second `src` plays (inverse of sourceTimeAt). */
+export function timelineTimeAt(clip: Clip, src: number): number {
+  const inPoint = clip.inPoint ?? 0;
+  const keys = clip.speedRamp ?? [];
+  if (!keys.length) return clip.start + (src - inPoint) / (clip.speed ?? 1);
+  const span = sourceSpan(clip);
+  if (span <= 0) return clip.start;
+  const u = Math.min(1, Math.max(0, (src - inPoint) / span));
+  const du = 1 / STEPS;
+  let acc = 0;
+  for (let j = 0; j < STEPS; j++) {
+    const piece = (span * du) / rampSpeedAt(keys, (j + 0.5) * du);
+    if ((j + 1) * du >= u) return clip.start + acc + piece * ((u - j * du) / du);
+    acc += piece;
+  }
+  return clip.start + acc;
 }
 
 /**
@@ -122,7 +141,7 @@ export function applySpeedRamp(project: Project, clipId: string, keys: RampKey[]
     tracks: project.tracks.map((t) => ({
       ...t,
       clips: t.clips.map((c) => {
-        if (ids.has(c.id)) return { ...c, speedRamp: keys, end: c.start + sourceSpan(c) * factor };
+        if (ids.has(c.id)) return { ...c, speedRamp: keys, speed: undefined, end: c.start + sourceSpan(c) * factor };
         if ((t.kind === "video" || t.kind === "audio") && c.start >= clip.end - 1e-6)
           return { ...c, start: c.start + delta, end: c.end + delta };
         return c;
