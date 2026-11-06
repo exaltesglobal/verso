@@ -1,24 +1,22 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { AspectRatio, Project } from "./project";
+import type { AspectRatio, CaptionWord, Clip, Project, TextStyle, Transition } from "./project";
+import type { CropPath } from "./reframe";
+import { captionStyle } from "./captionStyles";
 
 /** Mirrors the request types in src-tauri/src/export/mod.rs. */
-export type ExportQuality = "draft" | "standard" | "high";
-
-export interface CropRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+export type ExportQuality = "draft" | "standard" | "high" | "ultra";
 
 export interface ExportVideoClip {
   path: string;
   inPoint: number;
   start: number;
   end: number;
-  /** Normalized 0..1. Omit for a centre crop to the canvas shape. */
-  crop?: CropRect;
+  speed: number;
+  cropPath?: CropPath;
+  zoom: number;
+  zoomKeys: { t: number; zoom: number }[];
+  transitionIn?: Transition;
 }
 
 export interface ExportAudioClip {
@@ -26,21 +24,54 @@ export interface ExportAudioClip {
   inPoint: number;
   start: number;
   end: number;
-  /** 0..1 */
+  /** 0..1.5 */
   volume: number;
+  speed: number;
+  fadeIn: number;
+  fadeOut: number;
+  /** Seconds of sound before `start` (crossfade under a video transition). */
+  leadIn: number;
 }
 
 export interface ExportText {
   text: string;
   start: number;
   end: number;
-  /** Centre of the text, normalized 0..1. */
-  x: number;
   y: number;
-  /** Pixels on a 1080-wide canvas. */
-  fontSize: number;
+  /** Fraction of canvas height. */
+  size: number;
   /** `#RRGGBB` or `#RRGGBBAA`. */
   color: string;
+  align: TextStyle["align"];
+  preset: TextStyle["preset"];
+  /** Box colour (boxed) or glow colour (neon). */
+  accent: string;
+  boxTextColor: string;
+}
+
+export interface ExportCaption {
+  text: string;
+  start: number;
+  end: number;
+  words: CaptionWord[];
+  speaker?: string;
+}
+
+/** captionStyles.ts `CaptionStyle` with colours resolved to hex. */
+export interface ExportCaptionStyle {
+  fontWeight: number;
+  upper: boolean;
+  scale: number;
+  textColor: string;
+  highlight: string;
+  highlightColor: string;
+  background: string;
+  backgroundColor?: string;
+  outlineColor?: string;
+  outlineWidth: number;
+  glow?: string;
+  animation: string;
+  revealWords: boolean;
 }
 
 export interface ExportRequest {
@@ -50,7 +81,8 @@ export interface ExportRequest {
   videoClips: ExportVideoClip[];
   audioClips: ExportAudioClip[];
   textOverlays: ExportText[];
-  captions: ExportText[];
+  captions: ExportCaption[];
+  captionStyle: ExportCaptionStyle;
   watermark: boolean;
   outputPath: string;
   fontPath?: string;
@@ -83,9 +115,34 @@ export interface EncoderInfo {
 export interface ExportOptions {
   quality: ExportQuality;
   outputPath: string;
+  /** Kept for later; no plan turns it on. */
   watermark?: boolean;
   fps?: number;
   fontPath?: string;
+}
+
+/** Same as ADJACENT_EPS in src-tauri/src/export/mod.rs: clips this close are joined by their transition. */
+const ADJACENT_EPS = 0.05;
+
+/**
+ * Resolves a style colour (hex, `var(--token)` or
+ * `color-mix(in srgb, var(--token) N%, transparent)`) to `#RRGGBBAA`.
+ */
+function hexColor(value: string | undefined, fallback = "#FFFFFFFF"): string {
+  if (!value) return fallback;
+  const v = value.trim();
+  if (v === "transparent") return "#00000000";
+  if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(v)) return v.length === 7 ? `${v}FF` : v;
+  const token = (name: string) =>
+    typeof document === "undefined"
+      ? ""
+      : getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const varName = /var\((--[\w-]+)\)/.exec(v)?.[1];
+  const base = varName ? hexColor(token(varName), fallback) : fallback;
+  const pct = /color-mix\(.*?(\d+(?:\.\d+)?)%/.exec(v)?.[1];
+  if (!pct) return base;
+  const alpha = Math.round((Number(pct) / 100) * 255);
+  return base.slice(0, 7) + alpha.toString(16).padStart(2, "0").toUpperCase();
 }
 
 /** Turns the timeline into an export request. Clips without a real file are left as black gaps. */
@@ -95,54 +152,116 @@ export function buildExportRequest(
   options: ExportOptions,
 ): ExportRequest {
   const clipsOf = (kind: string) =>
-    project.tracks.filter((t) => t.kind === kind).flatMap((t) => t.clips.filter((c) => c.end > c.start));
+    project.tracks
+      .filter((t) => t.kind === kind)
+      .flatMap((t) => t.clips.filter((c) => c.end > c.start))
+      .sort((a, b) => a.start - b.start);
+  const video = clipsOf("video").filter((c) => c.source?.hasVideo && !c.variant);
 
-  // Font sizes are pixels on a 1080-wide canvas; styles store a fraction of canvas height.
-  const canvasH = aspect === "9:16" ? 1920 : 1080;
-  const text = (kind: string, y: number, fontSize: number): ExportText[] =>
-    clipsOf(kind)
-      .filter((c) => (c.text ?? c.label).trim())
-      .map((c) => ({
+  // Video clips whose transition joins them to the clip before (same rule as the Rust side).
+  const joined = new Map<string, number>();
+  video.forEach((c, i) => {
+    const prev = video[i - 1];
+    if (prev && c.transitionIn && Math.abs(c.start - prev.end) < ADJACENT_EPS)
+      joined.set(
+        c.id,
+        Math.min(c.transitionIn.duration, 0.9 * (prev.end - prev.start), 0.9 * (c.end - c.start)),
+      );
+  });
+  const linkedVideo = (c: Clip) => (c.linkId ? video.find((v) => v.linkId === c.linkId) : undefined);
+
+  // Sound: crossfade under joined video transitions (B fades in over a lead-in, A fades out).
+  const sound = clipsOf("audio").filter((c) => c.source?.hasAudio);
+  const fadeOutFor = new Map<string, number>();
+  const leadFor = new Map<string, number>();
+  sound.forEach((c, i) => {
+    const v = linkedVideo(c);
+    const d = v ? joined.get(v.id) : undefined;
+    const prev = sound[i - 1];
+    if (d && prev && Math.abs(c.start - prev.end) < ADJACENT_EPS) {
+      leadFor.set(c.id, d);
+      fadeOutFor.set(prev.id, d);
+    }
+  });
+
+  const audioClip = (c: Clip): ExportAudioClip => ({
+    path: c.source!.path,
+    inPoint: c.inPoint ?? 0,
+    start: c.start,
+    end: c.end,
+    volume: Math.max(0, Math.min(1.5, c.volume ?? 1)),
+    speed: c.speed ?? linkedVideo(c)?.speed ?? 1,
+    fadeIn: Math.max(c.fadeIn ?? 0, leadFor.get(c.id) ?? 0),
+    fadeOut: Math.max(c.fadeOut ?? 0, fadeOutFor.get(c.id) ?? 0),
+    leadIn: leadFor.get(c.id) ?? 0,
+  });
+
+  const textOverlays: ExportText[] = clipsOf("text")
+    .filter((c) => (c.text ?? c.label).trim())
+    .map((c) => {
+      const s = c.style ?? { preset: "subtitle", y: 0.7, size: 0.045, color: "#F5F4F0", align: "center" };
+      return {
         text: c.text ?? c.label,
         start: c.start,
         end: c.end,
-        x: 0.5,
-        y: c.style?.y ?? y,
-        fontSize: c.style ? Math.round(c.style.size * canvasH) : fontSize,
-        color: c.style?.color ?? "#FFFFFF",
-      }));
-  // Zoom > 1 crops into the centre of the frame.
-  const zoomCrop = (z: number | undefined) => {
-    if (!z || z <= 1.001) return undefined;
-    const s = 1 / z;
-    return { x: (1 - s) / 2, y: (1 - s) / 2, w: s, h: s };
-  };
+        y: s.y,
+        size: s.size,
+        color: hexColor(s.color),
+        align: s.align,
+        preset: s.preset,
+        accent: hexColor(
+          s.preset === "neon" ? "var(--vs-color-track-captions)" : "var(--vs-color-track-text)",
+        ),
+        boxTextColor: hexColor("var(--vs-color-role-bg-app)", "#0B0B0FFF"),
+      };
+    });
+
+  const captions: ExportCaption[] = clipsOf("captions")
+    .filter((c) => (c.text ?? c.label).trim())
+    .map((c) => ({
+      text: c.text ?? c.label,
+      start: c.start,
+      end: c.end,
+      words: c.words ?? [],
+      speaker: c.label.includes(": ") ? c.label.split(": ")[0] : undefined,
+    }));
+
+  const cs = captionStyle(project.captionStyle);
 
   return {
     aspect,
     quality: options.quality,
     fps: options.fps ?? 30,
-    videoClips: clipsOf("video")
-      .filter((c) => c.source?.hasVideo && !c.variant)
-      .map((c) => ({
-        path: c.source!.path,
-        inPoint: c.inPoint ?? 0,
-        start: c.start,
-        end: c.end,
-        crop: zoomCrop(c.zoom),
-      })),
-    audioClips: [...clipsOf("audio"), ...clipsOf("music")]
-      .filter((c) => c.source?.hasAudio)
-      .map((c) => ({
-        path: c.source!.path,
-        inPoint: c.inPoint ?? 0,
-        start: c.start,
-        end: c.end,
-        volume: Math.min(1, c.volume ?? 1),
-      })),
-    textOverlays: text("text", 0.2, 72),
-    captions: text("captions", 0.78, 60),
-    watermark: options.watermark ?? true,
+    videoClips: video.map((c) => ({
+      path: c.source!.path,
+      inPoint: c.inPoint ?? 0,
+      start: c.start,
+      end: c.end,
+      speed: c.speed ?? 1,
+      cropPath: c.cropPath,
+      zoom: c.zoom ?? 1,
+      zoomKeys: c.zoomKeys ?? [],
+      transitionIn: c.transitionIn,
+    })),
+    audioClips: [...sound, ...clipsOf("music").filter((c) => c.source?.hasAudio)].map(audioClip),
+    textOverlays,
+    captions,
+    captionStyle: {
+      fontWeight: cs.fontWeight,
+      upper: cs.textCase === "upper",
+      scale: cs.scale,
+      textColor: hexColor(cs.textColor),
+      highlight: cs.highlight,
+      highlightColor: hexColor(cs.highlightColor),
+      background: cs.background,
+      backgroundColor: cs.background === "none" ? undefined : hexColor(cs.backgroundColor),
+      outlineColor: cs.outline ? hexColor(cs.outline.color) : undefined,
+      outlineWidth: cs.outline?.width ?? 0,
+      glow: cs.glow ? hexColor(cs.glow) : undefined,
+      animation: cs.animation,
+      revealWords: cs.revealWords,
+    },
+    watermark: options.watermark ?? false,
     outputPath: options.outputPath,
     fontPath: options.fontPath,
   };
