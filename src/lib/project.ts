@@ -64,6 +64,33 @@ export interface Clip {
   slotId?: string;
   /** Music: "Cut to the beat" is on for this clip. */
   beatSync?: boolean;
+  /**
+   * Sound: play this cleaned copy instead of the source's sound (see enhance.ts).
+   * The copy covers source seconds `offset`..`until`.
+   */
+  audioOverride?: { path: string; kind: "enhanced"; offset?: number; until?: number };
+  /** Video: colour adjustments, sliders -1..1 (0 = unchanged). See color.ts. */
+  color?: ClipColor;
+  /** Video (and its linked sound): speed keyframes, `t` 0..1 across the source span. See speed.ts. */
+  speedRamp?: { t: number; speed: number }[];
+  /** Video: a freeze frame. Preview shows the PNG, export loops it. */
+  still?: { path: string };
+}
+
+export interface ClipColor {
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  tint: number;
+  vibrance: number;
+  /** Path to a `.cube` file. */
+  lut?: string;
+  /** 0..1 */
+  lutStrength: number;
+  /** Rough look of the LUT in slider units, for the CSS preview (export applies the real LUT). */
+  lutLook?: { brightness: number; contrast: number; saturation: number; temperature: number };
+  preset?: string;
 }
 
 export interface Track {
