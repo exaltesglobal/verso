@@ -5,6 +5,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Button } from "../ui";
 import { ProBadge } from "../account/ProBadge";
 import { useEntitlements } from "../../lib/entitlements";
+import { getSettings } from "../../lib/settings";
 import type { ToastMessage } from "../ui";
 import type { AspectRatio, Project } from "../../lib/project";
 import {
@@ -50,14 +51,18 @@ function formatEta(sec: number | null) {
 export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogProps) {
   const { can, openUpgrade } = useEntitlements();
   const [name, setName] = useState(() => cleanName(project.name) || "My reel");
-  const [folder, setFolder] = useState("");
-  const [quality, setQuality] = useState<ExportQuality>("standard");
+  const [folder, setFolder] = useState(() => getSettings().exportFolder);
+  const [quality, setQuality] = useState<ExportQuality>(() => {
+    const q = getSettings().exportQuality;
+    return q === "ultra" && !can("export_4k") ? "high" : q;
+  });
   const [fps, setFps] = useState(30);
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
   const jobId = useRef<string | null>(null);
   const running = phase.step === "running";
 
   useEffect(() => {
+    if (getSettings().exportFolder) return;
     videoDir()
       .then(setFolder)
       .catch(() => setFolder(""));
