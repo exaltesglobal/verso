@@ -31,7 +31,7 @@ pub fn frame_times(duration_sec: f64, count: u32) -> Vec<f64> {
         .collect()
 }
 
-fn cache_key(path: &Path, extra: &str) -> Result<String, String> {
+pub(crate) fn cache_key(path: &Path, extra: &str) -> Result<String, String> {
     let meta = std::fs::metadata(path).map_err(|_| {
         "We couldn't find that file. It may have been moved or deleted.".to_string()
     })?;

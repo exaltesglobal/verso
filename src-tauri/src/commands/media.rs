@@ -235,3 +235,22 @@ mod tests {
         assert!(err.contains("couldn't find"));
     }
 }
+
+/// Development helper: media paths from `VERSO_DEV_OPEN` (separated by `;`),
+/// opened automatically at startup so the editor can be tested without the
+/// file dialog. Always empty in release builds.
+#[tauri::command]
+pub fn dev_startup_media() -> Vec<String> {
+    if !cfg!(debug_assertions) {
+        return Vec::new();
+    }
+    std::env::var("VERSO_DEV_OPEN")
+        .map(|v| {
+            v.split(';')
+                .map(str::trim)
+                .filter(|p| !p.is_empty())
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default()
+}

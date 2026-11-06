@@ -1,4 +1,18 @@
+import type { MutableRefObject } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { Icon } from "../Icon";
+import { VideoLayer } from "./VideoLayer";
+import { BrandLogo, MusicLayer } from "./Overlays";
+import { AnimatedText } from "./AnimatedText";
+import { LookOverlay } from "./LookOverlay";
+import { EnhancedSound } from "../smart/EnhancePanel";
+import { colorFilter, colorWashStyle } from "../../lib/color";
+import { sourceTimeAt } from "../../lib/speed";
+import { cropStyle, panelBoxes, sampleCropPath, sourceTimeFor } from "../../lib/reframe";
+import type { CSSProperties } from "react";
+import { CaptionText } from "./CaptionStylePreview";
+import { captionStyle } from "../../lib/captionStyles";
+import { zoomAt } from "../../lib/smart";
 import { Button, IconButton } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration } from "../../lib/media";
@@ -11,6 +25,7 @@ interface PreviewProps {
   time: number;
   playing: boolean;
   onTogglePlay: () => void;
+  mediaClockRef: MutableRefObject<number | null>;
   onSeek: (t: number) => void;
   onImport: () => void;
   importing: boolean;
@@ -29,40 +44,97 @@ export function Preview({
   time,
   playing,
   onTogglePlay,
+  mediaClockRef,
   onSeek,
   onImport,
   importing,
 }: PreviewProps) {
   const captions = project.tracks.find((t) => t.kind === "captions")?.clips ?? [];
   const caption = captions.find((c) => time >= c.start && time < c.end);
-  const words = caption?.label.split(" ") ?? [];
-  // Highlight the word being "spoken" right now.
-  const active = caption
-    ? Math.min(
-        words.length - 1,
-        Math.floor(((time - caption.start) / (caption.end - caption.start)) * words.length),
-      )
-    : -1;
+  // Real word timings when the captions engine wrote them; otherwise spread evenly.
+  const timed = caption?.words?.length ? caption.words : null;
+  const words = timed ? timed.map((w) => w.text) : ((caption?.text ?? caption?.label)?.split(" ") ?? []);
+  const active = !caption
+    ? -1
+    : timed
+      ? timed.findIndex((w) => time >= w.start && time < w.end)
+      : Math.min(
+          words.length - 1,
+          Math.floor(((time - caption.start) / (caption.end - caption.start)) * words.length),
+        );
+  const speaker = caption?.label.includes(": ") ? caption.label.split(": ")[0] : undefined;
 
   const clip = videoClipAt(project, time);
   const frames = useFilmstrip(clip?.source);
   const frame =
-    clip?.source && frameAt(frames, clip.source.durationSec, (clip.inPoint ?? 0) + time - clip.start);
+    clip?.source && frameAt(frames, clip.source.durationSec, sourceTimeAt(clip, time));
+  const still = clip?.still ? convertFileSrc(clip.still.path) : undefined;
+  // The <video> must not wait for the filmstrip (slow, or missing without FFmpeg).
+  const picture = !!frame || !!clip?.source?.hasVideo || !!still;
+  const filter = colorFilter(clip?.color);
+  const wash = colorWashStyle(clip?.color);
   const empty = duration === 0;
+
+  // Reframe: one crop rect per panel (two when showing both speakers).
+  const rects = clip?.cropPath ? sampleCropPath(clip.cropPath, sourceTimeFor(clip, time)) : [];
+  const boxes = clip?.cropPath && rects.length ? panelBoxes(clip.cropPath) : [];
+  // zoomAt already includes the clip's own zoom.
+  const scale = clip ? zoomAt(clip, time - clip.start) : 1;
+  const zoomStyle: CSSProperties | undefined = scale > 1.001 ? { transform: `scale(${scale})` } : undefined;
+  const panels = boxes.length
+    ? boxes.map((b, i) => ({ box: b, style: rects[i] ? cropStyle(rects[i]) : undefined }))
+    : [{ box: { x: 0, y: 0, w: 1, h: 1 }, style: zoomStyle }];
 
   return (
     <section className="preview" aria-label="Preview">
       <div className="preview__stage">
         <div className={`frame ${RATIO_CLASS[aspect]}`}>
-          {frame ? (
-            // Real frame, centre-cropped to the chosen shape: the vertical cutout preview.
-            <img className="frame__image" src={frame} alt="" draggable={false} />
-          ) : (
+          {!picture && (
             <div className="frame__scene">
               <div className="frame__light" />
               {!empty && <div className="frame__subject" />}
             </div>
           )}
+          {picture &&
+            panels.map((p, i) => (
+              <div
+                key={i}
+                className="frame__panel"
+                style={{
+                  left: `${p.box.x * 100}%`,
+                  top: `${p.box.y * 100}%`,
+                  width: `${p.box.w * 100}%`,
+                  height: `${p.box.h * 100}%`,
+                  filter,
+                }}
+              >
+                {/* Real frame under the video: shows instantly while scrubbing. Centre crop = vertical cutout. */}
+                {still ? (
+                  <img className="frame__image" src={still} alt="" draggable={false} style={p.style} />
+                ) : (
+                  <>
+                    {frame && (
+                      <img className="frame__image" src={frame} alt="" draggable={false} style={p.style} />
+                    )}
+                    <VideoLayer
+                      project={project}
+                      clip={clip}
+                      time={time}
+                      playing={playing}
+                      mediaClockRef={mediaClockRef}
+                      mediaStyle={p.style}
+                      secondary={i > 0}
+                    />
+                  </>
+                )}
+                {wash && <div style={wash} />}
+              </div>
+            ))}
+          <LookOverlay look={project.look} aspect={aspect} time={time} duration={duration} />
+          <AnimatedText project={project} time={time} />
+          <BrandLogo project={project} />
+          <MusicLayer project={project} time={time} playing={playing} />
+          <EnhancedSound project={project} time={time} playing={playing} />
           <div className="frame__safe" />
           {empty && (
             <div className="frame__empty">
@@ -74,13 +146,15 @@ export function Preview({
             </div>
           )}
           {caption && (
-            <p className="frame__caption">
-              {words.map((w, i) => (
-                <span key={`${caption.id}-${i}`} className={i === active ? "is-spoken" : undefined}>
-                  {w}
-                </span>
-              ))}
-            </p>
+            <div className="frame__caption-wrap" key={caption.id}>
+              {speaker && <span className="frame__speaker">{speaker}</span>}
+              <CaptionText
+                style={captionStyle(project.captionStyle)}
+                words={words}
+                active={active}
+                size={22}
+              />
+            </div>
           )}
         </div>
       </div>

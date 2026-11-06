@@ -1,14 +1,102 @@
+mod account;
+mod analysis;
+mod background;
+mod captions;
 mod commands;
+mod crash;
+mod credits;
+mod export;
+mod reframe;
+mod surecast;
 mod tools;
+mod updates;
+mod voice;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                .max_file_size(5_000_000)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(account::AccountState::default())
+        .setup(|app| {
+            crash::init(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::media::probe_media,
+            commands::media::dev_startup_media,
+            commands::projects::autosave_project,
+            commands::projects::save_project_as,
+            commands::projects::open_project,
+            commands::projects::open_autosaved_project,
+            commands::projects::delete_autosaved_project,
+            commands::projects::list_projects,
             commands::thumbnails::media_filmstrip,
+            commands::waveform::media_waveform,
+            commands::export::detect_encoders,
+            commands::export::start_export,
+            commands::export::cancel_export,
+            commands::captions::caption_models,
+            commands::captions::download_caption_model,
+            commands::captions::cancel_caption_download,
+            commands::captions::transcribe,
+            commands::captions::cancel_transcription,
+            commands::reframe::reframe_models,
+            commands::reframe::download_reframe_model,
+            commands::reframe::analyze_reframe,
+            commands::reframe::plan_crop,
+            commands::analysis::detect_silences,
+            commands::analysis::detect_emphasis,
+            commands::analysis::detect_beats,
+            commands::background::background_models,
+            commands::background::download_background_model,
+            commands::background::render_background,
+            commands::background::cancel_background,
+            account::start_sign_in,
+            account::sign_out,
+            account::get_session,
+            account::fetch_entitlements,
+            account::get_entitlements,
+            account::list_devices,
+            credits::credits_pricing,
+            credits::credits_balance,
+            credits::credits_debit,
+            credits::credits_refund,
+            credits::credits_history,
+            credits::credits_buy,
+            crash::report_frontend_error,
+            crash::pending_crash_reports,
+            crash::send_crash_reports,
+            crash::discard_crash_reports,
+            updates::check_for_update,
+            updates::install_update,
+            commands::enhance::enhance_audio,
+            commands::color::auto_color,
+            commands::color::render_still,
+            commands::color::import_lut,
+            surecast::surecast_connect,
+            surecast::surecast_disconnect,
+            surecast::surecast_status,
+            surecast::surecast_clients,
+            surecast::surecast_enqueue,
+            surecast::surecast_jobs,
+            surecast::surecast_retry,
+            surecast::surecast_remove,
+            surecast::surecast_refresh,
+            commands::voice::voice_models,
+            commands::voice::download_voice_model,
+            commands::voice::synthesize,
+            commands::voice::translate,
+            commands::voice::dub,
+            commands::sfx::sound_library,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

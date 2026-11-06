@@ -1,5 +1,8 @@
 import mark from "../../assets/brand/verso-mark.svg";
 import { Button, IconButton, Segmented } from "../ui";
+import { AccountButton } from "../account/AccountButton";
+import { CreditsBadge } from "../credits/CreditsBadge";
+import { WindowControls } from "../WindowControls";
 import type { AspectRatio } from "../../lib/project";
 
 const RATIOS = ["9:16", "1:1", "16:9"] as const;
@@ -8,32 +11,28 @@ interface TopBarProps {
   projectName: string;
   subtitle?: string;
   onRename: (name: string) => void;
+  onRenameDone: () => void;
   aspect: AspectRatio;
   onAspect: (a: AspectRatio) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onHome: () => void;
   onAbout: () => void;
   onExport: () => void;
-  onShare: () => void;
+  onSave: () => void;
 }
 
-export function TopBar({
-  projectName,
-  subtitle,
-  onRename,
-  aspect,
-  onAspect,
-  onHome,
-  onAbout,
-  onExport,
-  onShare,
-}: TopBarProps) {
+export function TopBar(props: TopBarProps) {
+  const { projectName, subtitle, onRename, onRenameDone, aspect, onAspect } = props;
   return (
-    <header className="topbar">
-      <div className="topbar__left">
+    <header className="topbar" data-tauri-drag-region>
+      <div className="topbar__left" data-tauri-drag-region>
         <button
           type="button"
           className="topbar__home"
-          onClick={onHome}
+          onClick={props.onHome}
           aria-label="Back to start"
           title="Back to start"
         >
@@ -45,26 +44,37 @@ export function TopBar({
           className="topbar__name"
           value={projectName}
           onChange={(e) => onRename(e.target.value)}
+          onBlur={onRenameDone}
+          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           aria-label="Project name"
           spellCheck={false}
         />
         {subtitle && <span className="topbar__crumb">› {subtitle}</span>}
       </div>
 
-      <div className="topbar__center">
+      <div className="topbar__center" data-tauri-drag-region>
         <Segmented label="Aspect ratio" options={RATIOS} value={aspect} onChange={onAspect} />
       </div>
 
-      <div className="topbar__right">
-        <IconButton icon="undo" label="Undo (Ctrl+Z)" />
-        <IconButton icon="redo" label="Redo (Ctrl+Shift+Z)" />
-        <IconButton icon="help" label="About Verso" onClick={onAbout} />
-        <Button icon="share" onClick={onShare}>
-          Share
+      <div className="topbar__right" data-tauri-drag-region>
+        <IconButton icon="undo" label="Undo (Ctrl+Z)" onClick={props.onUndo} disabled={!props.canUndo} />
+        <IconButton
+          icon="redo"
+          label="Redo (Ctrl+Shift+Z)"
+          onClick={props.onRedo}
+          disabled={!props.canRedo}
+        />
+        <IconButton icon="help" label="About Verso" onClick={props.onAbout} />
+        <CreditsBadge />
+        <AccountButton />
+        <Button icon="save" onClick={props.onSave} title="Save (Ctrl+S)">
+          Save
         </Button>
-        <Button variant="primary" icon="export" onClick={onExport}>
+        <Button variant="primary" icon="export" onClick={props.onExport}>
           Export reel
         </Button>
+        <span className="topbar__sep" />
+        <WindowControls />
       </div>
     </header>
   );

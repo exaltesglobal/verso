@@ -1,0 +1,121 @@
+/* AI credits: top-bar chip, cost line, packs and history. Built only from Verso tokens. */
+
+.credits-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vs-space-1);
+  height: 32px;
+  padding: 0 var(--vs-space-3);
+  border-radius: var(--vs-radius-pill);
+  background: var(--vs-color-role-bg-raised);
+  border: 1px solid var(--vs-color-role-border);
+  color: var(--vs-color-role-text-secondary);
+  font-size: var(--vs-font-size-small);
+  font-weight: var(--vs-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.credits-badge:hover {
+  border-color: var(--vs-color-role-border-strong);
+  color: var(--vs-color-role-text-primary);
+}
+
+.credits-badge:focus-visible {
+  outline: 2px solid var(--vs-color-role-focus-ring);
+}
+
+.credits-badge--low {
+  border-color: var(--vs-color-semantic-warning);
+  color: var(--vs-color-semantic-warning);
+}
+
+.credits-badge__note {
+  color: var(--vs-color-role-text-muted);
+  font-weight: var(--vs-font-weight-medium);
+}
+
+.cost-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.cost-confirm__text {
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.cost-confirm__text--short {
+  color: var(--vs-color-semantic-warning);
+}
+
+.cost-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--vs-space-2);
+}
+
+.credit-packs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--vs-space-3);
+  margin-top: var(--vs-space-2);
+}
+
+.credit-pack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--vs-space-4);
+  border-radius: var(--vs-radius-lg);
+  background: var(--vs-color-role-bg-raised);
+  border: 1px solid var(--vs-color-role-border);
+  text-align: left;
+}
+
+.credit-pack:hover:not(:disabled) {
+  border-color: var(--vs-color-role-border-strong);
+}
+
+.credit-pack:focus-visible {
+  outline: 2px solid var(--vs-color-role-focus-ring);
+}
+
+.credit-pack:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.credit-pack--on {
+  border-color: var(--vs-color-role-text-primary);
+}
+
+.credit-pack__credits {
+  font-size: var(--vs-font-size-title);
+  font-weight: var(--vs-font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.credit-pack__price {
+  margin-top: var(--vs-space-2);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--vs-color-role-text-primary);
+}
+
+.out-of-credits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.credit-history li > span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.credit-history__plus {
+  color: var(--vs-color-semantic-success);
+}

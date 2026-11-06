@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { About } from "./components/About";
 import { Splash } from "./components/Splash";
+import { Settings } from "./screens/Settings";
+import { Batch } from "./screens/Batch";
 import { Toast, type ToastMessage } from "./components/ui";
-import { pickAndProbe, type MediaInfo } from "./lib/media";
+import { invoke } from "@tauri-apps/api/core";
+import { pickAndProbe, probeMedia, type MediaInfo } from "./lib/media";
 import { Welcome } from "./screens/Welcome";
 import { Editor, type PanelTab } from "./screens/Editor";
 import { sampleProject } from "./data/placeholder";
 import { appendMedia, emptyProject, type Project } from "./lib/project";
+import { listProjects, openAutosaved, openProjectFile, type ProjectSummary } from "./lib/persist";
 
-type Screen = "welcome" | "editor";
+type Screen = "welcome" | "editor" | "batch";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -20,6 +24,8 @@ export default function App() {
   const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [showAbout, setShowAbout] = useState(false);
+  const [recents, setRecents] = useState<ProjectSummary[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
   const openAbout = useCallback(() => setShowAbout(true), []);
   const closeAbout = useCallback(() => setShowAbout(false), []);
 
@@ -30,6 +36,51 @@ export default function App() {
   }, []);
 
   const notify = useCallback((message: ToastMessage) => setToast(message), []);
+
+  // Refresh recent projects whenever the Welcome screen shows.
+  useEffect(() => {
+    if (screen !== "welcome") return;
+    listProjects()
+      .then(setRecents)
+      .catch(() => setRecents([]));
+  }, [screen]);
+
+  /** Media files a project uses, so the Media panel shows them. */
+  const mediaOf = (p: Project) => {
+    const seen = new Map<string, MediaInfo>();
+    for (const t of p.tracks) for (const c of t.clips) if (c.source) seen.set(c.source.path, c.source);
+    return [...seen.values()];
+  };
+
+  const openExisting = (p: Project) => {
+    setMedia(mediaOf(p));
+    setStartTab("media");
+    setStartProject(p);
+    setSession((s) => s + 1);
+    setScreen("editor");
+  };
+
+  // Dev only: open files listed in VERSO_DEV_OPEN straight into a new project.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    let cancelled = false;
+    invoke<string[]>("dev_startup_media")
+      .then((paths) => Promise.all(paths.map(probeMedia)))
+      .then((items) => {
+        if (cancelled || !items.length) return;
+        setMedia(items);
+        setStartTab("media");
+        setStartProject(appendMedia(emptyProject("Dev project"), items));
+        setSession((s) => s + 1);
+        setScreen("editor");
+      })
+      .catch(() => {
+        /* plain browser or no dev files */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /** Native file dialog -> Rust probe_media -> media bin. Resolves with the files that were read. */
   const importMedia = useCallback(async (): Promise<MediaInfo[]> => {
@@ -68,7 +119,13 @@ export default function App() {
 
   return (
     <>
-      {screen === "welcome" ? (
+      {screen === "batch" ? (
+        <Batch
+          onClose={() => setScreen("welcome")}
+          onOpenReels={() => setScreen("welcome")}
+          notify={notify}
+        />
+      ) : screen === "welcome" ? (
         <Welcome
           importing={importing}
           onNewProject={() => openEditor("media", emptyProject())}
@@ -81,6 +138,19 @@ export default function App() {
           }}
           onMakeClips={() => openEditor("autocut", sampleProject())}
           onOpenSample={() => openEditor("media", sampleProject())}
+          recents={recents}
+          onSettings={() => setShowSettings(true)}
+          onBatch={() => setScreen("batch")}
+          onOpenRecent={(id) =>
+            openAutosaved(id)
+              .then(openExisting)
+              .catch((e) => notify({ tone: "danger", text: String(e) }))
+          }
+          onOpenFile={() =>
+            openProjectFile()
+              .then((p) => p && openExisting(p))
+              .catch((e) => notify({ tone: "danger", text: String(e) }))
+          }
           onAbout={openAbout}
         />
       ) : (
@@ -93,10 +163,12 @@ export default function App() {
           onImport={importMedia}
           onHome={() => setScreen("welcome")}
           onAbout={openAbout}
+          onOpenProject={openExisting}
           notify={notify}
         />
       )}
       {showAbout && <About onClose={closeAbout} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {showSplash && <Splash />}
     </>

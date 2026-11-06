@@ -41,7 +41,7 @@ export function IconButton({ icon, label, active, className, ...rest }: IconButt
       type="button"
       className={["icon-btn", active && "is-active", className].filter(Boolean).join(" ")}
       aria-label={label}
-      title={label}
+      data-tip={label}
       {...rest}
     >
       <Icon name={icon} size={20} />

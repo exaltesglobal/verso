@@ -29,3 +29,9 @@ Thumbs.db
 !.env.example
 # FFmpeg sidecars are downloaded by scripts/fetch-ffmpeg.mjs, never committed
 src-tauri/binaries/
+
+# Agent worktrees
+.claude/
+
+# Generated in CI by .github/workflows/build.yml
+src-tauri/tauri.release.conf.json

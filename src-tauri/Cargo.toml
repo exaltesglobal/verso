@@ -25,7 +25,38 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-dialog = "2"
+# Offline captions. whisper-rs is Unlicense, whisper.cpp (vendored by whisper-rs-sys) is MIT.
+whisper-rs = { version = "=0.16.0", optional = true }
+# Reframe models (ONNX Runtime). MIT/Apache.
+ort = "=2.0.0-rc.15"
+# Beat detection (FFT). MIT/Apache.
+rustfft = "6.4.1"
+sha2 = "0.10"
+# HTTP: captions model downloads and accounts use ureq 2 (renamed ureq2); reframe uses ureq 3.
+ureq2 = { package = "ureq", version = "2", features = ["json"] }
+ureq = "3"
+tauri-plugin-log = "2"
+tauri-plugin-updater = "2"
+log = "0.4"
+# Accounts: OS keychain for the refresh token, offline token check (all MIT/Apache).
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+jsonwebtoken = "9"
+base64 = "0.22"
+rand = "0.8"
+# Voice/dubbing: translator tokenizers (Apache-2.0; Oniguruma is BSD-2).
+tokenizers = { version = "0.23.2", default-features = false, features = ["onig"] }
 
+[features]
+default = ["whisper"]
+# The on-device speech engine. Building it needs CMake (see README, "Captions engine").
+whisper = ["dep:whisper-rs"]
+# GPU acceleration, all opt-in. CUDA needs the CUDA toolkit at build time and is never shipped
+# by default (no CUDA redistribution); Metal needs Xcode.
+cuda = ["whisper", "whisper-rs/cuda"]
+metal = ["whisper", "whisper-rs/metal"]
+# Optional GPU providers for the ONNX models (CPU is always the fallback).
+directml = ["ort/directml"]
+coreml = ["ort/coreml"]
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

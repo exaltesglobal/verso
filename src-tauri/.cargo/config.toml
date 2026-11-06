@@ -1,0 +1,9 @@
+# whisper.cpp build flags (forwarded to CMake by whisper-rs-sys).
+# GGML_NATIVE=OFF keeps the binary portable to other PCs; AVX2/FMA/F16C cover any
+# x86-64 CPU from about 2013 on. Override per build with environment variables.
+[env]
+GGML_NATIVE = "OFF"
+GGML_AVX = "ON"
+GGML_AVX2 = "ON"
+GGML_FMA = "ON"
+GGML_F16C = "ON"

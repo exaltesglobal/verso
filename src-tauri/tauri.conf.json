@@ -20,6 +20,9 @@
         "minHeight": 700,
         "center": true,
         "backgroundColor": "#0B0B0F",
+        "decorations": false,
+        "shadow": true,
+        "resizable": true,
         "theme": "Dark"
       }
     ],
@@ -27,13 +30,13 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPCACHE/**"]
+        "scope": ["$APPCACHE/**", "$APPDATA/**"]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi", "app", "dmg"],
     "publisher": "Agape Labs",
     "copyright": "© 2026 Exaltes Global Private Limited",
     "category": "Video",
@@ -44,6 +47,34 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": false,
+    "resources": { "fonts/*": "fonts/", "licenses/*": "licenses/" },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false
+      },
+      "wix": {
+        "language": "en-US"
+      },
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": ["https://api.example.com/updates/{{target}}/{{arch}}/{{current_version}}"],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

@@ -140,6 +140,75 @@ Verso uses FFmpeg to read, preview and (later) export video. FFmpeg runs as a se
 At runtime, `src-tauri/src/tools.rs` looks for the sidecar next to the Verso executable first, then falls
 back to PATH (development only).
 
+## Captions engine (offline)
+
+Auto-captions run fully on the device with [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (MIT) through
+the [`whisper-rs`](https://crates.io/crates/whisper-rs) crate (Unlicense), pinned to `=0.16.0` (whisper-rs-sys
+0.15.0). Pipeline: FFmpeg sidecar streams 16 kHz mono PCM over a pipe (no temp WAV) → whisper.cpp with token
+timestamps, in 5-minute blocks → words → reel-sized captions (max 4 words / 1.6 s, break on punctuation and
+pauses), each with word timings for karaoke highlight. Code: `src-tauri/src/captions/`, commands in
+`src-tauri/src/commands/captions.rs`, UI in `src/components/editor/CaptionsPanel.tsx`.
+
+### Build requirements (Windows)
+
+whisper.cpp is C++ built by CMake, and its Rust bindings are generated with bindgen. Besides the C++ build tools:
+
+1. **CMake on PATH.** Visual Studio ships one; no separate install is needed:
+   `C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin`
+   (use the `2022` folder on VS 2022). Use the CMake from the newest VS you have: the build picks the newest
+   VS generator, and an older CMake doesn't know it.
+2. **libclang** for bindgen. Set `LIBCLANG_PATH` to a folder with `libclang.dll`: either LLVM
+   (`winget install LLVM.LLVM`, then `C:\Program Files\LLVM\bin`), or the "C++ Clang tools" VS component, or
+   extract it from the `libclang` wheel on PyPI (Apache-2.0 WITH LLVM-exception). whisper-rs-sys's bundled
+   bindings are generated on Linux and don't compile on MSVC, so this step can't be skipped.
+3. **Short build path.** MSBuild still has the 260-character path limit. If the repo lives deep (e.g. a git
+   worktree under a long folder), CMake fails with "No CMAKE_C_COMPILER could be found". Point cargo at a short
+   target folder: `set CARGO_TARGET_DIR=C:\vt`.
+
+PowerShell example:
+
+```powershell
+$env:PATH = "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;$env:PATH"
+$env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
+pnpm tauri dev
+```
+
+CPU flags live in `src-tauri/.cargo/config.toml` (`GGML_NATIVE=OFF` + AVX2/FMA/F16C) so release builds run on any
+x86-64 PC from about 2013 on, not just the build machine.
+
+**Cargo features:** `whisper` (default, CPU), `cuda` (NVIDIA; needs the CUDA toolkit at build time), `metal`
+(macOS GPU). Build without the engine (no CMake/libclang needed; the captions commands then return a plain
+"not included in this build" error): `cargo check --no-default-features`.
+
+### Speech models
+
+Models are never bundled or committed. The user picks an accuracy, and Verso downloads that model once from the
+official [`ggerganov/whisper.cpp`](https://huggingface.co/ggerganov/whisper.cpp) Hugging Face repo into the app
+data folder (`<appData>/models/whisper/`), with resume, cancel, progress events and a SHA-256 + size check. After
+that, captions work offline. Weights are OpenAI Whisper (MIT), converted to ggml by the whisper.cpp project
+(MIT). All are multilingual.
+
+| Id                    | Size   | UI choice |
+| --------------------- | ------ | --------- |
+| `base-q5_1`           | 60 MB  | Fast      |
+| `base-q8_0`           | 82 MB  |           |
+| `small-q5_1`          | 190 MB | Balanced  |
+| `small-q8_0`          | 264 MB |           |
+| `medium-q5_0`         | 539 MB |           |
+| `medium-q8_0`         | 823 MB |           |
+| `large-v3-turbo-q5_0` | 574 MB | Best      |
+
+### Languages and Hinglish
+
+English (`en`), Hindi (`hi`, Devanagari), Marathi (`mr`, Devanagari), auto-detect (`auto`), and **Hinglish**.
+Reels write Hinglish in Latin script ("kya baat hai"), but Whisper with `language=hi` writes Devanagari. Verso's
+Hinglish mode decodes with the **English language token** (`translate=false`), which keeps output in Latin
+script, plus a **romanized Hinglish initial prompt** that nudges Whisper to transliterate Hindi words instead of
+translating them. Any word that still comes out in Devanagari is romanized by a small rule-based transliterator
+(`captions/segment.rs`). Trade-off: the English token sometimes translates a Hindi phrase to English instead of
+transliterating it, mostly on the small models; `language=hi` + transliteration would keep every word but gives
+mechanical spellings ("bahut" vs "bohot") for the whole caption. Use "Best" for Hindi-heavy audio.
+
 ## Roadmap
 
 1. **Foundation** (done): shell, design system, Rust command pipeline.
@@ -148,6 +217,38 @@ back to PATH (development only).
 3. Auto-cut and reframe: find moments in long videos, follow the speaker, 9:16 cutout.
 4. Captions, templates and one-click edits.
 5. Export, freemium licensing, auto-update, macOS build and signing.
+
+## Backend
+
+Accounts, entitlements and payments live in [`server/`](server/), a standalone Node.js 20+ package
+(Fastify, TypeScript, Knex). It serves the hosted sign-in, account and pricing pages, the desktop
+sign-in flow (system browser to `127.0.0.1` loopback with PKCE), `GET /v1/me/entitlements` with a signed
+offline token, and Razorpay subscription webhooks.
+
+```bash
+cd server
+pnpm install
+pnpm dev        # http://localhost:8787, SQLite, emails printed to the console, no keys needed
+pnpm build      # compile to dist/
+pnpm start      # run dist/index.js
+pnpm migrate    # apply database migrations (dev auto-migrates SQLite on start)
+pnpm test
+```
+
+Copy `server/.env.example` to `server/.env` to change settings. Where each production key comes from, and how
+to deploy to Hostinger Cloud Economy with MySQL, is in [docs/SETUP-KEYS.md](docs/SETUP-KEYS.md).
+
+### Connecting the app
+
+Copy the root `.env.example` to `.env.local`. In dev the app talks to `http://localhost:8787` by default; set
+`VITE_VERSO_API_URL` for anything else. With no API URL the app runs offline on the Free plan and account screens
+say "Sign-in isn't set up yet". Sign-in stores the refresh token in the OS keychain; the plan is cached as a
+signed offline token in app data. `pnpm invite:create` (in `server/`) makes closed-beta invite codes for
+`VITE_VERSO_BETA_GATE=true` builds.
+
+## Releases
+
+Installers, auto-updates, code signing and CI are covered in [docs/RELEASE.md](docs/RELEASE.md).
 
 ---
 

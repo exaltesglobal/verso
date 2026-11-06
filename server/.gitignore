@@ -1,0 +1,7 @@
+node_modules
+dist
+.dev-keys
+*.sqlite
+*.sqlite-journal
+.env
+updates/
