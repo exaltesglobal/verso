@@ -53,7 +53,7 @@ export function VideoLayer({ clip, time, playing, mediaClockRef, mediaStyle, sec
       if (!v.paused) v.pause();
       if (Math.abs(v.currentTime - sourceTime) > SEEK_EPSILON) v.currentTime = sourceTime;
     }
-  }, [src, playing, sourceTime, clip?.volume]);
+  }, [src, playing, sourceTime, clip?.volume, clip?.id]);
 
   // While playing, report the video's position as timeline time.
   useEffect(() => {
