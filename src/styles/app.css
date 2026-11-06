@@ -2248,3 +2248,12 @@ input[type="range"]::-webkit-slider-thumb {
   gap: var(--vs-space-2);
   margin-top: var(--vs-space-6);
 }
+
+.frame__speaker {
+  flex-basis: 100%;
+  font-size: 0.45em;
+  font-weight: var(--vs-font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vs-color-role-text-secondary);
+}

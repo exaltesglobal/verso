@@ -40,14 +40,18 @@ export function Preview({
 }: PreviewProps) {
   const captions = project.tracks.find((t) => t.kind === "captions")?.clips ?? [];
   const caption = captions.find((c) => time >= c.start && time < c.end);
-  const words = caption?.label.split(" ") ?? [];
-  // Highlight the word being "spoken" right now.
-  const active = caption
-    ? Math.min(
-        words.length - 1,
-        Math.floor(((time - caption.start) / (caption.end - caption.start)) * words.length),
-      )
-    : -1;
+  // Real word timings when the captions engine wrote them; otherwise spread evenly.
+  const timed = caption?.words?.length ? caption.words : null;
+  const words = timed ? timed.map((w) => w.text) : ((caption?.text ?? caption?.label)?.split(" ") ?? []);
+  const active = !caption
+    ? -1
+    : timed
+      ? timed.findIndex((w) => time >= w.start && time < w.end)
+      : Math.min(
+          words.length - 1,
+          Math.floor(((time - caption.start) / (caption.end - caption.start)) * words.length),
+        );
+  const speaker = caption?.label.includes(": ") ? caption.label.split(": ")[0] : undefined;
 
   const clip = videoClipAt(project, time);
   const frames = useFilmstrip(clip?.source);
@@ -82,7 +86,8 @@ export function Preview({
             </div>
           )}
           {caption && (
-            <p className="frame__caption">
+            <p className={`frame__caption caption-look--${project.captionStyle ?? "bold-pop"}`}>
+              {speaker && <span className="frame__speaker">{speaker}</span>}
               {words.map((w, i) => (
                 <span key={`${caption.id}-${i}`} className={i === active ? "is-spoken" : undefined}>
                   {w}
