@@ -46,7 +46,33 @@ export type IconName =
   | "vertical"
   | "voiceover"
   | "volume"
-  | "zoom-in";
+  | "zoom-in"
+  // Additions in the brand hand (Lucide, ISC, redrawn at stroke 1.75) where the kit had no icon.
+  | "alert"
+  | "check"
+  | "check-circle"
+  | "chevron-down"
+  | "chevron-right"
+  | "close"
+  | "eye"
+  | "eye-off"
+  | "fullscreen"
+  | "headphones"
+  | "info"
+  | "lock"
+  | "magnet"
+  | "more-horizontal"
+  | "reset"
+  | "safe-zone"
+  | "search"
+  | "skip-end"
+  | "skip-start"
+  | "step-back"
+  | "step-forward"
+  | "unlock"
+  | "volume-off"
+  | "zoom-fit"
+  | "zoom-out";
 
 interface IconProps {
   name: IconName;

@@ -7,7 +7,7 @@
   width: 440px;
   max-width: calc(100vw - var(--vs-space-8));
   padding: var(--vs-space-6);
-  border-radius: var(--vs-radius-xl);
+  border-radius: var(--ui-r-lg);
   background: var(--vs-color-role-bg-surface);
   border: 1px solid var(--vs-color-role-border);
   box-shadow: var(--vs-shadow-lg);
@@ -33,7 +33,7 @@
 .acct-dialog__close {
   width: 32px;
   height: 32px;
-  border-radius: var(--vs-radius-md);
+  border-radius: var(--ui-r-sm);
   color: var(--vs-color-role-text-muted);
   font-size: var(--vs-font-size-title);
 }
@@ -99,7 +99,7 @@
   margin: 0;
   padding: 0;
   border: 1px solid var(--vs-color-role-border);
-  border-radius: var(--vs-radius-md);
+  border-radius: var(--ui-r-sm);
 }
 
 .acct-devices li {
@@ -200,7 +200,7 @@
   gap: var(--vs-space-2);
   width: 380px;
   padding: var(--vs-space-5);
-  border-radius: var(--vs-radius-lg);
+  border-radius: var(--ui-r-md);
   background: var(--vs-color-role-bg-raised);
   border: 1px solid var(--vs-color-role-border-strong);
   box-shadow: var(--vs-shadow-lg);
@@ -247,7 +247,7 @@
   max-width: 720px;
   margin: 0 auto var(--vs-space-6);
   padding: var(--vs-space-5) var(--vs-space-6);
-  border-radius: var(--vs-radius-lg);
+  border-radius: var(--ui-r-md);
   background: var(--vs-color-role-bg-panel);
   border: 1px solid var(--vs-color-role-border);
 }

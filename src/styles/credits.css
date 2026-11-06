@@ -70,7 +70,7 @@
   align-items: flex-start;
   gap: 2px;
   padding: var(--vs-space-4);
-  border-radius: var(--vs-radius-lg);
+  border-radius: var(--ui-r-md);
   background: var(--vs-color-role-bg-raised);
   border: 1px solid var(--vs-color-role-border);
   text-align: left;
