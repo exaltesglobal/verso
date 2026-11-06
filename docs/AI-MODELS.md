@@ -93,3 +93,13 @@ hashes while downloading, and only renames into place if the SHA-256 matches.
 | `face_sface` | `github.com/opencv/opencv_zoo/raw/48b10fa5…/models/face_recognition_sface/face_recognition_sface_2021dec.onnx` | `0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79` |
 
 Before launch, mirror the three files on our own CDN and point the URLs there (same hashes).
+
+## Voice clean-up
+
+| Id              | Job                          | Model                                                  | Licence                                     | Size    | Required |
+| --------------- | ---------------------------- | ------------------------------------------------------ | ------------------------------------------- | ------- | -------- |
+| `voice_rnnoise` | Remove noise behind speech   | RNNoise "somnolent-hogwash" (`sh.rnnn`), FFmpeg arnndn | Not copyrightable (per repo); RNNoise BSD-3 | 0.3 MB  | no\*     |
+
+\* Downloaded once on first "Clean up voice" from a pinned commit of
+<https://github.com/GregorR/rnnoise-models> and checked with SHA-256. The repo README states the trained
+models are not creative work and not subject to copyright. If the download fails, FFmpeg's `afftdn` is used.
