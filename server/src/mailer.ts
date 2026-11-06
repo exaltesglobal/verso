@@ -1,0 +1,45 @@
+import type { FastifyBaseLogger } from 'fastify';
+import type { Config } from './config.js';
+
+export type Mail = { to: string; subject: string; text: string; html: string };
+export type Mailer = { send: (mail: Mail) => Promise<void> };
+
+/** Resend when RESEND_API_KEY is set; otherwise the email is printed to the log (local dev). */
+export function createMailer(config: Config, log: FastifyBaseLogger): Mailer {
+  if (!config.RESEND_API_KEY) {
+    return {
+      async send(mail) {
+        log.info({ to: mail.to, subject: mail.subject }, `[console mailer]\n${mail.text}`);
+      },
+    };
+  }
+  return {
+    async send(mail) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: config.EMAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text, html: mail.html }),
+      });
+      if (!res.ok) {
+        log.error({ status: res.status, body: (await res.text()).slice(0, 300) }, 'Resend rejected email');
+        throw new Error('email_send_failed');
+      }
+    },
+  };
+}
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+export function linkEmail(opts: { to: string; subject: string; intro: string; button: string; url: string; outro: string }): Mail {
+  const text = `${opts.intro}\n\n${opts.button}: ${opts.url}\n\n${opts.outro}\n\nVerso by Agape Labs`;
+  const html = `<!doctype html><html><body style="margin:0;background:#0B0B0F;font-family:Manrope,Segoe UI,Arial,sans-serif;color:#F5F4F0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#16161C;border:1px solid #2A2A33;border-radius:14px">
+<tr><td style="padding:32px">
+<p style="margin:0 0 24px;font-weight:700;font-size:18px">Verso</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#B9B7BF">${esc(opts.intro)}</p>
+<a href="${esc(opts.url)}" style="display:inline-block;background:#FF4A2B;color:#0B0B0F;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px">${esc(opts.button)}</a>
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#B9B7BF">${esc(opts.outro)}</p>
+</td></tr></table></td></tr></table></body></html>`;
+  return { to: opts.to, subject: opts.subject, text, html };
+}
