@@ -12,3 +12,4 @@ pub mod projects;
 pub mod reframe;
 pub mod thumbnails;
 pub mod waveform;
+pub mod voice;

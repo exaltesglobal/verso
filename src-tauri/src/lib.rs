@@ -14,6 +14,7 @@ mod reframe;
 mod surecast;
 mod tools;
 mod updates;
+mod voice;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -94,6 +95,11 @@ pub fn run() {
             surecast::surecast_retry,
             surecast::surecast_remove,
             surecast::surecast_refresh,
+            commands::voice::voice_models,
+            commands::voice::download_voice_model,
+            commands::voice::synthesize,
+            commands::voice::translate,
+            commands::voice::dub,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

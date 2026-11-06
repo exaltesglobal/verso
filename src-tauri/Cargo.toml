@@ -43,6 +43,8 @@ keyring = { version = "3", features = ["apple-native", "windows-native"] }
 jsonwebtoken = "9"
 base64 = "0.22"
 rand = "0.8"
+# Voice/dubbing: translator tokenizers (Apache-2.0; Oniguruma is BSD-2).
+tokenizers = { version = "0.23.2", default-features = false, features = ["onig"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

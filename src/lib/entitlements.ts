@@ -22,6 +22,7 @@ export type Feature =
   | "templates_pro"
   /** Remove or swap the background (blur stays free). */
   | "background_pro"
+  | "dubbing"
   /** Kept for compatibility: every plan exports without a watermark. */
   | "watermark_free";
 
@@ -45,6 +46,7 @@ export const FREE: Entitlements = {
     caption_styles_pro: false,
     templates_pro: false,
     background_pro: false,
+    dubbing: false,
     watermark_free: true,
   },
   limits: { auto_clips_per_month: 10, max_devices: 1, max_export_height: 1080 },

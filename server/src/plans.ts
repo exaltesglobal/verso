@@ -14,6 +14,7 @@ export const PLANS = {
       caption_styles_pro: false,
       templates_pro: false,
       background_pro: false,
+      dubbing: false,
     },
     limits: {
       auto_clips_per_month: 10,
@@ -30,6 +31,7 @@ export const PLANS = {
       caption_styles_pro: true,
       templates_pro: true,
       background_pro: true,
+      dubbing: true,
     },
     limits: {
       auto_clips_per_month: -1, // -1 means unlimited
