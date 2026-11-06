@@ -5,6 +5,7 @@ import { LeftPanel } from "../components/editor/LeftPanel";
 import { Preview } from "../components/editor/Preview";
 import { Inspector } from "../components/editor/Inspector";
 import { Timeline, type TimelineEdit } from "../components/editor/Timeline";
+import { ExportDialog } from "../components/editor/ExportDialog";
 import type { MediaInfo } from "../lib/media";
 import {
   addTextClip,
@@ -58,6 +59,7 @@ export function Editor({
     () => initialProject.tracks.find((t) => t.kind === "video")?.clips[0]?.id ?? "",
   );
   const [zoom, setZoom] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const last = useRef<number | null>(null);
   /**
    * Timeline time reported by the playing <video>, or null when no real media
@@ -97,7 +99,6 @@ export function Editor({
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [playing, duration]);
-
 
   const togglePlay = useCallback(() => {
     if (duration <= 0) return;
@@ -262,7 +263,11 @@ export function Editor({
         onRedo={redo}
         onHome={onHome}
         onAbout={onAbout}
-        onExport={() => notify({ tone: "info", text: "Export is coming in the next beta build." })}
+        onExport={() => {
+          setPlaying(false);
+          if (duration > 0) setExporting(true);
+          else notify({ tone: "info", text: "Add a video before exporting." });
+        }}
         onSave={() => void save(false)}
       />
       <LeftPanel
@@ -306,6 +311,9 @@ export function Editor({
         onSplit={split}
         onDelete={() => remove(false)}
       />
+      {exporting && (
+        <ExportDialog project={project} aspect={aspect} notify={notify} onClose={() => setExporting(false)} />
+      )}
     </div>
   );
 }

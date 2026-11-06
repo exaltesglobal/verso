@@ -97,10 +97,26 @@ export function buildExportRequest(
   const clipsOf = (kind: string) =>
     project.tracks.filter((t) => t.kind === kind).flatMap((t) => t.clips.filter((c) => c.end > c.start));
 
+  // Font sizes are pixels on a 1080-wide canvas; styles store a fraction of canvas height.
+  const canvasH = aspect === "9:16" ? 1920 : 1080;
   const text = (kind: string, y: number, fontSize: number): ExportText[] =>
     clipsOf(kind)
-      .filter((c) => c.label.trim())
-      .map((c) => ({ text: c.label, start: c.start, end: c.end, x: 0.5, y, fontSize, color: "#FFFFFF" }));
+      .filter((c) => (c.text ?? c.label).trim())
+      .map((c) => ({
+        text: c.text ?? c.label,
+        start: c.start,
+        end: c.end,
+        x: 0.5,
+        y: c.style?.y ?? y,
+        fontSize: c.style ? Math.round(c.style.size * canvasH) : fontSize,
+        color: c.style?.color ?? "#FFFFFF",
+      }));
+  // Zoom > 1 crops into the centre of the frame.
+  const zoomCrop = (z: number | undefined) => {
+    if (!z || z <= 1.001) return undefined;
+    const s = 1 / z;
+    return { x: (1 - s) / 2, y: (1 - s) / 2, w: s, h: s };
+  };
 
   return {
     aspect,
@@ -108,10 +124,22 @@ export function buildExportRequest(
     fps: options.fps ?? 30,
     videoClips: clipsOf("video")
       .filter((c) => c.source?.hasVideo && !c.variant)
-      .map((c) => ({ path: c.source!.path, inPoint: c.inPoint ?? 0, start: c.start, end: c.end })),
-    audioClips: clipsOf("audio")
+      .map((c) => ({
+        path: c.source!.path,
+        inPoint: c.inPoint ?? 0,
+        start: c.start,
+        end: c.end,
+        crop: zoomCrop(c.zoom),
+      })),
+    audioClips: [...clipsOf("audio"), ...clipsOf("music")]
       .filter((c) => c.source?.hasAudio)
-      .map((c) => ({ path: c.source!.path, inPoint: c.inPoint ?? 0, start: c.start, end: c.end, volume: 1 })),
+      .map((c) => ({
+        path: c.source!.path,
+        inPoint: c.inPoint ?? 0,
+        start: c.start,
+        end: c.end,
+        volume: Math.min(1, c.volume ?? 1),
+      })),
     textOverlays: text("text", 0.2, 72),
     captions: text("captions", 0.78, 60),
     watermark: options.watermark ?? true,
