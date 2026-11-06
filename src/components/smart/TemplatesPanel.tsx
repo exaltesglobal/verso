@@ -1,17 +1,23 @@
 import { useEntitlements } from "../../lib/entitlements";
 import { useState, type CSSProperties } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import "@fontsource-variable/fraunces"; // serif shown on cinematic cards
 import { Icon } from "../Icon";
 import { Button } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { LEAK_COLORS, letterboxBar } from "../../lib/looks";
 import { startMediaDrag, useMediaDrop, useOsFileDrops } from "../../lib/mediaDrag";
-import { formatDuration, type MediaInfo } from "../../lib/media";
-import type { Clip, Project } from "../../lib/project";
+import { formatDuration, isImage, type MediaInfo } from "../../lib/media";
+import type { Clip, Look, Project } from "../../lib/project";
 import {
   TEMPLATE_PACKS,
   TEMPLATES,
   applyTemplate,
+  defaultLang,
+  limitLook,
+  projectLangs,
+  setSlotInPoint,
+  swapProjectLanguage,
   swapSlotMedia,
   templateLangs,
   type Template,
@@ -31,7 +37,7 @@ export interface TemplatesPanelProps {
 
 const LANG_NAMES: Record<TemplateLang, string> = {
   en: "English",
-  hi: "हिंदी",
+  hi: "Hinglish",
   ta: "தமிழ்",
   ml: "മലയാളം",
   bn: "বাংলা",
@@ -87,6 +93,7 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
       {project && slotted.length > 0 && (
         <SwapSlots project={project} clips={slotted} media={media} dropError={dropError} onApply={onApply} />
       )}
+      {project && <LetterboxPicker project={project} onApply={onApply} />}
       <input
         className="tpl-search"
         type="search"
@@ -160,10 +167,17 @@ function TemplatePreview({ template: t }: { template: Template }) {
       {look?.leak && (
         <span
           className="tpl-preview__leak"
-          style={{ "--l1": LEAK_COLORS[look.leak.style][0], "--l2": LEAK_COLORS[look.leak.style][1] } as CSSProperties}
+          style={
+            {
+              "--l1": LEAK_COLORS[look.leak.style][0],
+              "--l2": LEAK_COLORS[look.leak.style][1],
+            } as CSSProperties
+          }
         />
       )}
-      {look?.flare && <span className="tpl-preview__flare" style={{ "--fc": look.flare.color } as CSSProperties} />}
+      {look?.flare && (
+        <span className="tpl-preview__flare" style={{ "--fc": look.flare.color } as CSSProperties} />
+      )}
       {t.texts.slice(0, 3).map((x, i) =>
         x.font === "serif" ? (
           <span
@@ -210,13 +224,20 @@ function ClipTray({ media }: { media: MediaInfo[] }) {
   );
 }
 
+/** A photo is its own thumbnail; videos use a filmstrip frame. */
+function useThumb(m: MediaInfo | undefined, at: (m: MediaInfo) => number) {
+  const photo = !!m && isImage(m);
+  const frames = useFilmstrip(photo ? undefined : m);
+  if (!m) return undefined;
+  return photo ? convertFileSrc(m.path) : frameAt(frames, m.durationSec, at(m));
+}
+
 function TrayChip({ media: m }: { media: MediaInfo }) {
-  const frames = useFilmstrip(m);
-  const thumb = frameAt(frames, m.durationSec, m.durationSec / 2);
+  const thumb = useThumb(m, (x) => x.durationSec / 2);
   return (
     <span className="clip-tray__chip" title={m.fileName} onPointerDown={(e) => startMediaDrag(e, m)}>
       {thumb ? <img src={thumb} alt="" draggable={false} /> : <Icon name="import" size={16} />}
-      <span className="clip-tray__len">{formatDuration(m.durationSec)}</span>
+      <span className="clip-tray__len">{isImage(m) ? "Photo" : formatDuration(m.durationSec)}</span>
     </span>
   );
 }
@@ -236,12 +257,31 @@ function SwapSlots({
   onApply: (next: Project, message: string) => void;
 }) {
   const videos = media.filter((m) => m.hasVideo);
+  const langs = projectLangs(project);
   const swap = (slotId: string, m: MediaInfo) =>
     onApply(swapSlotMedia(project, slotId, m), `Swapped in ${m.fileName}.`);
   return (
     <section className="tpl-swap" aria-label="Your reel's slots">
       <h3 className="tpl-swap__title">Your reel's slots</h3>
-      <p className="tpl-swap__hint">Drag a clip here, or a video from your computer, to swap it in.</p>
+      <p className="tpl-swap__hint">
+        Drag a clip or photo here, or a file from your computer, to swap it in.
+      </p>
+      {langs.length > 1 && (
+        <div className="chips" role="group" aria-label="Switch all text to">
+          {langs.map((l) => (
+            <button
+              key={l}
+              type="button"
+              className="chip"
+              onClick={() =>
+                onApply(swapProjectLanguage(project, l), `All text switched to ${LANG_NAMES[l]}.`)
+              }
+            >
+              {LANG_NAMES[l]}
+            </button>
+          ))}
+        </div>
+      )}
       {videos.length > 0 && <ClipTray media={videos} />}
       <ol className="slot-list">
         {clips.map((c, i) => (
@@ -250,8 +290,17 @@ function SwapSlots({
             index={i}
             slot={{ id: c.slotId!, kind: "video", start: c.start, end: c.end, hint: c.label }}
             media={videos}
-            value={c.source}
+            value={c.source ?? videos.find((m) => m.path === c.still?.path)}
             onChange={(m) => swap(c.slotId!, m)}
+            trim={
+              c.source && c.source.durationSec > c.end - c.start + 0.5
+                ? {
+                    value: c.inPoint ?? 0,
+                    max: c.source.durationSec - (c.end - c.start),
+                    onCommit: (t) => onApply(setSlotInPoint(project, c.slotId!, t), "Slot trimmed."),
+                  }
+                : undefined
+            }
           />
         ))}
       </ol>
@@ -274,7 +323,7 @@ function SlotFiller({
   onUse: (chosen: MediaInfo[], lang: TemplateLang) => void;
 }) {
   const langs = templateLangs(t);
-  const [lang, setLang] = useState<TemplateLang>("en");
+  const [lang, setLang] = useState<TemplateLang>(() => defaultLang(t));
   const [chosen, setChosen] = useState<(MediaInfo | undefined)[]>(() =>
     t.slots.map((_, i) => (media.length ? media[i % media.length] : undefined)),
   );
@@ -352,17 +401,20 @@ function SlotRow({
   media,
   value,
   onChange,
+  trim,
 }: {
   index: number;
   slot: TemplateSlot;
   media: MediaInfo[];
   value: MediaInfo | undefined;
   onChange: (m: MediaInfo) => void;
+  /** Slot trimming: where in the file the slot starts (seconds). */
+  trim?: { value: number; max: number; onCommit: (t: number) => void };
 }) {
-  const frames = useFilmstrip(value);
   const ref = useMediaDrop<HTMLLIElement>(onChange);
   const len = slot.end - slot.start;
-  const thumb = value && frameAt(frames, value.durationSec, Math.min(value.durationSec, len) / 2);
+  const thumb = useThumb(value, (m) => Math.min(m.durationSec, len) / 2);
+  const minClip = slot.minClip ?? Math.ceil(len * 10) / 10;
   // A dropped OS file may not be in the media list yet: offer it in the picker too.
   const options = value && !media.some((m) => m.path === value.path) ? [value, ...media] : media;
   return (
@@ -375,7 +427,9 @@ function SlotRow({
         <span className="slot-row__hint">
           {slot.hint}
           {slot.kind === "photo" && <span className="slot-row__kind"> · still moment</span>}
+          <span className="slot-row__min"> · Min clip {minClip} s</span>
         </span>
+        {trim && <SlotTrim key={trim.value} {...trim} />}
         {options.length > 0 ? (
           <select
             className="slot-row__select"
@@ -389,7 +443,7 @@ function SlotRow({
             {!value && <option value="">Drop a clip here</option>}
             {options.map((m) => (
               <option key={m.path} value={m.path}>
-                {m.fileName} ({formatDuration(m.durationSec)})
+                {m.fileName} ({isImage(m) ? "photo" : formatDuration(m.durationSec)})
               </option>
             ))}
           </select>
@@ -398,5 +452,65 @@ function SlotRow({
         )}
       </span>
     </li>
+  );
+}
+
+/** "Start at" slider; commits once on release so a drag is one undo step. */
+function SlotTrim({ value, max, onCommit }: { value: number; max: number; onCommit: (t: number) => void }) {
+  const [t, setT] = useState(value);
+  const commit = () => t !== value && onCommit(t);
+  return (
+    <label className="slot-trim">
+      <span>Start at {t.toFixed(1)} s</span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={0.1}
+        value={t}
+        onChange={(e) => setT(Number(e.target.value))}
+        onPointerUp={commit}
+        onKeyUp={commit}
+      />
+    </label>
+  );
+}
+
+const LETTERBOX: { id: Look["letterbox"]; name: string }[] = [
+  { id: null, name: "None" },
+  { id: "2.39", name: "2.39" },
+  { id: "2.00", name: "2.00" },
+  { id: "1.85", name: "1.85" },
+];
+
+/** Letterbox ratio for the whole reel (a grade plus at most two of grain, vignette, letterbox). */
+function LetterboxPicker({
+  project,
+  onApply,
+}: {
+  project: Project;
+  onApply: (next: Project, message: string) => void;
+}) {
+  const current = project.look?.letterbox ?? null;
+  return (
+    <div className="chips tpl-letterbox" role="group" aria-label="Letterbox">
+      <span className="tpl-letterbox__label">Letterbox</span>
+      {LETTERBOX.map((o) => (
+        <button
+          key={o.name}
+          type="button"
+          className={o.id === current ? "chip is-active" : "chip"}
+          aria-pressed={o.id === current}
+          onClick={() =>
+            onApply(
+              { ...project, updatedAt: Date.now(), look: limitLook({ ...project.look, letterbox: o.id }) },
+              o.id ? `Letterbox ${o.name}:1.` : "Letterbox off.",
+            )
+          }
+        >
+          {o.name}
+        </button>
+      ))}
+    </div>
   );
 }
