@@ -23,7 +23,21 @@ export type User = {
   name: string | null;
   password_hash: string | null;
   email_verified_at: number | null;
+  blocked_at?: number | null;
 };
+
+export const ACCOUNT_PAUSED = 'Your account is paused. Contact support.';
+const paused = () => new ApiError(403, 'account_blocked', ACCOUNT_PAUSED);
+
+/** Throws 403 account_blocked when an admin paused the account. */
+export async function assertActive(ctx: Pick<Ctx, 'db'>, userId: string) {
+  const u = await ctx.db('users').where({ id: userId }).first('blocked_at');
+  if (u?.blocked_at) throw paused();
+}
+
+export function assertNotBlocked(user: { blocked_at?: number | null }) {
+  if (user.blocked_at) throw paused();
+}
 
 export type DeviceInfo = { deviceId?: string | null; deviceName?: string | null; platform?: string | null };
 
@@ -57,6 +71,7 @@ export async function authenticate(ctx: Ctx, email: string, password: string): P
   dummyHash ??= hashPassword(randomToken());
   const ok = await verifyPassword(user?.password_hash ?? (await dummyHash), password);
   if (!user || !user.password_hash || !ok) throw new ApiError(401, 'invalid_credentials', "That email and password don't match.");
+  assertNotBlocked(user);
   return user;
 }
 let dummyHash: Promise<string> | undefined;
@@ -150,7 +165,8 @@ export async function getSessionUser(ctx: Ctx, raw: string | undefined): Promise
   if (!raw) return undefined;
   const s = await ctx.db('sessions').where({ id_hash: sha256(raw) }).first();
   if (!s || Number(s.expires_at) < now()) return undefined;
-  return findUserById(ctx, s.user_id);
+  const user = await findUserById(ctx, s.user_id);
+  return user?.blocked_at ? undefined : user;
 }
 
 export async function destroySession(ctx: Ctx, raw: string | undefined) {
@@ -189,7 +205,7 @@ export async function registerDevice(ctx: Ctx, userId: string, d: DeviceInfo) {
   });
 }
 
-export async function removeDevice(ctx: Ctx, userId: string, id: string) {
+export async function removeDevice(ctx: Pick<Ctx, 'db'>, userId: string, id: string) {
   const dev = await ctx.db('devices').where({ id, user_id: userId }).first();
   if (!dev) return;
   await ctx.db('devices').where({ id }).delete();
@@ -229,6 +245,7 @@ export async function rotateRefreshToken(ctx: Ctx, raw: string) {
     throw invalid;
   }
   if (Number(row.expires_at) < now()) throw invalid;
+  await assertActive(ctx, row.user_id);
   const n = await ctx.db('refresh_tokens').where({ id: row.id }).whereNull('revoked_at').update({ revoked_at: now() });
   if (n !== 1) throw invalid;
   if (row.device_id) {
@@ -268,6 +285,7 @@ export async function exchangeAuthCode(ctx: Ctx, code: string, verifier: string)
   const n = await ctx.db('auth_codes').where({ code_hash: hash }).whereNull('used_at').update({ used_at: now() });
   if (n !== 1) throw invalid;
   if (!safeEqual(sha256b64url(verifier), row.code_challenge)) throw invalid;
+  await assertActive(ctx, row.user_id);
   const device = { deviceId: row.device_id, deviceName: row.device_name, platform: row.platform };
   await registerDevice(ctx, row.user_id, device);
   return issueTokens(ctx, row.user_id, row.device_id);

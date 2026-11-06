@@ -20,7 +20,7 @@ const dateFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "sho
 
 /** Account summary and actions. Used in the account dialog and in Settings. */
 export function AccountDetails() {
-  const { ent, configured, signingIn, error, signIn, cancelSignIn, signOut, openUpgrade, openServerPage } =
+  const { ent, configured, signingIn, error, blocked, signIn, cancelSignIn, signOut, openUpgrade, openServerPage } =
     useEntitlements();
   const credits = useCredits();
   const [devices, setDevices] = useState<Device[] | null>(null);
@@ -39,6 +39,20 @@ export function AccountDetails() {
         <p className="acct-muted">
           Everything else works offline on the Free plan. Accounts and Pro are coming soon.
         </p>
+      </div>
+    );
+  }
+
+  if (!ent.signedIn && blocked) {
+    return (
+      <div className="acct-section">
+        <p className="acct-lead">Your account is paused.</p>
+        <p className="acct-muted">Contact support to turn it back on. Verso still works on the Free plan.</p>
+        <div className="acct-actions">
+          <Button variant="ghost" onClick={signIn}>
+            Sign in again
+          </Button>
+        </div>
       </div>
     );
   }

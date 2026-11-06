@@ -371,3 +371,72 @@ All except pricing need `Authorization: Bearer <access_token>`.
 - `GET /v1/credits/history?cursor=&limit=` → `{ items, nextCursor }`
 - `POST /v1/credits/orders` `{ packId, currency? }` → `{ orderId, keyId, amount, currency, credits, packId,
   checkoutUrl }` for an in-app Razorpay Checkout
+
+---
+
+## 9. Admin
+
+The owner controls access from the server: comp Pro, switch single features on or off, change limits, give or
+take credits, pause accounts and manage beta invite codes. Every change is written to the append-only
+`admin_audit` table (who, what, which user, before/after JSON, IP, time).
+
+### Turn it on
+
+Set `ADMIN_EMAILS` to a comma-separated list, for example `ADMIN_EMAILS=owner@example.com,support@example.com`.
+Those people sign in on the normal hosted pages (same session cookie as `/account`) and then open
+`https://api.example.com/admin`. The account's email must be confirmed; anyone else gets "Page not found".
+Run `pnpm migrate` (production: `node dist/migrate.js`) once to add the tables.
+
+### Pages
+
+- `/admin/users`: search by email, name or user id. Shows plan, credits, devices, last seen and status.
+- `/admin/users/<id>`: the whole picture for one person, plus:
+  - **Access**: plan override (Pro comp or Free, with an optional end date), each feature from `plans.ts` set
+    to "From plan", "Always on" or "Always off", and limit overrides (`max_devices`, `max_export_height`,
+    `auto_clips_per_month`; -1 = unlimited). The end date applies to the plan override only; feature and
+    limit overrides stay until you remove them.
+  - **Credits**: add or take away purchased credits with a note (ledger kind `admin`), and the ledger history.
+  - **Account**: pause/unpause, sign out everywhere, remove a device.
+- `/admin/invites`: create (count, uses, note, end date), list and revoke beta invite codes.
+- `/admin/audit`: every admin action, filter by admin, action prefix (`override`, `credits`, `user.block`,
+  `invite`) or user.
+
+Pausing, removing overrides, revoking a code and taking credits away ask for a confirmation tick.
+
+### How overrides reach the app
+
+`getEntitlements` (`server/src/plans.ts`) works it out in this order: plan from the subscription, then an
+unexpired plan override, then feature and limit overrides. `/v1/me/entitlements` and the signed offline token
+both come from it, and so does the monthly credit allowance (comp Pro gets the Pro allowance). The desktop app
+re-checks on start and when its window gets focus (at most once a minute). An offline token already issued
+keeps working until it expires (`OFFLINE_ENTITLEMENT_DAYS`) if the computer stays offline.
+
+### Paused accounts
+
+A paused user can't sign in (password, Google or desktop), their browser sessions end at once, and every
+`/v1` call with their token returns `403 {"error":"account_blocked","message":"Your account is paused.
+Contact support."}`. Desktop refresh tokens are refused while paused, so the app stops within the 15-minute
+access token lifetime; it then signs out locally and shows "Your account is paused." Unpausing lets existing
+sign-ins work again.
+
+### Scripts (in `server/`; production: `node dist/<name>.js`)
+
+- `pnpm admin:grant-pro someone@example.com 30`: Pro for 30 days. Leave out the days for no end date.
+- `pnpm admin:block someone@example.com`, and `pnpm admin:block someone@example.com --unblock` to undo.
+- `pnpm credits:grant` and `pnpm invite:create` still work as before.
+
+Scripts log to `admin_audit` with admin `cli`.
+
+### JSON API (for scripting)
+
+Same auth as the pages: the admin's session cookie with `_csrf` in the JSON body, or
+`Authorization: Bearer <access_token>` of an admin account (get one from `POST /v1/auth/login`).
+
+- `GET /admin/api/users?q=` · `GET /admin/api/users/<id>`
+- `POST /admin/api/users/<id>/override` `{ plan: "pro"|"free"|null, days?, expiresAt?, features?, limits?, note? }`
+- `POST /admin/api/users/<id>/override/clear`
+- `POST /admin/api/users/<id>/credits` `{ amount, note }` (negative takes away)
+- `POST /admin/api/users/<id>/block` `{ note? }` · `.../unblock` · `.../signout-all` · `.../devices/remove` `{ id }`
+- `GET /admin/api/invites` · `POST /admin/api/invites` `{ count, maxUses, note, expiresAt }` ·
+  `POST /admin/api/invites/revoke` `{ code }`
+- `GET /admin/api/audit?admin=&action=&user=&before=`

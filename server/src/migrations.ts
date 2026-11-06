@@ -218,4 +218,43 @@ export const migrations: Record<string, Migration> = {
       await k.schema.dropTableIfExists('credit_ledger');
     },
   },
+  '004_admin': {
+    async up(k) {
+      await k.schema.alterTable('users', (t) => {
+        t.bigInteger('blocked_at'); // set = account paused: no sign-in, refresh or API access
+      });
+
+      // One row per user. The plan override honours expires_at; feature/limit overrides stay until cleared.
+      await k.schema.createTable('user_overrides', (t) => {
+        t.string('user_id', 36).primary().references('id').inTable('users').onDelete('CASCADE');
+        t.string('plan_override', 8); // pro | free | null
+        t.bigInteger('expires_at');
+        t.text('features'); // JSON {feature: boolean}
+        t.text('limits'); // JSON {limit: number}
+        t.string('note', 240);
+        t.string('granted_by', 254);
+        t.bigInteger('created_at').notNullable();
+        t.bigInteger('updated_at').notNullable();
+      });
+
+      // Append-only record of every admin action.
+      await k.schema.createTable('admin_audit', (t) => {
+        t.bigIncrements('id');
+        t.string('admin', 254).notNullable();
+        t.string('action', 40).notNullable();
+        t.string('target_user_id', 36);
+        t.text('before');
+        t.text('after');
+        t.string('ip', 64);
+        t.bigInteger('at').notNullable();
+        t.index(['target_user_id']);
+        t.index(['at']);
+      });
+    },
+    async down(k) {
+      await k.schema.dropTableIfExists('admin_audit');
+      await k.schema.dropTableIfExists('user_overrides');
+      await k.schema.alterTable('users', (t) => t.dropColumn('blocked_at'));
+    },
+  },
 };

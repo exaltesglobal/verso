@@ -18,6 +18,7 @@ import { creditsRoutes } from './routes-credits.js';
 import { pageRoutes } from './routes-pages.js';
 import { webhookRoutes } from './routes-webhooks.js';
 import { CREDITS_CHECKOUT_JS, CSS } from './views.js';
+import { ADMIN_CSS } from './views-admin.js';
 
 const require = createRequire(import.meta.url);
 const fontFile = require.resolve('@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2');
@@ -86,7 +87,7 @@ export async function buildApp(config: Config, overrides: { db?: Db; mailer?: Ma
   app.get('/assets/manrope.woff2', (_req, reply) =>
     reply.header('Cache-Control', 'public, max-age=31536000, immutable').type('font/woff2').send(font),
   );
-  app.get('/assets/app.css', (_req, reply) => reply.header('Cache-Control', 'public, max-age=3600').type('text/css').send(CSS));
+  app.get('/assets/app.css', (_req, reply) => reply.header('Cache-Control', 'public, max-age=3600').type('text/css').send(CSS + ADMIN_CSS));
 
   app.get('/assets/credits-checkout.js', (_req, reply) =>
     reply.header('Cache-Control', 'public, max-age=3600').type('text/javascript').send(CREDITS_CHECKOUT_JS),

@@ -207,8 +207,8 @@ pub(crate) fn access_token(app: &AppHandle, api: &str) -> Result<String, String>
     let body = json!({ "grant_type": "refresh_token", "refresh_token": refresh });
     match send(ureq2::post(&endpoint(api, "/v1/auth/token")?), Some(body)) {
         Ok(v) => store_tokens(app, &v),
-        Err((401, msg)) => {
-            // Revoked, expired or this device was removed from the account page.
+        Err((401 | 403, msg)) => {
+            // Revoked, expired, this device was removed from the account page, or (403) the account is paused.
             sign_out_local(app);
             Err(msg)
         }
@@ -222,7 +222,13 @@ fn authed_get(app: &AppHandle, api: &str, path: &str) -> Result<Value, String> {
         ureq2::get(&endpoint(api, path)?).set("Authorization", &format!("Bearer {token}")),
         None,
     )
-    .map_err(|(_, m)| m)
+    .map_err(|(code, m)| {
+        // 403 = an admin paused the account: drop the session and the offline token.
+        if code == 403 {
+            sign_out_local(app);
+        }
+        m
+    })
 }
 
 pub(crate) async fn blocking<T: Send + 'static>(

@@ -124,9 +124,11 @@ const date = (ms: number | string | null | undefined) =>
 export function accountPage(o: { user: User; ent: Entitlements; sub: Sub; devices: Device[]; csrf: string; notice?: string; payments: boolean }) {
   const { user, ent, sub } = o;
   const planLine =
-    ent.plan === 'pro'
-      ? `Pro ${ent.billingPlan === 'pro_yearly' ? '(yearly)' : '(monthly)'} · ${sub?.status === 'cancelled' ? 'ends' : 'renews'} ${date(ent.expiresAt ? Date.parse(ent.expiresAt) : null)}`
-      : 'Free';
+    ent.plan !== 'pro'
+      ? 'Free'
+      : ent.overridden && !ent.billingPlan
+        ? `Pro (complimentary)${ent.expiresAt ? ` · until ${date(Date.parse(ent.expiresAt))}` : ''}`
+        : `Pro ${ent.billingPlan === 'pro_yearly' ? '(yearly)' : '(monthly)'} · ${sub?.status === 'cancelled' ? 'ends' : 'renews'} ${date(ent.expiresAt ? Date.parse(ent.expiresAt) : null)}`;
   const canCancel = ent.plan === 'pro' && sub && sub.status !== 'cancelled' && o.payments;
   const devices = o.devices.length
     ? o.devices

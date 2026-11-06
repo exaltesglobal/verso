@@ -53,6 +53,9 @@ const schema = z.object({
 
   UPDATES_MANIFEST: z.string().default('./updates/latest.json'),
 
+  /** Comma-separated emails that may open /admin (they must sign in with a verified email). */
+  ADMIN_EMAILS: z.string().default(''),
+
   // AI credits. Every number is tunable here; the app reads them from GET /v1/credits/pricing.
   CREDITS_FREE_MONTHLY: z.coerce.number().int().min(0).default(30),
   CREDITS_PRO_MONTHLY: z.coerce.number().int().min(0).default(1000),
@@ -78,6 +81,7 @@ export type Config = z.infer<typeof schema> & {
   razorpayConfigured: boolean;
   /** One-time credit orders need only the key pair, not the subscription plan ids. */
   razorpayOrdersConfigured: boolean;
+  adminEmails: string[];
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -102,5 +106,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       c.RAZORPAY_KEY_ID && c.RAZORPAY_KEY_SECRET && c.RAZORPAY_PLAN_PRO_MONTHLY && c.RAZORPAY_PLAN_PRO_YEARLY,
     ),
     razorpayOrdersConfigured: Boolean(c.RAZORPAY_KEY_ID && c.RAZORPAY_KEY_SECRET),
+    adminEmails: c.ADMIN_EMAILS.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
   };
 }
