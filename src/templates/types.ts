@@ -1,8 +1,8 @@
 // Template format. Templates are original Verso designs: a timed layout of
 // media slots and text layers that applyTemplate fills with the user's clips.
-import type { AspectRatio, TextStyle, TransitionKind } from "../lib/project";
+import type { AspectRatio, Look, TextStyle, TransitionKind } from "../lib/project";
 
-export type PackId = "podcast" | "creator" | "festive";
+export type PackId = "trending" | "cinematic" | "podcast" | "creator" | "festive" | "business";
 
 export interface TemplateSlot {
   id: string;
@@ -17,6 +17,22 @@ export interface TemplateSlot {
   crop?: { x: number; y: number; zoom?: number };
   /** Transition into this slot from the previous one. */
   transition?: { kind: TransitionKind; duration: number };
+  /** Slow push-in: extra zoom reached by the slot end (0.08 = 8%). */
+  push?: number;
+  /** Playback speed for a ramp moment (0.5 = slow motion). */
+  speed?: number;
+  /** Punch-in zooms, seconds from the slot start (on the beat). */
+  punch?: number[];
+  /** Punch-in scale (default 1.12). */
+  punchZoom?: number;
+  /** Speed curve: speed (1 = normal) at seconds from the slot start. */
+  ramp?: { t: number; speed: number }[];
+  /** Prayer or ritual footage: no punch-ins, ramps or stickers. */
+  sacred?: boolean;
+  /** Split layouts: which panel this slot belongs to. */
+  region?: "top" | "middle" | "bottom";
+  /** Split layouts: timeline pieces this slot shows (cuts alternate between panels). */
+  segments?: [number, number][];
 }
 
 export interface TemplateText {
@@ -31,7 +47,17 @@ export interface TemplateText {
   size?: number;
   /** Defaults to the template's first accent. */
   color?: string;
+  animation?: TextStyle["animation"];
+  font?: TextStyle["font"];
+  align?: TextStyle["align"];
+  /** Hindi / Hinglish copy, used when the user picks Hindi. */
+  hi?: string;
+  /** Regional copy (Tamil, Malayalam, Bengali, Marathi). */
+  regional?: Partial<Record<RegionalLang, string>>;
 }
+
+export type RegionalLang = "ta" | "ml" | "bn" | "mr";
+export type TemplateLang = "en" | "hi" | RegionalLang;
 
 export interface Template {
   id: string;
@@ -51,6 +77,12 @@ export interface Template {
   /** Two accent colours: text highlight and card gradient. */
   accents: [string, string];
   pro?: boolean;
+  /** Grain, letterbox, leaks, flare, grade and dips applied to the project. */
+  look?: Look;
+  /** Shows a "New" badge on the card. */
+  isNew?: boolean;
+  /** Designed for a split screen; until the canvas supports panels, panels take turns. */
+  layout?: "split-v" | "split-h" | "triptych-v" | "pip";
 }
 
 export interface TemplatePack {

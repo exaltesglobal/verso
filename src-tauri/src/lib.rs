@@ -6,10 +6,6 @@ mod commands;
 mod credits;
 mod crash;
 mod export;
-// Colour/speed/still export helpers. Move to `pub mod color;` in export/mod.rs when wiring export.
-#[allow(dead_code)]
-#[path = "export/color.rs"]
-mod export_color;
 mod reframe;
 mod surecast;
 mod tools;

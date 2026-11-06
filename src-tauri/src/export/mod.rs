@@ -9,7 +9,9 @@
 //! file (see `ass.rs`) and burned with libass; the watermark uses `drawtext`.
 
 pub mod ass;
+pub mod color;
 pub mod encoders;
+pub mod look;
 
 use serde::Deserialize;
 

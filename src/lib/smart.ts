@@ -404,7 +404,10 @@ export function zoomAt(clip: Clip, localTime: number): number {
           : 1 - easeInOut((d - PUNCH_IN - PUNCH_HOLD) / PUNCH_OUT);
     punch = Math.max(punch, 1 + (k.zoom - 1) * env);
   }
-  return (clip.zoom ?? 1) * punch;
+  // Template slow push-in: eases from 1 to 1 + push over the clip.
+  const len = clip.end - clip.start;
+  const push = clip.fx?.push && len > 0 ? 1 + clip.fx.push * easeInOut(Math.min(1, Math.max(0, localTime / len))) : 1;
+  return (clip.zoom ?? 1) * punch * push;
 }
 
 /** Timeline times of caption words said loudly: ALL CAPS or with "!". */

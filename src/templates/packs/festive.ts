@@ -42,6 +42,22 @@ const recipe = seq("fr", [
   [2.5, "First bite", { crop: { x: 0.5, y: 0.45, zoom: 1.1 }, transition: { kind: "fade", duration: 0.3 } }],
 ]);
 
+const navratri = seq("nv", [
+  [2, "Lights and decor", { kind: "photo", push: 0.06 }],
+  [1.5, "Garba circle", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [1.5, "Dandiya sticks clash", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [1.5, "Spin", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [1.5, "Group shot", { punch: [0], transition: { kind: "zoom", duration: 0.15 } }],
+  [3, "Your outfit of the night", { push: 0.06, transition: soft }],
+]);
+
+const rakhi = seq("rk", [
+  [3, "The rakhi and thali", { kind: "photo", push: 0.08 }],
+  [3, "Tying the rakhi", { transition: soft }],
+  [3, "Sweets and gifts", { transition: soft }],
+  [3, "Siblings, laughing", { transition: soft }],
+]);
+
 export const festivePack: TemplatePack = {
   id: "festive",
   name: "Festive India",
@@ -143,6 +159,43 @@ export const festivePack: TemplatePack = {
       musicMood: "Cosy tabla groove",
       accents: ["#FBBF24", "#2E2205"],
       pro: true,
+    },
+    {
+      id: "festive-navratri",
+      name: "Navratri nights",
+      pack: "festive",
+      blurb: "Garba and dandiya on the beat, ending on your outfit.",
+      aspect: "9:16",
+      duration: total(navratri),
+      slots: navratri,
+      texts: [
+        { id: "nv-t1", text: "Navratri nights", start: 0, end: 2, preset: "neon", y: 0.3, size: 0.08, animation: "bounce" },
+        { id: "nv-t2", text: "Outfit of the night", start: 8, end: 11, preset: "boxed", y: 0.82, size: 0.04, animation: "slide-up" },
+      ],
+      captionStyle: "neon",
+      musicMood: "Garba beat",
+      accents: ["#E040FB", "#22062A"],
+      look: { grade: "punchy-pop", flare: { strength: 0.3, color: "#FF9DF2" }, vignette: 0.3 },
+      isNew: true,
+      pro: true,
+    },
+    {
+      id: "festive-rakhi",
+      name: "Raksha Bandhan",
+      pack: "festive",
+      blurb: "The thread, the sweets and the sibling laughs.",
+      aspect: "9:16",
+      duration: total(rakhi),
+      slots: rakhi,
+      texts: [
+        { id: "rk-t1", text: "Happy Raksha Bandhan", start: 0.3, end: 3, preset: "title", y: 0.25, animation: "word-by-word" },
+        { id: "rk-t2", text: "To my forever partner in crime", start: 9, end: 12, preset: "subtitle", y: 0.8, animation: "typewriter" },
+      ],
+      captionStyle: "clean",
+      musicMood: "Warm, playful strings",
+      accents: ["#FF7A7A", "#2A0C0C"],
+      look: { grade: "festive-warm", leak: { style: "warm", strength: 0.2 } },
+      isNew: true,
     },
   ] satisfies Template[],
 };

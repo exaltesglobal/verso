@@ -23,6 +23,31 @@ export interface TextStyle {
   size: number;
   color: string;
   align: "left" | "center" | "right";
+  /** Entrance animation (preview: AnimatedText; export: export/look.rs). */
+  animation?: TextAnimation;
+  /** "serif" = bundled Fraunces (SIL OFL), for cinematic title cards. */
+  font?: "serif";
+}
+
+export type TextAnimation = "pop" | "typewriter" | "slide-up" | "blur-in" | "bounce" | "word-by-word";
+
+/** Whole-frame look drawn over the picture (preview: LookOverlay; export: export/look.rs). */
+export interface Look {
+  /** 0..1 film grain amount. */
+  grain?: number;
+  /** 0..1 edge darkening. */
+  vignette?: number;
+  letterbox?: "2.39" | "2.00" | "1.85" | null;
+  /** `at`: timeline seconds of short leak flashes (~1 s each); omitted = a slow continuous drift. */
+  leak?: { style: "warm" | "rose" | "cool" | "gold"; strength: number; at?: number[] };
+  /** Anamorphic streak; `color` is #RRGGBB. */
+  flare?: { strength: number; color: string };
+  /** Colour grade preset id (see GRADES in lib/looks.ts). */
+  grade?: string;
+  /** Grade strength, 0..1.5 (default 1). */
+  gradeAmount?: number;
+  /** Seconds of dip-to-black at the very start and end. */
+  dip?: number;
 }
 
 export interface CaptionWord {
@@ -82,6 +107,8 @@ export interface Clip {
   still?: { path: string };
   /** Video: play this processed copy instead of source (see background.ts). source stays the original. */
   videoOverride?: VideoOverride;
+  /** Video: template motion. `push` = slow push-in, extra zoom reached by the clip end (0.08 = 8%). */
+  fx?: { push?: number; ramp?: { t: number; speed: number }[] };
 }
 
 export interface ClipColor {
@@ -129,6 +156,7 @@ export interface Project {
   captionStyle?: string;
   /** Brand kit snapshot (logo, colours) applied to this reel. */
   brand?: ProjectBrand;
+  look?: Look;
 }
 
 export const TRACK_ORDER: { kind: TrackKind; label: string }[] = [
@@ -164,6 +192,7 @@ export function normalizeProject(p: Partial<Project> & { tracks: Track[]; name: 
     filePath: p.filePath,
     captionStyle: p.captionStyle ?? "bold-pop",
     brand: p.brand,
+    look: p.look,
   };
 }
 
