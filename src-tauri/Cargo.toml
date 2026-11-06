@@ -27,8 +27,12 @@ serde_json = "1"
 tauri-plugin-dialog = "2"
 # Offline captions. whisper-rs is Unlicense, whisper.cpp (vendored by whisper-rs-sys) is MIT.
 whisper-rs = { version = "=0.16.0", optional = true }
+# Reframe models (ONNX Runtime). MIT/Apache.
+ort = "=2.0.0-rc.15"
 sha2 = "0.10"
-ureq = "2"
+# Model downloads: captions uses ureq 2 (renamed), reframe uses ureq 3.
+ureq2 = { package = "ureq", version = "2" }
+ureq = "3"
 
 [features]
 default = ["whisper"]
@@ -37,6 +41,9 @@ whisper = ["dep:whisper-rs"]
 # GPU acceleration. Needs the CUDA toolkit (Windows/Linux) or Xcode (macOS) at build time.
 cuda = ["whisper", "whisper-rs/cuda"]
 metal = ["whisper", "whisper-rs/metal"]
+# Optional GPU acceleration for the reframe models (CPU is always the fallback).
+directml = ["ort/directml"]
+coreml = ["ort/coreml"]
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

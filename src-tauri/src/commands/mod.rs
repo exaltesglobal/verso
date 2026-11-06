@@ -5,5 +5,6 @@ pub mod export;
 pub mod captions;
 pub mod media;
 pub mod projects;
+pub mod reframe;
 pub mod thumbnails;
 pub mod waveform;

@@ -1,6 +1,7 @@
 mod captions;
 mod commands;
 mod export;
+mod reframe;
 mod tools;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -27,6 +28,10 @@ pub fn run() {
             commands::captions::cancel_caption_download,
             commands::captions::transcribe,
             commands::captions::cancel_transcription,
+            commands::reframe::reframe_models,
+            commands::reframe::download_reframe_model,
+            commands::reframe::analyze_reframe,
+            commands::reframe::plan_crop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

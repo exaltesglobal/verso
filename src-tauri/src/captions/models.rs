@@ -182,15 +182,15 @@ pub fn download(
     }
 
     if have < spec.size_bytes {
-        let mut req = ureq::get(&url(spec));
+        let mut req = ureq2::get(&url(spec));
         if have > 0 {
             req = req.set("Range", &format!("bytes={have}-"));
         }
         let resp = req.call().map_err(|e| match e {
-            ureq::Error::Status(code, _) => {
+            ureq2::Error::Status(code, _) => {
                 format!("The model server said no (error {code}). Please try again later.")
             }
-            ureq::Error::Transport(_) => {
+            ureq2::Error::Transport(_) => {
                 "We couldn't reach the internet to download the speech model. Check your connection and try again.".to_string()
             }
         })?;
