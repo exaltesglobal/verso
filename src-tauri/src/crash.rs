@@ -55,6 +55,8 @@ fn reports() -> Vec<PathBuf> {
 }
 
 fn write(kind: &str, message: &str, stack: &str) {
+    // Also into the rotating log, so the error is still traceable after "Don't send" deletes the report.
+    log::error!("{kind} error: {}\n{}", scrub(message), scrub(stack));
     let Some(dir) = CRASH_DIR.get() else { return };
     if reports().len() >= MAX_REPORTS || std::fs::create_dir_all(dir).is_err() {
         return;
