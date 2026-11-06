@@ -3,6 +3,7 @@ import { Icon, type IconName } from "../Icon";
 import { Button, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
 import { audioTracks, moments, templates } from "../../data/placeholder";
+import { useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration, formatResolution, formatSize, type MediaInfo } from "../../lib/media";
 
 const TABS: { id: PanelTab; label: string; icon: IconName }[] = [
@@ -19,11 +20,20 @@ interface LeftPanelProps {
   onTab: (t: PanelTab) => void;
   media: MediaInfo[];
   importing: boolean;
-  onImport: () => Promise<boolean>;
+  onImport: () => Promise<void>;
+  onAddToTimeline: (m: MediaInfo) => void;
   notify: (m: ToastMessage) => void;
 }
 
-export function LeftPanel({ tab, onTab, media, importing, onImport, notify }: LeftPanelProps) {
+export function LeftPanel({
+  tab,
+  onTab,
+  media,
+  importing,
+  onImport,
+  onAddToTimeline,
+  notify,
+}: LeftPanelProps) {
   return (
     <>
       <nav className="rail" aria-label="Tools">
@@ -41,7 +51,14 @@ export function LeftPanel({ tab, onTab, media, importing, onImport, notify }: Le
         ))}
       </nav>
       <aside className="panel" aria-label={TABS.find((t) => t.id === tab)?.label}>
-        {tab === "media" && <MediaTab media={media} importing={importing} onImport={onImport} />}
+        {tab === "media" && (
+          <MediaTab
+            media={media}
+            importing={importing}
+            onImport={onImport}
+            onAddToTimeline={onAddToTimeline}
+          />
+        )}
         {tab === "autocut" && <AutoCutTab notify={notify} />}
         {tab === "templates" && <TemplatesTab />}
         {tab === "text" && <TextTab />}
@@ -68,10 +85,12 @@ function MediaTab({
   media,
   importing,
   onImport,
+  onAddToTimeline,
 }: {
   media: MediaInfo[];
   importing: boolean;
-  onImport: () => Promise<boolean>;
+  onImport: () => Promise<void>;
+  onAddToTimeline: (m: MediaInfo) => void;
 }) {
   return (
     <div className="panel__body">
@@ -91,29 +110,12 @@ function MediaTab({
       {media.length === 0 ? (
         <div className="empty">
           <Icon name="import" size={32} />
-          <p>Import a video to get started. We'll read its length, size and frame rate.</p>
+          <p>Import a video to get started. We'll put it on your timeline.</p>
         </div>
       ) : (
         <ul className="media-list">
           {media.map((m) => (
-            <li key={m.path} className="media-item" title={m.path}>
-              <span className="media-item__thumb">
-                <Icon name={m.hasVideo ? "play" : "music"} size={20} />
-                <span className="media-item__dur">{formatDuration(m.durationSec)}</span>
-              </span>
-              <span className="media-item__text">
-                <span className="media-item__name">{m.fileName}</span>
-                <span className="media-item__meta">
-                  {[formatResolution(m), m.fps ? `${m.fps} fps` : null].filter(Boolean).join(" · ") ||
-                    "Audio"}
-                </span>
-                <span className="media-item__meta muted">
-                  {[m.videoCodec?.toUpperCase(), m.audioCodec?.toUpperCase(), formatSize(m.sizeBytes)]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </span>
-            </li>
+            <MediaItem key={m.path} media={m} onAdd={() => onAddToTimeline(m)} />
           ))}
         </ul>
       )}
@@ -121,6 +123,39 @@ function MediaTab({
   );
 }
 
+function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void }) {
+  const frames = useFilmstrip(m);
+  // Middle frame makes a better cover than the first, which is often black.
+  const cover = frames[Math.floor(frames.length / 2)];
+  return (
+    <li className="media-item" title={m.path}>
+      <span className="media-item__thumb">
+        {cover ? <img src={cover} alt="" /> : <Icon name={m.hasVideo ? "play" : "music"} size={20} />}
+        <span className="media-item__dur">{formatDuration(m.durationSec)}</span>
+      </span>
+      <span className="media-item__text">
+        <span className="media-item__name">{m.fileName}</span>
+        <span className="media-item__meta">
+          {[formatResolution(m), m.fps ? `${m.fps} fps` : null].filter(Boolean).join(" · ") || "Audio"}
+        </span>
+        <span className="media-item__meta muted">
+          {[m.videoCodec?.toUpperCase(), m.audioCodec?.toUpperCase(), formatSize(m.sizeBytes)]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </span>
+      <button
+        type="button"
+        className="media-item__add"
+        onClick={onAdd}
+        aria-label={`Add ${m.fileName} to timeline`}
+        title="Add to timeline"
+      >
+        <Icon name="add" size={20} />
+      </button>
+    </li>
+  );
+}
 function AutoCutTab({ notify }: { notify: (m: ToastMessage) => void }) {
   const [picked, setPicked] = useState(moments[0].id);
   return (

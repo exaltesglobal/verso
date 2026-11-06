@@ -1,19 +1,25 @@
-import { useMemo, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Icon, type IconName } from "../Icon";
 import { IconButton } from "../ui";
-import { REEL_DURATION, tracks, type TrackKind } from "../../data/placeholder";
+import { frameAt, useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration } from "../../lib/media";
+import { MIN_TIMELINE_SECONDS, type Clip, type Project, type TrackKind } from "../../lib/project";
 
-const BASE_PX_PER_SEC = 34;
-const VIEW_SECONDS = 36; // a little past the reel end, so there's room to drop clips
+/** Width the timeline aims to fill at zoom 1, so short and long projects both fit. */
+const FIT_WIDTH = 1100;
+const MAX_PX_PER_SEC = 34;
+const GUTTER = 12;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
   video: "play",
   audio: "music",
 };
+const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
 
 interface TimelineProps {
+  project: Project;
+  duration: number;
   time: number;
   onSeek: (t: number) => void;
   zoom: number;
@@ -22,24 +28,36 @@ interface TimelineProps {
   onSelectClip: (id: string) => void;
 }
 
-export function Timeline({ time, onSeek, zoom, onZoom, selectedClip, onSelectClip }: TimelineProps) {
-  const pps = BASE_PX_PER_SEC * zoom;
-  const width = VIEW_SECONDS * pps + 24; // + left/right gutter
-  const scroller = useRef<HTMLDivElement>(null);
+export function Timeline({
+  project,
+  duration,
+  time,
+  onSeek,
+  zoom,
+  onZoom,
+  selectedClip,
+  onSelectClip,
+}: TimelineProps) {
+  const viewSeconds = Math.max(MIN_TIMELINE_SECONDS, duration * 1.08 + 2);
+  const pps = Math.min(MAX_PX_PER_SEC, FIT_WIDTH / viewSeconds) * zoom;
+  const width = viewSeconds * pps + GUTTER * 2;
 
-  // Label every 5s, or every 1-2s when zoomed in.
-  const step = zoom >= 2.2 ? 1 : zoom >= 1.4 ? 2 : 5;
+  // Labelled ticks at least ~72px apart, with small ticks between when there's room.
+  const major = STEPS.find((s) => s * pps >= 72) ?? STEPS[STEPS.length - 1];
+  const minor = major / 5 >= 1 && (major / 5) * pps >= 10 ? major / 5 : major;
   const ticks = useMemo(() => {
     const out: number[] = [];
-    for (let s = 0; s <= VIEW_SECONDS; s += 1) out.push(s);
+    for (let s = 0; s <= viewSeconds; s += minor) out.push(Math.round(s * 1000) / 1000);
     return out;
-  }, []);
+  }, [viewSeconds, minor]);
 
   const seekFromPointer = (e: ReactPointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const t = (e.clientX - rect.left) / pps;
-    onSeek(Math.min(REEL_DURATION, Math.max(0, t)));
+    onSeek(Math.min(duration, Math.max(0, t)));
   };
+
+  const empty = duration === 0;
 
   return (
     <section className="timeline" aria-label="Timeline">
@@ -64,18 +82,18 @@ export function Timeline({ time, onSeek, zoom, onZoom, selectedClip, onSelectCli
           <input
             type="range"
             min={0.5}
-            max={3}
+            max={8}
             step={0.05}
             value={zoom}
             aria-label="Timeline zoom"
             onChange={(e) => onZoom(Number(e.target.value))}
-            style={{ "--fill": `${((zoom - 0.5) / 2.5) * 100}%` } as CSSProperties}
+            style={{ "--fill": `${((zoom - 0.5) / 7.5) * 100}%` } as CSSProperties}
           />
           <button
             type="button"
             className="zoom-step"
             aria-label="Zoom in"
-            onClick={() => onZoom(Math.min(3, +(zoom + 0.25).toFixed(2)))}
+            onClick={() => onZoom(Math.min(8, +(zoom + 0.25).toFixed(2)))}
           >
             <Icon name="zoom-in" size={16} />
           </button>
@@ -85,7 +103,7 @@ export function Timeline({ time, onSeek, zoom, onZoom, selectedClip, onSelectCli
       <div className="timeline__body">
         <div className="timeline__labels">
           <div className="timeline__label-spacer" />
-          {tracks.map((t) => (
+          {project.tracks.map((t) => (
             <div key={t.kind} className="track-label">
               <Icon name={TRACK_ICON[t.kind]} size={16} />
               {t.label}
@@ -93,7 +111,7 @@ export function Timeline({ time, onSeek, zoom, onZoom, selectedClip, onSelectCli
           ))}
         </div>
 
-        <div className="timeline__scroll" ref={scroller}>
+        <div className="timeline__scroll">
           <div className="timeline__content" style={{ width }}>
             <div
               className="ruler"
@@ -105,50 +123,50 @@ export function Timeline({ time, onSeek, zoom, onZoom, selectedClip, onSelectCli
                 if (e.currentTarget.hasPointerCapture(e.pointerId)) seekFromPointer(e);
               }}
             >
-              {ticks.map((s) => (
-                <span
-                  key={s}
-                  className={s % step === 0 ? "ruler__tick is-major" : "ruler__tick"}
-                  style={{ left: s * pps }}
-                >
-                  {s % step === 0 && <span className="ruler__label">{formatDuration(s)}</span>}
-                </span>
-              ))}
+              {ticks.map((s) => {
+                const isMajor = Math.abs(s / major - Math.round(s / major)) < 1e-6;
+                return (
+                  <span
+                    key={s}
+                    className={isMajor ? "ruler__tick is-major" : "ruler__tick"}
+                    style={{ left: s * pps }}
+                  >
+                    {isMajor && <span className="ruler__label">{formatDuration(s)}</span>}
+                  </span>
+                );
+              })}
             </div>
 
-            {tracks.map((t) => (
+            {project.tracks.map((t) => (
               <div key={t.kind} className={`track track--${t.kind}`}>
                 {t.clips.map((c) => (
-                  <button
+                  <ClipView
                     key={c.id}
-                    type="button"
-                    className={[
-                      "clip",
-                      `clip--${c.variant === "effect" ? "effects" : t.kind}`,
-                      c.id === selectedClip && "is-selected",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    style={{ left: c.start * pps, width: Math.max(18, (c.end - c.start) * pps - 4) }}
-                    onClick={() => onSelectClip(c.id)}
-                    aria-pressed={c.id === selectedClip}
-                    title={c.label}
-                  >
-                    {t.kind === "audio" && <Waveform />}
-                    {c.variant === "effect" ? (
-                      <Icon name="transitions" size={16} />
-                    ) : (
-                      <span className="clip__label">{c.label}</span>
-                    )}
-                  </button>
+                    clip={c}
+                    kind={t.kind}
+                    pps={pps}
+                    selected={c.id === selectedClip}
+                    onSelect={() => onSelectClip(c.id)}
+                  />
                 ))}
+                {empty && t.kind === "video" && (
+                  <span className="track__hint">Import a video and it lands here.</span>
+                )}
               </div>
             ))}
 
-            <div className="playhead" style={{ transform: `translateX(${time * pps}px)` }} aria-hidden="true">
-              <span className="playhead__head" />
-            </div>
-            <div className="timeline__end" style={{ left: REEL_DURATION * pps }} aria-hidden="true" />
+            {!empty && (
+              <>
+                <div
+                  className="playhead"
+                  style={{ transform: `translateX(${time * pps}px)` }}
+                  aria-hidden="true"
+                >
+                  <span className="playhead__head" />
+                </div>
+                <div className="timeline__end" style={{ left: duration * pps }} aria-hidden="true" />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -156,7 +174,68 @@ export function Timeline({ time, onSeek, zoom, onZoom, selectedClip, onSelectCli
   );
 }
 
-/** Deterministic fake waveform so the audio clip reads as sound. */
+interface ClipViewProps {
+  clip: Clip;
+  kind: TrackKind;
+  pps: number;
+  selected: boolean;
+  onSelect: () => void;
+}
+
+function ClipView({ clip: c, kind, pps, selected, onSelect }: ClipViewProps) {
+  const widthPx = Math.max(18, (c.end - c.start) * pps - 4);
+  const colour = c.variant === "effect" ? "effects" : kind;
+  const hasFilmstrip = kind === "video" && !!c.source?.hasVideo;
+  return (
+    <button
+      type="button"
+      className={["clip", `clip--${colour}`, hasFilmstrip && "has-filmstrip", selected && "is-selected"]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ left: c.start * pps, width: widthPx }}
+      onClick={onSelect}
+      aria-pressed={selected}
+      title={c.source ? `${c.label} · ${formatDuration(c.end - c.start)}` : c.label}
+    >
+      {hasFilmstrip && <Filmstrip clip={c} pps={pps} widthPx={widthPx} />}
+      {kind === "audio" && <Waveform />}
+      {c.variant === "effect" ? (
+        <Icon name="transitions" size={16} />
+      ) : (
+        <span className="clip__label">{c.label}</span>
+      )}
+    </button>
+  );
+}
+
+/** Real frames tiled across the clip; denser frames appear as you zoom in. */
+function Filmstrip({ clip, pps, widthPx }: { clip: Clip; pps: number; widthPx: number }) {
+  const source = clip.source;
+  const frames = useFilmstrip(source);
+  if (!source) return null;
+  const aspect = source.width && source.height ? source.width / source.height : 16 / 9;
+  const tileW = Math.max(24, Math.round(40 * aspect)); // clip content is about 40px tall
+  const count = Math.max(1, Math.ceil(widthPx / tileW));
+  if (!frames.length) return <span className="filmstrip is-loading" aria-hidden="true" />;
+  return (
+    <span className="filmstrip" aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => {
+        const t = (clip.inPoint ?? 0) + ((i + 0.5) * tileW) / pps;
+        return (
+          <img
+            key={i}
+            src={frameAt(frames, source.durationSec, t)}
+            alt=""
+            style={{ width: tileW }}
+            draggable={false}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
+/** Placeholder waveform until real audio peaks land (next Phase 2 step). */
 function Waveform() {
   const bars = useMemo(
     () =>

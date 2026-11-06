@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "../Icon";
 import { Toggle } from "../ui";
-import type { AspectRatio, Clip, TrackKind } from "../../data/placeholder";
+import type { AspectRatio, Clip, TrackKind } from "../../lib/project";
 import { formatDuration } from "../../lib/media";
 
 interface InspectorProps {

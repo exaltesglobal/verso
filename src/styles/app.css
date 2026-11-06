@@ -1755,3 +1755,129 @@ input[type="range"]::-webkit-slider-thumb {
     opacity: 0;
   }
 }
+
+/* ---------- Phase 2: real media ---------- */
+.frame__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* centre crop = vertical cutout preview */
+  background: var(--vs-color-neutral-950);
+}
+
+.frame__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vs-space-3);
+  padding: var(--vs-space-6);
+  text-align: center;
+  color: var(--vs-color-role-text-secondary);
+}
+
+.play-btn:disabled,
+.icon-btn:disabled {
+  opacity: 0.4;
+  transform: none;
+}
+
+.media-item {
+  align-items: center;
+}
+
+.media-item__thumb {
+  overflow: hidden;
+}
+
+.media-item__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-item__text {
+  flex: 1;
+}
+
+.media-item__add {
+  display: grid;
+  place-items: center;
+  width: var(--vs-size-control-sm);
+  height: var(--vs-size-control-sm);
+  flex: none;
+  border-radius: var(--vs-radius-sm);
+  color: var(--vs-color-role-text-muted);
+}
+
+.media-item__add:hover {
+  background: var(--vs-color-neutral-700);
+  color: var(--vs-color-role-text-primary);
+}
+
+.clip.has-filmstrip {
+  padding: 0;
+  background: var(--vs-color-neutral-800);
+  box-shadow: inset 0 0 0 2px var(--vs-color-track-video);
+}
+
+.clip.has-filmstrip.is-selected {
+  box-shadow:
+    inset 0 0 0 2px var(--vs-color-track-video),
+    0 0 0 2px var(--vs-color-role-bg-app),
+    0 0 0 4px var(--vs-color-role-text-primary);
+}
+
+.filmstrip {
+  position: absolute;
+  inset: 2px;
+  display: flex;
+  overflow: hidden;
+  border-radius: calc(var(--vs-radius-sm) - 2px);
+}
+
+.filmstrip img {
+  height: 100%;
+  flex: none;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.filmstrip.is-loading {
+  background: linear-gradient(
+    90deg,
+    var(--vs-color-neutral-800) 0%,
+    var(--vs-color-neutral-700) 50%,
+    var(--vs-color-neutral-800) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.clip.has-filmstrip .clip__label {
+  margin-left: var(--vs-space-2);
+  padding: 1px var(--vs-space-2);
+  border-radius: var(--vs-radius-xs);
+  background: var(--vs-color-track-video);
+  color: var(--vs-color-role-bg-app);
+}
+
+.track__hint {
+  position: absolute;
+  left: var(--vs-space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-muted);
+}

@@ -1,11 +1,12 @@
 import mark from "../../assets/brand/verso-mark.svg";
 import { Button, IconButton, Segmented } from "../ui";
-import type { AspectRatio } from "../../data/placeholder";
+import type { AspectRatio } from "../../lib/project";
 
 const RATIOS = ["9:16", "1:1", "16:9"] as const;
 
 interface TopBarProps {
   projectName: string;
+  subtitle?: string;
   onRename: (name: string) => void;
   aspect: AspectRatio;
   onAspect: (a: AspectRatio) => void;
@@ -17,6 +18,7 @@ interface TopBarProps {
 
 export function TopBar({
   projectName,
+  subtitle,
   onRename,
   aspect,
   onAspect,
@@ -46,7 +48,7 @@ export function TopBar({
           aria-label="Project name"
           spellCheck={false}
         />
-        <span className="topbar__crumb">› Reel 1 of 4</span>
+        {subtitle && <span className="topbar__crumb">› {subtitle}</span>}
       </div>
 
       <div className="topbar__center">

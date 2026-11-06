@@ -1,27 +1,9 @@
-// Placeholder project data for the Phase 1 shell. Replaced by the real
-// project model and media engine in later phases.
+// Sample content: the "Podcast Ep. 42" demo project and panel placeholders.
+// Real projects are built from imported media (see lib/project.ts).
 
-export type TrackKind = "text" | "captions" | "video" | "audio";
-export type AspectRatio = "9:16" | "1:1" | "16:9";
+import type { Project, Track } from "../lib/project";
 
-export interface Clip {
-  id: string;
-  label: string;
-  start: number; // seconds
-  end: number;
-  /** Transitions and effects sit on the video track but use the effects colour. */
-  variant?: "effect";
-}
-
-export interface Track {
-  kind: TrackKind;
-  label: string;
-  clips: Clip[];
-}
-
-export const REEL_DURATION = 31;
-
-export const tracks: Track[] = [
+const sampleTracks: Track[] = [
   {
     kind: "text",
     label: "Text",
@@ -54,6 +36,11 @@ export const tracks: Track[] = [
     clips: [{ id: "a1", label: "Voice · cleaned", start: 0, end: 31 }],
   },
 ];
+
+/** Demo project shown by "Make clips from long video" until auto-cut exists. */
+export function sampleProject(): Project {
+  return { name: "Podcast Ep. 42", subtitle: "Reel 1 of 4", tracks: structuredClone(sampleTracks) };
+}
 
 export interface Moment {
   id: string;

@@ -9,6 +9,7 @@ interface WelcomeProps {
   onNewProject: () => void;
   onImport: () => void;
   onMakeClips: () => void;
+  onOpenSample: () => void;
   onAbout: () => void;
 }
 
@@ -21,7 +22,14 @@ interface Action {
   busy?: boolean;
 }
 
-export function Welcome({ importing, onNewProject, onImport, onMakeClips, onAbout }: WelcomeProps) {
+export function Welcome({
+  importing,
+  onNewProject,
+  onImport,
+  onMakeClips,
+  onOpenSample,
+  onAbout,
+}: WelcomeProps) {
   const actions: Action[] = [
     {
       icon: "auto-cut",
@@ -88,7 +96,7 @@ export function Welcome({ importing, onNewProject, onImport, onMakeClips, onAbou
           </div>
           <div className="recent__list">
             {recentProjects.map((p) => (
-              <button key={p.id} type="button" className="recent-card" onClick={onNewProject}>
+              <button key={p.id} type="button" className="recent-card" onClick={onOpenSample}>
                 <span
                   className="recent-card__thumb"
                   style={{ background: `linear-gradient(160deg, ${p.tint[0]}, ${p.tint[1]})` }}
