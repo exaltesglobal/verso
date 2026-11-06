@@ -1,3 +1,4 @@
+mod captions;
 mod commands;
 mod export;
 mod tools;
@@ -21,6 +22,11 @@ pub fn run() {
             commands::export::detect_encoders,
             commands::export::start_export,
             commands::export::cancel_export,
+            commands::captions::caption_models,
+            commands::captions::download_caption_model,
+            commands::captions::cancel_caption_download,
+            commands::captions::transcribe,
+            commands::captions::cancel_transcription,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");

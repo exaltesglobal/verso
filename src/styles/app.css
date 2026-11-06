@@ -2160,6 +2160,115 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .export__folder {
+/* ---------- Captions ---------- */
+.cap-choices {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--vs-space-2);
+}
+
+.cap-choices--three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.cap-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--vs-space-2) var(--vs-space-3);
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+  text-align: left;
+  transition: border-color var(--vs-motion-duration-fast) var(--vs-motion-easing-standard);
+}
+
+.cap-choice:hover:not(:disabled) {
+  border-color: var(--vs-color-role-border-strong);
+}
+
+.cap-choice.is-selected {
+  border-color: var(--vs-color-role-text-primary);
+  background: var(--vs-color-role-bg-raised);
+}
+
+.cap-choice:disabled {
+  opacity: 0.55;
+}
+
+.cap-choice__label {
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--vs-color-role-text-primary);
+}
+
+.cap-choice__hint,
+.cap-choice__meta {
+  font-size: var(--vs-font-size-caption);
+  color: var(--vs-color-role-text-muted);
+  line-height: var(--vs-font-line-height-snug);
+}
+
+.cap-choice__meta.is-ready {
+  color: var(--vs-color-semantic-success);
+}
+
+.cap-note {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-2);
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.cap-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+  padding: var(--vs-space-3);
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+}
+
+.cap-progress__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.cap-progress__stop {
+  font-size: var(--vs-font-size-small);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.cap-progress__stop:hover {
+  color: var(--vs-color-role-text-primary);
+}
+
+.cap-progress__track {
+  height: 6px;
+  border-radius: var(--vs-radius-pill);
+  background: var(--vs-color-role-bg-raised);
+  overflow: hidden;
+}
+
+.cap-progress__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--vs-color-track-captions);
+  transition: width var(--vs-motion-duration-base) var(--vs-motion-easing-standard);
+}
+
+.cap-segments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-1);
+  list-style: none;
+}
+
+.cap-segment {
   display: flex;
   align-items: center;
   gap: var(--vs-space-2);
@@ -2256,4 +2365,183 @@ input[type="range"]::-webkit-slider-thumb {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--vs-color-role-text-secondary);
+}
+.cap-segment__time {
+  flex: none;
+  width: 48px;
+  font-family: var(--vs-font-family-mono);
+  font-size: var(--vs-font-size-caption);
+  color: var(--vs-color-role-text-muted);
+}
+
+.cap-segment__text {
+  flex: 1;
+  min-width: 0;
+  padding: var(--vs-space-1) var(--vs-space-2);
+  border-radius: var(--vs-radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--vs-color-role-text-primary);
+  font: inherit;
+}
+
+.cap-segment__text:hover {
+  background: var(--vs-color-role-bg-surface);
+}
+
+.cap-segment__text:focus {
+  outline: none;
+  border-color: var(--vs-color-role-focus-ring);
+  background: var(--vs-color-role-bg-surface);
+}
+
+.cap-styles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--vs-space-2);
+}
+
+.cap-style {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--vs-space-1);
+  padding: var(--vs-space-2);
+  border-radius: var(--vs-radius-md);
+  background: var(--vs-color-role-bg-surface);
+  border: 1px solid var(--vs-color-role-border);
+}
+
+.cap-style.is-selected {
+  border-color: var(--vs-color-role-text-primary);
+  background: var(--vs-color-role-bg-raised);
+}
+
+.cap-style__name {
+  font-size: var(--vs-font-size-caption);
+  color: var(--vs-color-role-text-secondary);
+}
+
+.cap-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border-radius: var(--vs-radius-sm);
+  background: linear-gradient(160deg, var(--vs-color-neutral-700), var(--vs-color-neutral-900));
+  overflow: hidden;
+}
+
+/* A caption line, driven by the style spec through custom properties. */
+.cap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.28em;
+  max-width: 100%;
+  padding: 0.1em 0.3em;
+  line-height: var(--vs-font-line-height-tight);
+  color: var(--cap-text);
+  -webkit-text-stroke: var(--cap-outline-w) var(--cap-outline);
+  paint-order: stroke fill;
+  text-align: center;
+}
+
+.cap--upper {
+  text-transform: uppercase;
+}
+
+.cap--glow {
+  text-shadow: 0 0 10px var(--cap-glow);
+}
+
+.cap--bg-box {
+  background: var(--cap-bg);
+  border-radius: var(--vs-radius-xs);
+}
+
+.cap--bg-pill {
+  padding: 0.15em 0.6em;
+  background: var(--cap-bg);
+  border-radius: var(--vs-radius-pill);
+}
+
+.cap__word {
+  display: inline-block;
+  border-radius: var(--vs-radius-xs);
+  transition: color var(--vs-motion-duration-fast) var(--vs-motion-easing-standard);
+}
+
+.cap--hl-color .cap__word.is-active,
+.cap--hl-fill .cap__word.is-active,
+.cap--hl-fill .cap__word.is-past {
+  color: var(--cap-hi);
+}
+
+.cap--hl-box .cap__word.is-active {
+  padding: 0 0.15em;
+  background: var(--cap-hi);
+}
+
+.cap--anim-pop .cap__word.is-active {
+  animation: cap-pop var(--vs-motion-duration-base) var(--vs-motion-easing-enter);
+}
+
+.cap--anim-fade .cap__word.is-active {
+  animation: cap-fade var(--vs-motion-duration-slow) var(--vs-motion-easing-enter);
+}
+
+.cap--anim-slide .cap__word.is-active {
+  animation: cap-slide var(--vs-motion-duration-base) var(--vs-motion-easing-enter);
+}
+
+.cap--anim-typewriter .cap__word.is-active {
+  animation: cap-type var(--vs-motion-duration-slow) steps(6, end);
+}
+
+@keyframes cap-pop {
+  from {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes cap-fade {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cap-slide {
+  from {
+    transform: translateY(0.35em);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes cap-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap__word.is-active {
+    animation: none !important;
+  }
 }
