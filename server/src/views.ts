@@ -29,6 +29,7 @@ input{width:100%;padding:11px 12px;background:#1D1D24;border:1px solid #2A2A33;b
 input:focus{outline:2px solid #F5F4F0;outline-offset:1px;border-color:transparent}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px 16px;border-radius:10px;font:inherit;font-weight:700;text-decoration:none;cursor:pointer;border:1px solid #2A2A33;background:#1D1D24;color:#F5F4F0}
 .btn:hover{border-color:#B9B7BF}
+.btn:disabled{opacity:.5;cursor:not-allowed;border-color:#2A2A33}
 .btn.primary{background:#FF4A2B;border-color:#FF4A2B;color:#0B0B0F}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.inline{width:auto}
@@ -68,28 +69,34 @@ const csrfField = (csrf: string) => `<input type="hidden" name="_csrf" value="${
 const alert = (msg?: string) => (msg ? `<div class="alert" role="alert">${esc(msg)}</div>` : '');
 const nextField = (next?: string) => (next ? `<input type="hidden" name="next" value="${esc(next)}">` : '');
 const withNext = (path: string, next?: string) => (next ? `${path}?next=${encodeURIComponent(next)}` : path);
+/** Google first, then an "or" divider. Shown disabled (not hidden) when the server has no Google keys. */
+const googleBlock = (configured: boolean, next?: string) =>
+  (configured
+    ? `<a class="btn" href="${esc(withNext('/auth/google', next))}">Continue with Google</a>`
+    : `<button class="btn" type="button" disabled aria-describedby="google-off">Continue with Google</button><p id="google-off" class="small muted" style="margin:6px 0 0">Google sign-in isn't set up yet.</p>`) +
+  `<div class="or">or</div>`;
 
 export function signInPage(o: { csrf: string; next?: string; error?: string; notice?: string; email?: string; google: boolean }) {
   return `<div class="card"><h1>Sign in to Verso</h1><p class="muted">Welcome back.</p>
 ${alert(o.error ?? o.notice)}
+${googleBlock(o.google, o.next)}
 <form method="post" action="/signin">${csrfField(o.csrf)}${nextField(o.next)}
 <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required value="${esc(o.email)}">
 <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required>
 <button class="btn primary" type="submit">Sign in</button></form>
-${o.google ? `<div class="or">or</div><a class="btn" style="margin-top:16px" href="${esc(withNext('/auth/google', o.next))}">Continue with Google</a>` : ''}
 <p class="small muted" style="margin:20px 0 0"><a href="/forgot">Forgot your password?</a> · New here? <a href="${esc(withNext('/signup', o.next))}">Create an account</a></p></div>`;
 }
 
 export function signUpPage(o: { csrf: string; next?: string; error?: string; email?: string; name?: string; google: boolean }) {
   return `<div class="card"><h1>Create your Verso account</h1><p class="muted">Free forever. Upgrade when you need more.</p>
 ${alert(o.error)}
+${googleBlock(o.google, o.next)}
 <form method="post" action="/signup">${csrfField(o.csrf)}${nextField(o.next)}
 <label for="name">Name</label><input id="name" name="name" autocomplete="name" maxlength="120" value="${esc(o.name)}">
 <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required value="${esc(o.email)}">
 <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
 <p class="small muted" style="margin:6px 0 0">At least 8 characters.</p>
 <button class="btn primary" type="submit">Create account</button></form>
-${o.google ? `<div class="or">or</div><a class="btn" style="margin-top:16px" href="${esc(withNext('/auth/google', o.next))}">Continue with Google</a>` : ''}
 <p class="small muted" style="margin:20px 0 0">Already have an account? <a href="${esc(withNext('/signin', o.next))}">Sign in</a></p></div>`;
 }
 
