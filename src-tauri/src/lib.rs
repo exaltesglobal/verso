@@ -5,6 +5,7 @@ mod commands;
 mod crash;
 mod export;
 mod reframe;
+mod surecast;
 mod tools;
 mod updates;
 
@@ -64,6 +65,16 @@ pub fn run() {
             crash::discard_crash_reports,
             updates::check_for_update,
             updates::install_update,
+            surecast::surecast_connect,
+            surecast::surecast_disconnect,
+            surecast::surecast_status,
+            surecast::surecast_clients,
+            surecast::surecast_make_cover,
+            surecast::surecast_enqueue,
+            surecast::surecast_jobs,
+            surecast::surecast_retry,
+            surecast::surecast_remove,
+            surecast::surecast_refresh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Verso");
