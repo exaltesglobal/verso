@@ -30,3 +30,41 @@ DevTools protocol, and the app's own TS modules and Tauri commands called inside
 
 Dev admin account for local testing: the email and password are in `server/.dev-keys/dev-admin.txt` (git-ignored).
 Start the server with `ADMIN_EMAILS=admin@verso.test`.
+
+## Release check (ux/simple-flow merged to main), 7 Nov 2026
+
+Windows 11, `pnpm tauri dev` from the `C:\vt\ux` worktree: port 1430, its own Cargo target folder and app
+identity, so the owner's running copy was untouched. FFmpeg came from PATH (WinGet build); the installers
+bundle the LGPL sidecar. The captions and face AI packs were copied in from this machine. Media:
+`scratchpad\media\podcast-16x9.mp4` (92 s TTS podcast), `face-16x9.mp4`, plus 75 s and 40 s screen clips.
+Checks ran through the real app over the WebView2 DevTools protocol, calling the app's own modules and Tauri
+commands. Output files are in `C:\vt\ux-tests\`.
+
+**Totals: 20 pass, 0 fail, 5 not run** (11–15 need an env-var restart, the local server or a Surecast setup).
+
+| # | Item | Result | Notes |
+| --- | --- | --- | --- |
+| 1 | Frameless title bar, logo | Pass | Premium 48px title bar; screenshots in `docs/screenshots/review/`. |
+| 2 | Import, filmstrips, waveforms | Pass | Both clips show filmstrips and waveforms. |
+| 3 | Playback with audio | Pass | `<video>` readyState 4, playhead advanced 12.0 → 13.4 s in 2 s. |
+| 4 | Split, ripple delete, undo, redo | Pass | Clip count 2 → 3 (S) → 2 (Shift+Del) → 3 → 2 (undo twice) → 3 (redo). The Studio razor also splits, and undo restores. |
+| 5 | Save and reopen `.verso` | Pass | Unknown keys survive. The new track `locked` flag and `markers` round-trip. |
+| 6 | Captions, English and Hindi | Pass | Base AI pack: English, first 30 s gave 28 segments and 70 words ("Why do most podcasts never…"). Hindi mode completes (13 segments). |
+| 7 | Speaker reframe | Pass | Real face clip: 1 speaker, 9 speech segments, the follow plan has keyframes. |
+| 8 | Auto-cut candidates | Pass | Full podcast: 3 moments, each makes a project. |
+| 9 | Every template, every language | Pass | 71 templates, 125 template/language combinations applied, 0 errors. |
+| 10 | Export 1080p, burned captions, transition | Pass | h264 1080x1920 + AAC, 8.0 s, decodes with no errors. The caption "HELLO FROM VERSO" is visible in the frame at 2 s, and the fade at 4 s exports. |
+| 11 | Export fallback, NVENC off | Not run | Needs a restart with `VERSO_DISABLE_NVENC=1`. The export code didn't change in this release. |
+| 12 | Sign-in in browser, loopback | Not run | Needs the local server. |
+| 13 | Credits badge and deduction | Not run | Needs the local server with credits enforced. The badge renders, and AI one-tap actions show the cost chip. |
+| 14 | `/admin` for a dev admin | Not run | Needs the local server. |
+| 15 | Send to Surecast with no key | Not run | Calling the command directly needs a full package. The UI path didn't change. |
+| 16 | Static checks | Pass | `tsc`, `eslint .`, `vite build`, `pnpm test:handoff` clean. `cargo test`: 12 passed. `cargo fmt --check` flagged CRLF line endings in `sfx.rs`; fixed. |
+| 17 | Position and opacity in an export | Pass | Scale 150 %, X +30 %, opacity 50 %: the frame at 2 s is zoomed and panned, and mean luma drops from 59 to 23 against the plain export. |
+| 18 | Hand-off export | Pass | Premiere (`.xml` xmeml + `.fcpxml` + read-me) and Resolve (`.fcpxml` + read-me) written. The XML parses and media paths are `file:///` URLs. |
+| 19 | Muted track in an export | Pass | Sound track muted: max volume −91 dB (silent), against −5.3 dB for the plain export. |
+| 20 | Hidden / locked tracks | Pass | Mute silences the preview video. Locked tracks block move, trim, split and delete with a plain message. Flags save in the project. |
+| 21 | Audio panel | Pass (fixed) | It showed "os error 2": two panel requests rendered the same sound into one temp file at once. Builds now run one at a time and errors read in plain words. The library and mix presets load. |
+| 22 | Quick / Craft / Studio switch | Pass | Project, history and selection survive every switch. The first move up shows the one-line hint. Studio has drag handles, the second tool row and track toggles. |
+| 23 | One-tap edits and time saved | Pass | Add end card +5 min. Ctrl+Z takes the minutes back and Ctrl+Y adds them again (17 → 22 → 17 → 22). Remove pauses on the podcast removed the gaps. |
+| 24 | Studio tools | Pass | Razor splits at the click point. Markers add at the playhead, draw on the ruler and jump. Track mute and lock toggle from the headers. |
