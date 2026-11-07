@@ -13,6 +13,9 @@ import { timeAgo, type ProjectSummary } from "../lib/persist";
 
 interface WelcomeProps {
   importing: boolean;
+  /** A file is being dragged over the window. */
+  dropping?: boolean;
+  onTemplate: () => void;
   onNewProject: () => void;
   onImport: () => void;
   onMakeClips: () => void;
@@ -36,6 +39,8 @@ interface Action {
 
 export function Welcome({
   importing,
+  dropping,
+  onTemplate,
   onNewProject,
   onImport,
   onMakeClips,
@@ -50,28 +55,29 @@ export function Welcome({
   const actions: Action[] = [
     {
       icon: "auto-cut",
-      title: "Make clips from long video",
-      body: "Drop in a podcast or vlog. We find the best moments and turn them into reels.",
+      title: "Make reels from a long video",
+      body: "Pick a podcast or vlog. We find the best moments and turn them into reels.",
       onClick: onMakeClips,
       featured: true,
+      busy: importing,
     },
     {
       icon: "import",
-      title: "Import video",
-      body: "Bring in a video you already have and start editing it.",
+      title: "Edit a clip",
+      body: "Bring in a video you already have and make it reel-ready.",
       onClick: onImport,
       busy: importing,
     },
     {
-      icon: "add",
-      title: "New project",
-      body: "Start with an empty 9:16 reel and add things as you go.",
-      onClick: onNewProject,
+      icon: "templates",
+      title: "Use a template",
+      body: "Start from a ready-made style and drop your clips in.",
+      onClick: onTemplate,
     },
   ];
 
   return (
-    <div className="welcome">
+    <div className={dropping ? "welcome is-dropping" : "welcome"}>
       <header className="welcome__bar" data-tauri-drag-region>
         <img src={logo} alt="Verso" className="welcome__logo" />
         <div className="welcome__bar-actions" data-tauri-drag-region>
@@ -89,7 +95,7 @@ export function Welcome({
         <h1 className="hero">
           Long videos in. <span className="hero__payoff">Reels out.</span>
         </h1>
-        <p className="welcome__lede">What would you like to make today?</p>
+        <p className="welcome__lede">What would you like to make today? Or drop a video anywhere to start.</p>
 
         <div className="welcome__actions">
           {actions.map((a) => (
@@ -113,6 +119,10 @@ export function Welcome({
         <section className="recent" aria-labelledby="recent-title">
           <div className="recent__head">
             <h2 id="recent-title">{recents.length ? "Recent projects" : "Try a sample"}</h2>
+            <button type="button" className="btn btn--ghost" onClick={onNewProject}>
+              <Icon name="add" size={20} />
+              <span>Empty project</span>
+            </button>
             <button type="button" className="btn btn--ghost" onClick={onBatch}>
               <Icon name="layers" size={20} />
               <span>Batch mode</span>

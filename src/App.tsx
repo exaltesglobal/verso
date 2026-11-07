@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { About } from "./components/About";
 import { Splash } from "./components/Splash";
 import { Settings } from "./screens/Settings";
 import { Batch } from "./screens/Batch";
 import { Toast, type ToastMessage } from "./components/ui";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { pickAndProbe, probeMedia, type MediaInfo } from "./lib/media";
 import { Welcome } from "./screens/Welcome";
 import { Editor, type PanelTab } from "./screens/Editor";
@@ -13,6 +14,9 @@ import { appendMedia, emptyProject, type Project } from "./lib/project";
 import { listProjects, openAutosaved, openProjectFile, type ProjectSummary } from "./lib/persist";
 
 type Screen = "welcome" | "editor" | "batch";
+
+/** Videos longer than this (and wider than tall) start in Auto-cut. */
+const LONG_VIDEO_SEC = 120;
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -117,6 +121,52 @@ export default function App() {
     setScreen("editor");
   };
 
+  /** Picks the right flow for new files: a long landscape video goes to Auto-cut, anything else to editing. */
+  const startWith = (items: MediaInfo[], forceAutoCut = false) => {
+    if (!items.length) return;
+    const first = items[0];
+    const name = first.fileName.replace(/\.[^.]+$/, "");
+    const longWide = first.durationSec > LONG_VIDEO_SEC && (first.width ?? 0) > (first.height ?? 0);
+    if (forceAutoCut || longWide) openEditor("autocut", emptyProject(name));
+    else openEditor("media", appendMedia(emptyProject(name), items));
+  };
+
+  // Dropping a file anywhere on the start screen starts the right flow.
+  const [dropping, setDropping] = useState(false);
+  const startRef = useRef(startWith);
+  useEffect(() => {
+    startRef.current = startWith;
+  });
+  useEffect(() => {
+    if (screen !== "welcome") return;
+    let off: (() => void) | undefined;
+    let alive = true;
+    getCurrentWebview()
+      .onDragDropEvent((e) => {
+        const p = e.payload;
+        if (p.type === "over" || p.type === "enter") setDropping(true);
+        else if (p.type === "leave") setDropping(false);
+        else if (p.type === "drop") {
+          setDropping(false);
+          Promise.allSettled(p.paths.map(probeMedia)).then((rs) => {
+            const items = rs.flatMap((r) =>
+              r.status === "fulfilled" && (r.value.hasVideo || r.value.hasAudio) ? [r.value] : [],
+            );
+            if (!items.length)
+              return notify({ tone: "danger", text: "Couldn't read that file. Try a video." });
+            setMedia((prev) => [...items, ...prev.filter((m) => !items.some((i) => i.path === m.path))]);
+            startRef.current(items);
+          });
+        }
+      })
+      .then((u) => (alive ? (off = u) : u()))
+      .catch(() => {}); // plain browser preview
+    return () => {
+      alive = false;
+      off?.();
+    };
+  }, [screen, notify]);
+
   return (
     <>
       {screen === "batch" ? (
@@ -128,15 +178,18 @@ export default function App() {
       ) : screen === "welcome" ? (
         <Welcome
           importing={importing}
+          dropping={dropping}
           onNewProject={() => openEditor("media", emptyProject())}
           onImport={async () => {
             const items = await importMedia();
-            if (items.length) {
-              const name = items[0].fileName.replace(/\.[^.]+$/, "");
-              openEditor("media", appendMedia(emptyProject(name), items));
-            }
+            if (items.length)
+              openEditor(
+                "media",
+                appendMedia(emptyProject(items[0].fileName.replace(/\.[^.]+$/, "")), items),
+              );
           }}
-          onMakeClips={() => openEditor("autocut", sampleProject())}
+          onMakeClips={async () => startWith(await importMedia(), true)}
+          onTemplate={() => openEditor("templates", emptyProject())}
           onOpenSample={() => openEditor("media", sampleProject())}
           recents={recents}
           onSettings={() => setShowSettings(true)}
