@@ -6,63 +6,91 @@ export const esc = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export const CSS = `@font-face{font-family:Manrope;src:url(/assets/manrope.woff2) format("woff2");font-weight:200 800;font-display:swap}
+:root{--ink:#0B0B0F;--panel:#111116;--surface:#16161C;--raised:#1D1D24;--line:#2A2A33;--line-strong:#3A3A45;--paper:#F5F4F0;--text-2:#B9B7BF;--muted:#8E8C96;--dim:#5C5B66;--ember:#FF4A2B;--glow:#FF9466;--ember-tint:rgba(255,74,43,.12);--grad:linear-gradient(135deg,#FF9466 0%,#FF4A2B 100%);--ease:cubic-bezier(.2,.8,.2,1)}
 *{box-sizing:border-box}
-html,body{margin:0;background:#0B0B0F;color:#F5F4F0;font-family:Manrope,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
-a{color:#F5F4F0}
-header{display:flex;align-items:center;justify-content:space-between;max-width:960px;margin:0 auto;padding:20px 24px}
+html,body{margin:0;background:var(--ink);color:var(--paper);font-family:Manrope,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;display:flex;flex-direction:column;position:relative;isolation:isolate}
+body:before{content:"";position:absolute;inset:0 0 auto;height:620px;z-index:-1;pointer-events:none;background:radial-gradient(55% 60% at 50% 0%,rgba(255,74,43,.14),transparent 70%),radial-gradient(35% 40% at 88% 10%,rgba(255,148,102,.07),transparent 70%)}
+a{color:var(--paper);text-decoration-color:rgba(255,74,43,.6);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--ember)}
+:focus-visible{outline:2px solid var(--glow);outline-offset:3px;border-radius:8px}
+header{position:sticky;top:0;z-index:10;background:rgba(11,11,15,.72);backdrop-filter:saturate(140%) blur(18px);-webkit-backdrop-filter:saturate(140%) blur(18px);border-bottom:1px solid rgba(42,42,51,.6)}
+header .in{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:1080px;margin:0 auto;padding:0 24px;height:64px}
 header .brand{display:block;text-decoration:none}
 header .brand img{display:block;height:28px;width:auto}
-header nav{display:flex;gap:20px}
-header nav a,header nav button{color:#B9B7BF;text-decoration:none;font:inherit;background:none;border:0;cursor:pointer;padding:0}
-header nav a:hover,header nav button:hover{color:#F5F4F0}
-main{max-width:960px;margin:0 auto;padding:24px 24px 64px}
-.narrow{max-width:420px;margin:32px auto 0}
-.card{background:#16161C;border:1px solid #2A2A33;border-radius:14px;padding:28px}
+header nav{display:flex;align-items:center;gap:24px}
+header nav a,header nav button{color:var(--text-2);text-decoration:none;font:600 14px Manrope,system-ui,sans-serif;background:none;border:0;cursor:pointer;padding:0;transition:color .2s}
+header nav a:hover,header nav button:hover{color:var(--paper)}
+main{flex:1;width:100%;max-width:1080px;margin:0 auto;padding:48px 24px 80px}
+.narrow{max-width:440px;margin:24px auto 0}
+.auth{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:56px;align-items:center;margin-top:8px}
+.auth .art{position:relative;min-height:560px;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:var(--raised) center/cover no-repeat;display:flex;flex-direction:column;justify-content:flex-end;padding:36px;isolation:isolate}
+.auth .art:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(11,11,15,.1) 30%,rgba(11,11,15,.92))}
+.auth .art b{font-size:44px;font-weight:800;letter-spacing:-.045em;line-height:1.02}
+.auth .art b em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.auth .art p{margin:12px 0 0;color:var(--text-2);max-width:36ch}
+.card{background:linear-gradient(180deg,var(--surface),var(--panel));border:1px solid var(--line);border-radius:22px;padding:32px;box-shadow:0 30px 90px rgba(0,0,0,.45)}
 .card+.card{margin-top:16px}
-h1{font-size:26px;line-height:1.25;margin:0 0 8px;font-weight:700;letter-spacing:-.015em}
-h2{font-size:17px;margin:0 0 12px;font-weight:700}
+h1{font-size:clamp(28px,3.4vw,40px);line-height:1.08;margin:0 0 10px;font-weight:800;letter-spacing:-.04em}
+h2{font-size:19px;margin:0 0 14px;font-weight:700;letter-spacing:-.02em}
 p{margin:0 0 16px}
-.muted{color:#B9B7BF}
+.muted{color:var(--text-2)}
 .small{font-size:13px}
-label{display:block;font-size:13px;color:#B9B7BF;margin:16px 0 6px}
-input{width:100%;padding:11px 12px;background:#1D1D24;border:1px solid #2A2A33;border-radius:10px;color:#F5F4F0;font:inherit}
-input:focus{outline:2px solid #F5F4F0;outline-offset:1px;border-color:transparent}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px 16px;border-radius:10px;font:inherit;font-weight:700;text-decoration:none;cursor:pointer;border:1px solid #2A2A33;background:#1D1D24;color:#F5F4F0}
-.btn:hover{border-color:#B9B7BF}
-.btn:disabled{opacity:.5;cursor:not-allowed;border-color:#2A2A33}
-.btn.primary{background:#FF4A2B;border-color:#FF4A2B;color:#0B0B0F}
-.btn.primary:hover{filter:brightness(1.08)}
+label{display:block;font-size:13px;font-weight:600;color:var(--text-2);margin:18px 0 8px}
+input{width:100%;padding:13px 16px;background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;color:var(--paper);font:inherit;transition:border-color .2s,box-shadow .2s}
+input::placeholder{color:var(--dim)}
+input:focus{outline:none;border-color:var(--glow);box-shadow:0 0 0 4px var(--ember-tint)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px 20px;border-radius:999px;font:700 15px Manrope,system-ui,sans-serif;letter-spacing:-.01em;text-decoration:none;cursor:pointer;border:1px solid var(--line-strong);background:transparent;color:var(--paper);transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s,border-color .2s}
+.btn:hover{border-color:var(--muted)}
+.btn:disabled{opacity:.5;cursor:not-allowed;border-color:var(--line)}
+.btn.primary{background:var(--ember);border-color:var(--ember);color:var(--ink);box-shadow:0 0 0 1px rgba(255,74,43,.4),0 8px 28px rgba(255,74,43,.28)}
+.btn.primary:hover{background:#FF5F43;transform:translateY(-1px);box-shadow:0 0 0 1px rgba(255,74,43,.5),0 14px 36px rgba(255,74,43,.36)}
 .btn.inline{width:auto}
-.btn:focus-visible{outline:2px solid #F5F4F0;outline-offset:2px}
-form .btn{margin-top:20px}
-.or{display:flex;align-items:center;gap:12px;color:#B9B7BF;font-size:13px;margin:20px 0 0}
-.or:before,.or:after{content:"";flex:1;height:1px;background:#2A2A33}
-.alert{background:#1D1D24;border:1px solid #2A2A33;border-left:3px solid #F5F4F0;border-radius:10px;padding:12px 14px;margin:0 0 16px;font-size:14px}
-.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #2A2A33}
+form .btn{margin-top:22px}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:22px 0 0}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.alert{background:var(--ember-tint);border:1px solid rgba(255,74,43,.35);border-radius:14px;padding:12px 16px;margin:0 0 18px;font-size:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:24px}
-.price{font-size:28px;font-weight:800;margin:4px 0 16px}
-ul.ticks{list-style:none;padding:0;margin:0 0 8px}
-ul.ticks li{padding:4px 0;color:#B9B7BF}
-ul.ticks li:before{content:"✓  ";color:#F5F4F0}
-.tag{display:inline-block;font-size:12px;padding:2px 8px;border:1px solid #2A2A33;border-radius:99px;color:#B9B7BF}
-footer{max-width:960px;margin:0 auto;padding:0 24px 32px;color:#B9B7BF;font-size:12px}`;
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:32px;align-items:stretch}
+.grid .card{display:flex;flex-direction:column}
+.grid .card+.card{margin-top:0}
+.grid .card ul.ticks{flex:1;align-content:start}
+.price{font-size:46px;font-weight:800;letter-spacing:-.04em;line-height:1;margin:6px 0 14px}
+ul.ticks{list-style:none;padding:0;margin:8px 0 20px;display:grid;gap:10px}
+ul.ticks li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;color:var(--text-2)}
+ul.ticks li:before{content:"";width:14px;height:8px;border-left:2px solid var(--glow);border-bottom:2px solid var(--glow);transform:rotate(-45deg) translate(1px,4px)}
+.tag{display:inline-block;font:600 11px ui-monospace,monospace;letter-spacing:.06em;padding:4px 9px;border-radius:999px;background:var(--ember-tint);color:var(--glow);vertical-align:middle}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+footer .in{max-width:1080px;margin:0 auto;padding:28px 24px 40px;display:flex;flex-wrap:wrap;gap:16px 32px;justify-content:space-between}
+footer nav{display:flex;flex-wrap:wrap;gap:20px}
+footer a{color:var(--text-2);text-decoration:none}
+footer a:hover{color:var(--paper)}
+@media (max-width:900px){.auth{grid-template-columns:1fr;gap:24px}.auth .art{min-height:220px;padding:24px}.auth .art b{font-size:30px}.auth .art p{display:none}}
+@media (max-width:560px){main{padding:28px 16px 64px}.card{padding:24px}header .in{padding:0 16px}header nav{gap:16px}}`;
 
 type LayoutOpts = { title: string; user?: User | null; csrf?: string; body: string; narrow?: boolean };
+
+const SITE = 'https://verso.video';
+/** Auth pages get the website's look: a real creator photo beside the form (image served by verso.video). */
+const ART = `<aside class="art" style="background-image:url(${SITE}/img/who-podcaster.webp)" aria-hidden="true"><b>Long videos in.<br><em>Reels out.</em></b><p>Verso finds the best moments, frames them for 9:16 and adds captions, all on your own computer.</p></aside>`;
 
 export function layout(o: LayoutOpts) {
   const nav = o.user
     ? `<a href="/pricing">Pricing</a><a href="/account">Account</a>
        <form method="post" action="/signout" style="margin:0"><input type="hidden" name="_csrf" value="${esc(o.csrf)}"><button type="submit">Sign out</button></form>`
-    : `<a href="/pricing">Pricing</a><a href="/signin">Sign in</a>`;
+    : `<a href="${SITE}">Home</a><a href="/pricing">Pricing</a><a href="/signin">Sign in</a>`;
+  const body = o.narrow ? (o.user ? `<div class="narrow">${o.body}</div>` : `<div class="auth">${ART}<div>${o.body}</div></div>`) : o.body;
+  const links = [['Privacy', '/privacy'], ['Terms', '/terms'], ['Refunds', '/refunds'], ['Contact', '/contact']]
+    .map(([t, h]) => `<a href="${SITE}${h}">${t}</a>`).join('');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark"><title>${esc(o.title)} · Verso</title>
+<meta name="color-scheme" content="dark"><meta name="robots" content="noindex, nofollow"><title>${esc(o.title)} · Verso</title>
 <link rel="preload" href="/assets/manrope.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/app.css"></head>
-<body><header><a class="brand" href="/"><img src="/assets/verso-logo.svg" alt="Verso" width="96" height="28"></a><nav>${nav}</nav></header>
-<main>${o.narrow ? `<div class="narrow">${o.body}</div>` : o.body}</main>
-<footer>© ${new Date().getFullYear()} Agape Labs · Exaltes Global Private Limited</footer></body></html>`;
+<body><header><div class="in"><a class="brand" href="${SITE}"><img src="/assets/verso-logo.svg" alt="Verso" width="96" height="28"></a><nav>${nav}</nav></div></header>
+<main>${body}</main>
+<footer><div class="in"><span>© ${new Date().getFullYear()} Verso by Agape Labs · Exaltes Global Private Limited</span><nav>${links}</nav></div></footer></body></html>`;
 }
 
 const csrfField = (csrf: string) => `<input type="hidden" name="_csrf" value="${esc(csrf)}">`;
