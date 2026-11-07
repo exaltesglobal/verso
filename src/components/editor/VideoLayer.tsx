@@ -4,6 +4,7 @@ import type { Clip, Project } from "../../lib/project";
 import { playbackRateAt, sourceTimeAt, timelineTimeAt } from "../../lib/speed";
 import { videoSourceAt } from "../../lib/background";
 import { hasEnhancedSound } from "../../lib/enhance";
+import { setElementGain } from "../../lib/audioBoost";
 
 interface VideoLayerProps {
   project: Project;
@@ -60,7 +61,7 @@ export function VideoLayer({
   useEffect(() => {
     const v = ref.current;
     if (!v || !src) return;
-    v.volume = Math.max(0, Math.min(1, clip?.volume ?? 1));
+    setElementGain(v, clip?.volume ?? 1, playing);
     if (Math.abs(v.playbackRate - rate) > 0.01) v.playbackRate = rate;
     // Entering another clip of the same file (after a split or a removed pause) must jump
     // exactly to its in point, or the cut-out part plays and the clock runs backwards.
@@ -113,6 +114,7 @@ export function VideoLayer({
       style={mediaStyle}
       muted={secondary || enhanced || (clip?.volume ?? 1) === 0}
       preload="auto"
+      crossOrigin="anonymous"
       playsInline
       disablePictureInPicture
       onLoadedData={(e) => {
