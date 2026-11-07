@@ -127,6 +127,30 @@ export function Preview({
 
   return (
     <section className={full ? "preview is-full" : "preview"} aria-label="Preview">
+      <div className="ptool">
+        <Segmented label="Reel shape" options={RATIOS} value={aspect} onChange={onAspect} />
+        {full_ && (
+          <>
+            <span className="ptool__spec tc">1080p · {FPS} fps</span>
+            <span className="ptool__fill" />
+            <IconButton
+              icon="safe-zone"
+              label="Safe zones"
+              aria-pressed={safe}
+              onClick={toggleSafe}
+              data-tip="Show where app buttons and captions cover the reel"
+            />
+            <IconButton
+              icon="fullscreen"
+              label={full ? "Exit full screen" : "Full screen"}
+              shortcut={full ? "Esc" : "F"}
+              aria-pressed={full}
+              disabled={empty}
+              onClick={() => setFull(!full)}
+            />
+          </>
+        )}
+      </div>
       <div
         className="preview__stage"
         onContextMenu={(e) => {
@@ -261,29 +285,6 @@ export function Preview({
                 shortcut="End"
                 disabled={empty}
                 onClick={() => onSeek(duration)}
-              />
-            </>
-          )}
-        </div>
-        <div className="transport__view">
-          <Segmented label="Reel shape" options={RATIOS} value={aspect} onChange={onAspect} />
-          {full_ && (
-            <>
-              <span className="transport__spec">1080p</span>
-              <IconButton
-                icon="safe-zone"
-                label="Safe zones"
-                aria-pressed={safe}
-                onClick={toggleSafe}
-                data-tip="Show where app buttons and captions cover the reel"
-              />
-              <IconButton
-                icon="fullscreen"
-                label={full ? "Exit full screen" : "Full screen"}
-                shortcut={full ? "Esc" : "F"}
-                aria-pressed={full}
-                disabled={empty}
-                onClick={() => setFull(!full)}
               />
             </>
           )}

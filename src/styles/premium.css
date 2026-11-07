@@ -1618,3 +1618,128 @@ kbd {
     sans-serif;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 4. Preview toolbar and transport ---------- */
+.preview {
+  position: relative;
+  grid-template-rows: 40px minmax(0, 1fr) 48px;
+  background: var(--ui-bg-app);
+}
+
+.ptool {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.ptool__spec {
+  color: var(--ui-t3);
+}
+
+.ptool__fill {
+  flex: 1;
+}
+
+.preview:has(.preview-bar--ratio) .ptool {
+  justify-content: center;
+}
+
+.preview__stage {
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 16px var(--ui-stage-pb);
+  background: var(--ui-bg-app);
+}
+
+/* The Quick workspace has no export toast beside the transport, so no gutter. */
+.editor--quick .preview__stage {
+  padding-bottom: 4px;
+}
+
+.frame {
+  border-radius: var(--ui-r-sm);
+  border: 1px solid var(--ui-border);
+  background: #000;
+  box-shadow: none;
+}
+
+.transport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  border-top: 0;
+  background: none;
+}
+
+.transport__time {
+  font-size: 12px;
+  color: var(--ui-t3);
+}
+
+.transport__time input,
+.transport__time .tc {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.transport__total,
+.transport__total .tc {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ui-t3);
+}
+
+.transport__buttons {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.transport__buttons .icon-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.play-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 4px;
+  border-radius: 50%;
+  background: var(--ui-bg-raised);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t1);
+  box-shadow: none;
+}
+
+.play-btn:hover:not(:disabled) {
+  background: #2a2a33;
+  transform: none;
+}
+
+.play-btn .vs-icon {
+  margin-left: 2px;
+}
+
+/* Toast: beside the transport's empty right side, never over the frame. */
+.editor .toast {
+  right: calc(var(--insp-w, var(--ui-insp-w)) + 12px);
+  bottom: calc(var(--tl-h, var(--ui-tl-h)) + 8px);
+}
+
+@media (max-width: 1400px) {
+  .editor .toast {
+    bottom: calc(var(--tl-h, var(--ui-tl-h)) + 56px);
+  }
+}
