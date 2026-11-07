@@ -18,6 +18,8 @@ import { VoicePanel } from "../smart/VoicePanel";
 import { SoundsPanel } from "../smart/SoundsPanel";
 import { startMediaDrag } from "../../lib/mediaDrag";
 import { EMOJI, SHAPES, addSticker, type Sticker } from "../../lib/stickers";
+import { useVisibility } from "../../lib/modes";
+import { MoreSettings } from "../MoreSettings";
 
 /** Make tools first; the Smart group (tools that spend credits) after a divider. */
 const TABS: { id: PanelTab; label: string; icon: IconName; smart?: boolean }[] = [
@@ -31,6 +33,16 @@ const TABS: { id: PanelTab; label: string; icon: IconName; smart?: boolean }[] =
   { id: "magic", label: "Magic", icon: "one-click", smart: true },
   { id: "boost", label: "Boost", icon: "auto-reel", smart: true },
 ];
+
+/** Quick's steps list: what each panel helps you do, in plain words. */
+const STEPS: Partial<Record<PanelTab, { title: string; body: string }>> = {
+  media: { title: "Add your video", body: "Bring in clips from your computer." },
+  autocut: { title: "Make reels from a long video", body: "We find the best moments for you." },
+  captions: { title: "Add captions", body: "Words on screen, written for you." },
+  templates: { title: "Use a template", body: "A ready-made style. Drop your clips in." },
+  text: { title: "Add text", body: "A title or a few words on screen." },
+  audio: { title: "Add music", body: "Songs and sounds made for reels." },
+};
 
 /** Plain-language picture size for the media list: no codecs on the surface. */
 function sizeLabel(m: MediaInfo): string | null {
@@ -48,6 +60,9 @@ interface LeftPanelProps {
   /** Clicking the active tool collapses or opens the panel (Premiere/Figma pattern). */
   panelOpen: boolean;
   onTogglePanel: () => void;
+  /** Quick: show the list of steps instead of a panel. */
+  stepsList?: boolean;
+  onStepsList?: () => void;
   media: MediaInfo[];
   importing: boolean;
   onImport: () => Promise<void>;
@@ -70,6 +85,8 @@ export function LeftPanel({
   onTab,
   panelOpen,
   onTogglePanel,
+  stepsList,
+  onStepsList,
   media,
   importing,
   onImport,
@@ -85,25 +102,130 @@ export function LeftPanel({
   onApply,
   notify,
 }: LeftPanelProps) {
+  const vis = useVisibility();
+  const tabs = vis.tabs.flatMap((id) => TABS.filter((t) => t.id === id));
+  const content = (
+    <>
+      {tab === "media" && (
+        <MediaTab media={media} importing={importing} onImport={onImport} onAddToTimeline={onAddToTimeline} />
+      )}
+      {tab === "autocut" && (
+        <AutoCutPanel
+          media={media}
+          importing={importing}
+          onImport={onImport}
+          transcribe={transcribeFile}
+          onOpenProject={onOpenProject}
+          onMakeAll={onMakeAll}
+        />
+      )}
+      {tab === "templates" && <TemplatesTab media={media} project={project} onApply={onApply} />}
+      {tab === "boost" && (
+        <BoostPanel
+          project={project}
+          onApply={onApply}
+          onFix={(fix) => {
+            if (fix === "captions") onTab("captions");
+            else if (fix === "pauses") onTab("magic");
+            else if (fix === "music") onTab("audio");
+            else if (fix === "aspect")
+              onApply({ ...project, aspect: "9:16" }, "Switched to full-screen vertical.");
+            else if (fix === "trim")
+              notify({ tone: "info", text: "Trim the slow parts: drag a clip edge or split with S." });
+          }}
+        />
+      )}
+      {tab === "magic" && (
+        <SmartToolsPanel
+          project={project}
+          onApply={onApply}
+          onNeedCaptions={() => onTab("captions")}
+          notify={notify}
+        />
+      )}
+      {tab === "text" && (
+        <TextTab
+          onAdd={onAddText}
+          onSticker={(s) => onApply(addSticker(project, time, s).project, `${s.label} sticker added.`)}
+        />
+      )}
+      {tab === "captions" && (
+        <CaptionsPanel
+          clip={captionClip}
+          styleId={captionStyleId}
+          onStyleChange={onCaptionStyle}
+          onApply={onCaptions}
+          notify={notify}
+          onAddVideo={() => void onImport()}
+        />
+      )}
+      {tab === "audio" && <AudioTab project={project} time={time} onApply={onApply} />}
+      {tab === "voice" && (
+        <VoicePanel
+          project={project}
+          playhead={time}
+          onApply={onApply}
+          onNeedCaptions={() => onTab("captions")}
+          notify={notify}
+        />
+      )}
+    </>
+  );
+
+  if (vis.left === "steps") {
+    const showList = stepsList || !vis.tabs.includes(tab);
+    return (
+      <aside
+        className="panel panel--steps"
+        aria-label={showList ? "Steps" : TABS.find((t) => t.id === tab)?.label}
+      >
+        {showList ? (
+          <div className="panel__body">
+            <div className="panel__head">
+              <h2 className="panel__title">What do you want to do?</h2>
+              <p className="panel__lede">Pick one. You can come back here any time.</p>
+            </div>
+            <div className="steps">
+              {tabs.map((t) => (
+                <button key={t.id} type="button" className="step-card" onClick={() => onTab(t.id)}>
+                  <span className="step-card__icon">
+                    <Icon name={t.icon} size={24} />
+                  </span>
+                  <span className="step-card__text">
+                    <span className="step-card__title">{STEPS[t.id]?.title ?? t.label}</span>
+                    <span className="step-card__body">{STEPS[t.id]?.body}</span>
+                  </span>
+                  <Icon name="chevron-right" size={16} className="step-card__go" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <button type="button" className="steps__back" onClick={onStepsList}>
+              <Icon name="chevron-right" size={16} className="steps__back-icon" />
+              All steps
+            </button>
+            {content}
+          </>
+        )}
+      </aside>
+    );
+  }
+
   return (
     <>
       <nav className="rail" aria-label="Tools">
-        {TABS.map((t, i) => (
+        {tabs.map((t, i) => (
           <Fragment key={t.id}>
-            {t.smart && !TABS[i - 1]?.smart && <span className="rail__sep" role="separator" />}
+            {t.smart && !tabs[i - 1]?.smart && <span className="rail__sep" role="separator" />}
             <button
               type="button"
               className={t.id === tab && panelOpen ? "rail__item is-active" : "rail__item"}
               aria-current={t.id === tab ? "page" : undefined}
               aria-expanded={t.id === tab ? panelOpen : undefined}
               data-tip={t.id === tab && panelOpen ? `Hide ${t.label}` : t.label}
-              onClick={() => {
-                if (t.id === tab) onTogglePanel();
-                else {
-                  onTab(t.id);
-                  if (!panelOpen) onTogglePanel();
-                }
-              }}
+              onClick={() => (t.id === tab ? onTogglePanel() : onTab(t.id))}
             >
               <Icon name={t.icon} size={20} />
               <span>{t.label}</span>
@@ -112,73 +234,7 @@ export function LeftPanel({
         ))}
       </nav>
       <aside className="panel" aria-label={TABS.find((t) => t.id === tab)?.label} hidden={!panelOpen}>
-        {tab === "media" && (
-          <MediaTab
-            media={media}
-            importing={importing}
-            onImport={onImport}
-            onAddToTimeline={onAddToTimeline}
-          />
-        )}
-        {tab === "autocut" && (
-          <AutoCutPanel
-            media={media}
-            importing={importing}
-            onImport={onImport}
-            transcribe={transcribeFile}
-            onOpenProject={onOpenProject}
-            onMakeAll={onMakeAll}
-          />
-        )}
-        {tab === "templates" && <TemplatesTab media={media} project={project} onApply={onApply} />}
-        {tab === "boost" && (
-          <BoostPanel
-            project={project}
-            onApply={onApply}
-            onFix={(fix) => {
-              if (fix === "captions") onTab("captions");
-              else if (fix === "pauses") onTab("magic");
-              else if (fix === "music") onTab("audio");
-              else if (fix === "aspect")
-                onApply({ ...project, aspect: "9:16" }, "Switched to full-screen vertical.");
-              else if (fix === "trim")
-                notify({ tone: "info", text: "Trim the slow parts: drag a clip edge or split with S." });
-            }}
-          />
-        )}
-        {tab === "magic" && (
-          <SmartToolsPanel
-            project={project}
-            onApply={onApply}
-            onNeedCaptions={() => onTab("captions")}
-            notify={notify}
-          />
-        )}
-        {tab === "text" && (
-          <TextTab
-            onAdd={onAddText}
-            onSticker={(s) => onApply(addSticker(project, time, s).project, `${s.label} sticker added.`)}
-          />
-        )}
-        {tab === "captions" && (
-          <CaptionsPanel
-            clip={captionClip}
-            styleId={captionStyleId}
-            onStyleChange={onCaptionStyle}
-            onApply={onCaptions}
-            notify={notify}
-          />
-        )}
-        {tab === "audio" && <AudioTab project={project} time={time} onApply={onApply} />}
-        {tab === "voice" && (
-          <VoicePanel
-            project={project}
-            playhead={time}
-            onApply={onApply}
-            onNeedCaptions={() => onTab("captions")}
-            notify={notify}
-          />
-        )}
+        {content}
       </aside>
     </>
   );
@@ -336,21 +392,12 @@ function TextTab({
       <PanelHead icon="text" title="Text">
         Add words on screen. They start at the playhead; drag them on the timeline.
       </PanelHead>
-      <div className="stack">
-        {presets.map((p) => (
-          <button
-            key={p.label}
-            type="button"
-            className={`text-preset ${p.cls}`}
-            onClick={() => onAdd(p.preset, p.text)}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <Button icon="text" size="lg" className="btn--block" onClick={() => onAdd("title", "Your big idea")}>
+        Add a title
+      </Button>
       <h3 className="section-label">Looks</h3>
       <div className="style-grid">
-        {looks.map((s) => (
+        {looks.slice(0, 4).map((s) => (
           <button
             key={s.label}
             type="button"
@@ -362,32 +409,59 @@ function TextTab({
           </button>
         ))}
       </div>
-      <h3 className="section-label">Stickers</h3>
-      <div className="sticker-grid">
-        {EMOJI.map((e) => (
-          <button
-            key={e}
-            type="button"
-            className="sticker-tile sticker-tile--emoji"
-            onClick={() => onSticker({ id: e, label: e, emoji: e })}
-            aria-label={`Add ${e}`}
-          >
-            {e}
-          </button>
-        ))}
-        {SHAPES.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className="sticker-tile"
-            onClick={() => onSticker(s)}
-            aria-label={`Add ${s.label}`}
-            title={s.label}
-          >
-            <img src={s.svg} alt="" draggable={false} />
-          </button>
-        ))}
-      </div>
+      <MoreSettings>
+        <div className="stack">
+          {presets.slice(1).map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              className={`text-preset ${p.cls}`}
+              onClick={() => onAdd(p.preset, p.text)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="style-grid">
+          {looks.slice(4).map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              className={`style-tile text-look--${s.preset}`}
+              onClick={() => onAdd(s.preset, s.label)}
+            >
+              Aa
+              <span>{s.label}</span>
+            </button>
+          ))}
+        </div>
+        <h3 className="section-label">Stickers</h3>
+        <div className="sticker-grid">
+          {EMOJI.map((e) => (
+            <button
+              key={e}
+              type="button"
+              className="sticker-tile sticker-tile--emoji"
+              onClick={() => onSticker({ id: e, label: e, emoji: e })}
+              aria-label={`Add ${e}`}
+            >
+              {e}
+            </button>
+          ))}
+          {SHAPES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="sticker-tile"
+              onClick={() => onSticker(s)}
+              aria-label={`Add ${s.label}`}
+              data-tip={s.label}
+            >
+              <img src={s.svg} alt="" draggable={false} />
+            </button>
+          ))}
+        </div>
+      </MoreSettings>
     </div>
   );
 }

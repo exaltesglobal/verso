@@ -12,6 +12,7 @@ import { EnhancePanel } from "../smart/EnhancePanel";
 import { ColorPanel } from "../smart/ColorPanel";
 import { SpeedPanel } from "../smart/SpeedPanel";
 import { BackgroundPanel } from "../smart/BackgroundPanel";
+import { useVisibility } from "../../lib/modes";
 
 interface InspectorProps {
   clip: (Clip & { kind: TrackKind }) | undefined;
@@ -64,6 +65,8 @@ export function Inspector({
   time,
   onCollapse,
 }: InspectorProps) {
+  // Speed ramps are keyframed: a Studio control.
+  const showRamp = useVisibility().keyframes;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const kind = clip ? KIND[clip.kind] : null;
   return (
@@ -115,9 +118,11 @@ export function Inspector({
       )}
       {clip?.kind === "video" && (
         <>
-          <Section title="Speed ramp" defaultOpen={false}>
-            <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
-          </Section>
+          {showRamp && (
+            <Section title="Speed ramp" defaultOpen={false}>
+              <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
+            </Section>
+          )}
           <Section title="Colour" defaultOpen={false}>
             <ColorPanel project={project} clipId={clip.id} onApply={onApply} />
           </Section>
@@ -252,7 +257,7 @@ function VideoProps({
         />
       </Section>
       {clip.source?.hasVideo && (
-        <Section title={`Reframe for ${aspect}`}>
+        <Section title={`Fit to ${aspect}`}>
           <ReframePanel clip={clip} aspect={aspect} onCropPath={onCropPath} />
         </Section>
       )}

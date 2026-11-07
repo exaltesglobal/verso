@@ -104,12 +104,25 @@ interface TimelineProps {
   onTrackMenu?: (kind: TrackKind, x: number, y: number) => void;
   /** The one action inside an empty lane ("Add text"). */
   onEmptyTrack?: (kind: TrackKind) => void;
+  /** Lanes to show (workspace visibility); all when omitted. */
+  tracks?: TrackKind[] | null;
+  /** Lane names on the left. Off in the Quick clip strip. */
+  headers?: boolean;
+  /** "strip": split, delete and mute only (Quick). "full": snapping and zoom too. */
+  tools?: "strip" | "full";
+  /** Mutes or unmutes the selected clip (Quick strip). */
+  onMute?: () => void;
+  selectedMuted?: boolean;
 }
 
 export function Timeline(props: TimelineProps) {
   const { project, duration, time, playing, onSeek, zoom, onZoom, selectedClip, onSelectClip, onEdit } =
     props;
   const { timeFormat } = useSettings();
+  const headers = props.headers !== false;
+  const headW = headers ? HEAD_W : 0;
+  const strip = props.tools === "strip";
+  const lanes = props.tracks ? project.tracks.filter((t) => props.tracks?.includes(t.kind)) : project.tracks;
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ left: 0, width: 1200 });
   const [snapAt, setSnapAt] = useState<number | null>(null);
@@ -123,7 +136,7 @@ export function Timeline(props: TimelineProps) {
   const viewSeconds = Math.max(MIN_TIMELINE_SECONDS, duration * 1.15 + 4);
   const basePps = Math.min(MAX_PX_PER_SEC, FIT_WIDTH / viewSeconds);
   const pps = basePps * zoom;
-  const width = Math.max(viewSeconds * pps + GUTTER * 2, view.width - HEAD_W);
+  const width = Math.max(viewSeconds * pps + GUTTER * 2, view.width - headW);
   const x = (t: number) => GUTTER + t * pps;
   const timeAt = (clientX: number, el: Element) =>
     Math.min(duration, Math.max(0, (clientX - el.getBoundingClientRect().left - GUTTER) / pps));
@@ -135,7 +148,7 @@ export function Timeline(props: TimelineProps) {
   const showFrames = pps / FPS >= 6;
   const ticks = useMemo(() => {
     const out: { t: number; level: 0 | 1 | 2 }[] = [];
-    const t0 = Math.max(0, Math.floor((view.left - HEAD_W) / pps / major) * major - major);
+    const t0 = Math.max(0, Math.floor((view.left - headW) / pps / major) * major - major);
     const t1 = Math.min(viewSeconds, (view.left + view.width) / pps + major);
     for (let i = Math.round(t0 / minor); i * minor <= t1; i++) {
       const t = Math.round(i * minor * FPS) / FPS;
@@ -143,7 +156,7 @@ export function Timeline(props: TimelineProps) {
       out.push({ t, level });
     }
     return out;
-  }, [view.left, view.width, pps, major, minor, div, viewSeconds]);
+  }, [view.left, view.width, pps, major, minor, div, viewSeconds, headW]);
   const label = (t: number) => {
     if (timeFormat === "seconds") return <span className="tc">{formatSeconds(t)}</span>;
     const [dim, main] = timecodeParts(t);
@@ -180,7 +193,7 @@ export function Timeline(props: TimelineProps) {
   const fit = () => {
     const el = scroller.current;
     if (!el || duration <= 0) return;
-    const avail = el.clientWidth - HEAD_W - GUTTER * 2 - 8;
+    const avail = el.clientWidth - headW - GUTTER * 2 - 8;
     onZoom(clampZoom(avail / (duration * basePps)));
     manualScroll.current = false;
     el.scrollLeft = 0;
@@ -207,7 +220,7 @@ export function Timeline(props: TimelineProps) {
       if (e.ctrlKey || e.metaKey || e.altKey) {
         e.preventDefault();
         const px = e.clientX - el.getBoundingClientRect().left;
-        const t = (el.scrollLeft + px - HEAD_W - GUTTER) / s.pps;
+        const t = (el.scrollLeft + px - headW - GUTTER) / s.pps;
         const next = clampZoom(s.zoom * Math.pow(1.0015, -(e.deltaY || e.deltaX)));
         if (next === s.zoom) return;
         anchor.current = [t, px];
@@ -223,7 +236,7 @@ export function Timeline(props: TimelineProps) {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [headW]);
 
   // Keep the anchored time under the cursor once the new zoom has laid out.
   useLayoutEffect(() => {
@@ -231,8 +244,8 @@ export function Timeline(props: TimelineProps) {
     if (!el || !anchor.current) return;
     const [t, px] = anchor.current;
     anchor.current = null;
-    el.scrollLeft = Math.max(0, HEAD_W + GUTTER + t * pps - px);
-  }, [pps]);
+    el.scrollLeft = Math.max(0, headW + GUTTER + t * pps - px);
+  }, [pps, headW]);
 
   // Follow the playhead while playing: page-flip at 90% of the view, unless the user scrolled away.
   useEffect(() => {
@@ -243,9 +256,9 @@ export function Timeline(props: TimelineProps) {
       return;
     }
     if (manualScroll.current) return;
-    const px = HEAD_W + x(time) - el.scrollLeft;
-    const lanes = el.clientWidth - HEAD_W;
-    if (px > HEAD_W + lanes * 0.9 || px < HEAD_W) {
+    const px = headW + x(time) - el.scrollLeft;
+    const lanes = el.clientWidth - headW;
+    if (px > headW + lanes * 0.9 || px < headW) {
       selfScroll.current = true;
       el.scrollLeft = Math.max(0, x(time) - lanes * 0.1);
     }
@@ -264,7 +277,7 @@ export function Timeline(props: TimelineProps) {
   const beats = useBeatMarkers(project);
   const heights = project.tracks.map((t) => (t.clips.length ? TRACK_H[t.kind] : EMPTY_H));
   const gridStyle: CSSProperties = {
-    gridTemplateColumns: `${HEAD_W}px ${width}px`,
+    gridTemplateColumns: `${headW}px ${width}px`,
     gridTemplateRows: `${RULER_H}px ${heights.map((h) => `${h}px`).join(" ")}`,
   };
   const head = Math.round(x(time));
@@ -276,7 +289,7 @@ export function Timeline(props: TimelineProps) {
   };
 
   return (
-    <section className="timeline" aria-label="Timeline">
+    <section className={strip ? "timeline timeline--strip" : "timeline"} aria-label="Timeline">
       <div className="timeline__toolbar">
         <div className="timeline__tools">
           <IconButton
@@ -293,52 +306,65 @@ export function Timeline(props: TimelineProps) {
             onClick={props.onDelete}
             disabled={!selectedClip}
           />
-          <span className="timeline__sep" />
-          <IconButton
-            icon="magnet"
-            label={props.snapping ? "Snapping on" : "Snapping off"}
-            shortcut="N"
-            aria-pressed={props.snapping}
-            onClick={props.onToggleSnap}
-          />
+          {props.onMute && (
+            <IconButton
+              icon={props.selectedMuted ? "volume" : "volume-off"}
+              label={props.selectedMuted ? "Unmute clip" : "Mute clip"}
+              aria-pressed={props.selectedMuted}
+              onClick={props.onMute}
+              disabled={!selectedClip}
+            />
+          )}
+          {!strip && <span className="timeline__sep" />}
+          {!strip && (
+            <IconButton
+              icon="magnet"
+              label={props.snapping ? "Snapping on" : "Snapping off"}
+              shortcut="N"
+              aria-pressed={props.snapping}
+              onClick={props.onToggleSnap}
+            />
+          )}
         </div>
-        <div className="timeline__zoom">
-          <IconButton
-            icon="zoom-out"
-            label="Zoom out"
-            shortcut="-"
-            size={16}
-            onClick={() => onZoom(clampZoom(zoom / 1.5))}
-            disabled={zoom <= ZOOM_MIN}
-          />
-          <input
-            type="range"
-            min={0}
-            max={1000}
-            step={1}
-            value={zoomToSlider(zoom)}
-            aria-label="Timeline zoom"
-            data-tip="Zoom (Ctrl or Alt + scroll)"
-            onChange={(e) => onZoom(clampZoom(sliderToZoom(Number(e.target.value))))}
-            style={{ "--fill": `${zoomToSlider(zoom) / 10}%` } as CSSProperties}
-          />
-          <IconButton
-            icon="zoom-in"
-            label="Zoom in"
-            shortcut="="
-            size={16}
-            onClick={() => onZoom(clampZoom(zoom * 1.5))}
-            disabled={zoom >= ZOOM_MAX}
-          />
-          <IconButton
-            icon="zoom-fit"
-            label="Zoom to fit"
-            shortcut="\"
-            size={16}
-            onClick={fit}
-            disabled={empty}
-          />
-        </div>
+        {!strip && (
+          <div className="timeline__zoom">
+            <IconButton
+              icon="zoom-out"
+              label="Zoom out"
+              shortcut="-"
+              size={16}
+              onClick={() => onZoom(clampZoom(zoom / 1.5))}
+              disabled={zoom <= ZOOM_MIN}
+            />
+            <input
+              type="range"
+              min={0}
+              max={1000}
+              step={1}
+              value={zoomToSlider(zoom)}
+              aria-label="Timeline zoom"
+              data-tip="Zoom (Ctrl or Alt + scroll)"
+              onChange={(e) => onZoom(clampZoom(sliderToZoom(Number(e.target.value))))}
+              style={{ "--fill": `${zoomToSlider(zoom) / 10}%` } as CSSProperties}
+            />
+            <IconButton
+              icon="zoom-in"
+              label="Zoom in"
+              shortcut="="
+              size={16}
+              onClick={() => onZoom(clampZoom(zoom * 1.5))}
+              disabled={zoom >= ZOOM_MAX}
+            />
+            <IconButton
+              icon="zoom-fit"
+              label="Zoom to fit"
+              shortcut="\"
+              size={16}
+              onClick={fit}
+              disabled={empty}
+            />
+          </div>
+        )}
       </div>
 
       <div
@@ -352,7 +378,7 @@ export function Timeline(props: TimelineProps) {
         }}
       >
         <div className="timeline__grid" style={gridStyle}>
-          <div className="timeline__corner tc">{formatTimecode(time)}</div>
+          {headers && <div className="timeline__corner tc">{formatTimecode(time)}</div>}
           <div
             className="ruler"
             onPointerDown={(e) => e.button === 0 && scrubFrom(e, e.currentTarget)}
@@ -403,9 +429,10 @@ export function Timeline(props: TimelineProps) {
             )}
           </div>
 
-          {project.tracks.map((t, row) => (
+          {lanes.map((t, row) => (
             <TrackRow
               key={t.kind}
+              header={headers}
               row={row + 2}
               kind={t.kind}
               label={t.label}
@@ -442,7 +469,7 @@ export function Timeline(props: TimelineProps) {
 
           <div
             className="timeline__overlay"
-            style={{ gridRow: `2 / span ${project.tracks.length}` }}
+            style={{ gridRow: `2 / span ${lanes.length}` }}
             aria-hidden="true"
           >
             <BeatMarkers beats={beats} pps={pps} offset={GUTTER} />
@@ -461,6 +488,7 @@ export function Timeline(props: TimelineProps) {
 }
 
 function TrackRow({
+  header,
   row,
   kind,
   label,
@@ -470,6 +498,7 @@ function TrackRow({
   onLanePointerDown,
   children,
 }: {
+  header: boolean;
   row: number;
   kind: TrackKind;
   label: string;
@@ -485,10 +514,12 @@ function TrackRow({
   };
   return (
     <>
-      <div className={`track-head track-head--${kind}`} style={{ gridRow: row }} onContextMenu={menu}>
-        <Icon name={TRACK_ICON[kind]} size={16} />
-        <span className="track-head__name">{label}</span>
-      </div>
+      {header && (
+        <div className={`track-head track-head--${kind}`} style={{ gridRow: row }} onContextMenu={menu}>
+          <Icon name={TRACK_ICON[kind]} size={16} />
+          <span className="track-head__name">{label}</span>
+        </div>
+      )}
       <div
         className={count ? `track track--${kind}` : `track track--${kind} is-empty`}
         style={{ gridRow: row }}

@@ -29,6 +29,14 @@ const QUALITIES: { value: ExportQuality; title: string; hint: string }[] = [
   { value: "ultra", title: "4K", hint: "Four times the detail. Big file, takes longer." },
 ];
 
+/** One-tap export presets: shape, quality and smoothness in one choice. */
+const PRESETS: { id: string; title: string; hint: string; aspect: AspectRatio; quality: ExportQuality }[] = [
+  { id: "reel", title: "Reel", hint: "Instagram, 9:16", aspect: "9:16", quality: "standard" },
+  { id: "short", title: "Short", hint: "YouTube Shorts, 9:16", aspect: "9:16", quality: "standard" },
+  { id: "story", title: "Story", hint: "Stories, 9:16", aspect: "9:16", quality: "draft" },
+  { id: "youtube", title: "YouTube 16:9", hint: "Wide video", aspect: "16:9", quality: "high" },
+];
+
 type Phase =
   | { step: "setup"; error?: string }
   | { step: "running"; percent: number; etaSec: number | null; preparing: boolean }
@@ -59,6 +67,8 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
     return q === "ultra" && !can("export_4k") ? "high" : q;
   });
   const [fps, setFps] = useState(30);
+  const [outAspect, setOutAspect] = useState<AspectRatio>(aspect);
+  const [preset, setPreset] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
   const [publishing, setPublishing] = useState(false);
   const [background, setBackground] = useState(false);
@@ -131,7 +141,7 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
     try {
       const outputPath = await join(folder, `${file}.mp4`);
       setPhase({ step: "running", percent: 0, etaSec: null, preparing: true });
-      jobId.current = await startExport(buildExportRequest(project, aspect, { quality, outputPath, fps }));
+      jobId.current = await startExport(buildExportRequest(project, outAspect, { quality, outputPath, fps }));
     } catch (err) {
       jobId.current = null;
       setPhase({ step: "setup", error: String(err) });
@@ -241,6 +251,34 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
               <Button icon="folder" onClick={() => void chooseLocation()}>
                 Change
               </Button>
+            </div>
+
+            <span className="export__label" id="export-preset">
+              Made for
+            </span>
+            <div
+              className="export__qualities export__qualities--4"
+              role="radiogroup"
+              aria-labelledby="export-preset"
+            >
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={preset === p.id}
+                  className={preset === p.id ? "export__quality is-active" : "export__quality"}
+                  onClick={() => {
+                    setPreset(p.id);
+                    setOutAspect(p.aspect);
+                    setQuality(p.quality);
+                    setFps(30);
+                  }}
+                >
+                  <span className="export__quality-title">{p.title}</span>
+                  <span className="export__quality-hint">{p.hint}</span>
+                </button>
+              ))}
             </div>
 
             <span className="export__label" id="export-quality">

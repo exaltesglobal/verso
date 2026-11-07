@@ -11,6 +11,8 @@ import type { ExportQuality } from "../lib/export";
 import { CAPTION_LANGUAGES } from "../lib/captions";
 import { updateSettings, useSettings } from "../lib/settings";
 import { checkForUpdates, installUpdate } from "../lib/updates";
+import { MODES } from "../lib/modes";
+import { formatMinutes, useTimeSaved } from "../lib/timeSaved";
 
 const QUALITY: Record<string, ExportQuality> = { Draft: "draft", Standard: "standard", High: "high" };
 const QUALITY_LABELS = Object.keys(QUALITY);
@@ -58,6 +60,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 /** Full-screen settings, opened from the Welcome settings icon. */
 export function Settings({ onClose }: { onClose: () => void }) {
   const s = useSettings();
+  const timeSaved = useTimeSaved();
   const [version, setVersion] = useState("0.1.0");
   const [update, setUpdate] = useState<{ text: string; version?: string } | null>(null);
   const [checking, setChecking] = useState(false);
@@ -151,6 +154,24 @@ export function Settings({ onClose }: { onClose: () => void }) {
         </Section>
 
         <Section title="Editing">
+          <Row label="Workspace" hint="Quick has big choices and one-tap edits. Craft and Studio show more.">
+            <Segmented
+              label="Workspace"
+              options={MODES.map((m) => m.label)}
+              value={MODES.find((m) => m.id === s.mode)?.label ?? "Quick"}
+              onChange={(v) => updateSettings({ mode: MODES.find((m) => m.label === v)?.id ?? "quick" })}
+            />
+          </Row>
+          <Row
+            label="Time saved"
+            hint="Rough editing time one-tap edits have saved you, compared with doing them by hand."
+          >
+            <span className="settings__text">
+              {timeSaved.lifetime >= 1
+                ? `About ${formatMinutes(timeSaved.lifetime)} in total`
+                : "Nothing yet"}
+            </span>
+          </Row>
           <Row label="Show time as" hint="Timecode counts frames, like pro editors. Seconds is simpler.">
             <Segmented
               label="Show time as"

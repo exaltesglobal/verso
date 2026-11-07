@@ -33,6 +33,8 @@ interface PreviewProps {
   onAspect: (a: AspectRatio) => void;
   onImport: () => void;
   importing: boolean;
+  /** "ratio": play and reel shape only (Quick). "full": the whole transport. */
+  bar?: "ratio" | "full";
 }
 
 const RATIOS = ["9:16", "1:1", "16:9"] as const;
@@ -55,7 +57,9 @@ export function Preview({
   onAspect,
   onImport,
   importing,
+  bar = "full",
 }: PreviewProps) {
+  const full_ = bar === "full";
   const captions = project.tracks.find((t) => t.kind === "captions")?.clips ?? [];
   const caption = captions.find((c) => time >= c.start && time < c.end);
   // Real word timings when the captions engine wrote them; otherwise spread evenly.
@@ -202,28 +206,34 @@ export function Preview({
         </div>
       </div>
 
-      <div className="transport preview-bar">
-        <div className="transport__time">
-          <TimecodeField t={time} duration={duration} onSeek={onSeek} />
-          <span className="transport__total">
-            / <Timecode t={duration} />
-          </span>
-        </div>
+      <div className={full_ ? "transport preview-bar" : "transport preview-bar preview-bar--ratio"}>
+        {full_ && (
+          <div className="transport__time">
+            <TimecodeField t={time} duration={duration} onSeek={onSeek} />
+            <span className="transport__total">
+              / <Timecode t={duration} />
+            </span>
+          </div>
+        )}
         <div className="transport__buttons">
-          <IconButton
-            icon="skip-start"
-            label="Go to start"
-            shortcut="Home"
-            disabled={empty}
-            onClick={() => onSeek(0)}
-          />
-          <IconButton
-            icon="step-back"
-            label="Back 1 frame"
-            shortcut="←"
-            disabled={empty}
-            onClick={() => onSeek(Math.max(0, Math.round((time - 1 / FPS) * FPS) / FPS))}
-          />
+          {full_ && (
+            <>
+              <IconButton
+                icon="skip-start"
+                label="Go to start"
+                shortcut="Home"
+                disabled={empty}
+                onClick={() => onSeek(0)}
+              />
+              <IconButton
+                icon="step-back"
+                label="Back 1 frame"
+                shortcut="←"
+                disabled={empty}
+                onClick={() => onSeek(Math.max(0, Math.round((time - 1 / FPS) * FPS) / FPS))}
+              />
+            </>
+          )}
           <button
             type="button"
             className="play-btn"
@@ -236,39 +246,47 @@ export function Preview({
           >
             <Icon name={playing ? "pause" : "play"} size={20} />
           </button>
-          <IconButton
-            icon="step-forward"
-            label="Forward 1 frame"
-            shortcut="→"
-            disabled={empty}
-            onClick={() => onSeek(Math.min(duration, Math.round((time + 1 / FPS) * FPS) / FPS))}
-          />
-          <IconButton
-            icon="skip-end"
-            label="Go to end"
-            shortcut="End"
-            disabled={empty}
-            onClick={() => onSeek(duration)}
-          />
+          {full_ && (
+            <>
+              <IconButton
+                icon="step-forward"
+                label="Forward 1 frame"
+                shortcut="→"
+                disabled={empty}
+                onClick={() => onSeek(Math.min(duration, Math.round((time + 1 / FPS) * FPS) / FPS))}
+              />
+              <IconButton
+                icon="skip-end"
+                label="Go to end"
+                shortcut="End"
+                disabled={empty}
+                onClick={() => onSeek(duration)}
+              />
+            </>
+          )}
         </div>
         <div className="transport__view">
           <Segmented label="Reel shape" options={RATIOS} value={aspect} onChange={onAspect} />
-          <span className="transport__spec">1080p</span>
-          <IconButton
-            icon="safe-zone"
-            label="Safe zones"
-            aria-pressed={safe}
-            onClick={toggleSafe}
-            data-tip="Show where app buttons and captions cover the reel"
-          />
-          <IconButton
-            icon="fullscreen"
-            label={full ? "Exit full screen" : "Full screen"}
-            shortcut={full ? "Esc" : "F"}
-            aria-pressed={full}
-            disabled={empty}
-            onClick={() => setFull(!full)}
-          />
+          {full_ && (
+            <>
+              <span className="transport__spec">1080p</span>
+              <IconButton
+                icon="safe-zone"
+                label="Safe zones"
+                aria-pressed={safe}
+                onClick={toggleSafe}
+                data-tip="Show where app buttons and captions cover the reel"
+              />
+              <IconButton
+                icon="fullscreen"
+                label={full ? "Exit full screen" : "Full screen"}
+                shortcut={full ? "Esc" : "F"}
+                aria-pressed={full}
+                disabled={empty}
+                onClick={() => setFull(!full)}
+              />
+            </>
+          )}
         </div>
       </div>
       {menu && (

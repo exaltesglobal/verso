@@ -6,6 +6,8 @@ import { ContextMenu } from "../ContextMenu";
 import { AccountButton } from "../account/AccountButton";
 import { CreditsBadge } from "../credits/CreditsBadge";
 import { WindowControls } from "../WindowControls";
+import { MODES, type Mode } from "../../lib/modes";
+import { formatMinutes, useTimeSaved } from "../../lib/timeSaved";
 
 export type SaveState = "saved" | "saving" | "error";
 
@@ -25,11 +27,14 @@ interface TopBarProps {
   /** Autosave status, shown instead of a Save button. Ctrl+S still saves a file. */
   saveState: SaveState;
   onSave: () => void;
+  mode: Mode;
+  onMode: (m: Mode) => void;
 }
 
 export function TopBar(props: TopBarProps) {
   const { projectName, subtitle, onRename, onRenameDone, saveState } = props;
   const [help, setHelp] = useState<{ x: number; y: number } | null>(null);
+  const saved = useTimeSaved().today;
   return (
     <header className="topbar" data-tauri-drag-region>
       <div className="topbar__left" data-tauri-drag-region>
@@ -80,6 +85,27 @@ export function TopBar(props: TopBarProps) {
             )}
           </span>
         )}
+        {saved >= 1 && (
+          <span className="topbar__saved" data-tip="Editing time one-tap edits saved you today">
+            Saved about {formatMinutes(saved)} today
+          </span>
+        )}
+      </div>
+
+      <div className="topbar__modes segmented" role="radiogroup" aria-label="Workspace">
+        {MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            role="radio"
+            aria-checked={props.mode === m.id}
+            className={props.mode === m.id ? "segmented__item is-active" : "segmented__item"}
+            data-tip={m.hint}
+            onClick={() => props.onMode(m.id)}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
       <div className="topbar__right" data-tauri-drag-region>
