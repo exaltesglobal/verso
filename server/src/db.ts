@@ -53,6 +53,34 @@ export async function migrateLatest(db: Db) {
   return db.migrate.latest({ migrationSource });
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const isLockError = (err: unknown) =>
+  err instanceof Error && /migration table is already locked/i.test(err.message);
+
+/**
+ * Apply pending migrations while tolerating other instances doing the same.
+ * Hostinger starts several processes at once: whoever takes the knex lock
+ * migrates, the others wait and retry. If the lock is still held after the
+ * wait it is treated as stale (left by a killed process) and released once.
+ */
+export async function migrateLatestSafe(db: Db, log: (msg: string) => void = console.log) {
+  try {
+    return await migrateLatest(db);
+  } catch (err) {
+    if (!isLockError(err)) throw err;
+    log('Migration table is locked by another instance; waiting 15s...');
+    await sleep(15_000);
+    try {
+      return await migrateLatest(db);
+    } catch (err2) {
+      if (!isLockError(err2)) throw err2;
+      log('Migration lock looks stale; releasing it and retrying once.');
+      await db.migrate.forceFreeMigrationsLock();
+      return await migrateLatest(db);
+    }
+  }
+}
+
 export async function migrateRollback(db: Db) {
   return db.migrate.rollback({ migrationSource });
 }

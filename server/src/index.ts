@@ -2,7 +2,7 @@ import './env.js';
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { resetDue } from './credits.js';
-import { migrateLatest } from './db.js';
+import { migrateLatest, migrateLatestSafe } from './db.js';
 
 const config = loadConfig();
 const { app, ctx } = await buildApp(config);
@@ -26,6 +26,17 @@ if (config.CREDITS_RESET_INTERVAL_MINUTES > 0) {
 }
 
 await app.listen({ host: config.HOST, port: config.PORT });
+
+// Production migrates AFTER listen: Hostinger kills a process that has not
+// called listen() within 3 seconds, which left a half-applied migration once.
+// Set SKIP_MIGRATE_ON_START=1 when migrations are run from a shell instead.
+if (config.DB_CLIENT !== 'sqlite' && process.env.SKIP_MIGRATE_ON_START !== '1') {
+  migrateLatestSafe(ctx.db, (m) => app.log.info(m))
+    .then(([batch, names]) =>
+      app.log.info(names.length ? `Applied migration batch ${batch}: ${names.join(', ')}` : 'Database is up to date'),
+    )
+    .catch((err) => app.log.error({ err }, 'Migrations failed; fix the database and restart'));
+}
 app.log.info(
   {
     db: config.DB_CLIENT,
