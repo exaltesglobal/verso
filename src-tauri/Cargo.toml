@@ -2,7 +2,7 @@
 name = "verso"
 license = "UNLICENSED"
 publish = false
-version = "0.1.0"
+version = "0.1.1"
 description = "Verso, the reels-first desktop video editor by Agape Labs"
 authors = ["Agape Labs <exaltes.global@gmail.com>"]
 edition = "2024"
