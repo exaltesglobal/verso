@@ -469,3 +469,40 @@ pub async fn get_entitlements(app: AppHandle) -> Result<Entitlements, String> {
 pub async fn list_devices(app: AppHandle, api: String) -> Result<Value, String> {
     blocking(move || authed_get(&app, &api, "/v1/me/devices")).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::{
+        Engine, engine::general_purpose::STANDARD, engine::general_purpose::URL_SAFE_NO_PAD,
+    };
+
+    // RFC 8410 section 10.3 example Ed25519 key pair.
+    const PKCS8: &str = "MC4CAQAwBQYDK2VwBCIEINTuctv5E1hK1bbY8fdp+K06/nwoy/HU++CXqI9EdVhC";
+    const PUBLIC_HEX: &str = "19bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1";
+
+    fn x() -> String {
+        let raw: Vec<u8> = (0..32)
+            .map(|i| u8::from_str_radix(&PUBLIC_HEX[i * 2..i * 2 + 2], 16).unwrap())
+            .collect();
+        URL_SAFE_NO_PAD.encode(raw)
+    }
+
+    fn sign(claims: Value) -> String {
+        let key = jsonwebtoken::EncodingKey::from_ed_der(&STANDARD.decode(PKCS8).unwrap());
+        jsonwebtoken::encode(&jsonwebtoken::Header::new(Algorithm::EdDSA), &claims, &key).unwrap()
+    }
+
+    #[test]
+    fn offline_token_verifies_for_its_device_only() {
+        let exp = 4_000_000_000u64;
+        let token = sign(serde_json::json!({
+            "aud": "verso-desktop", "iss": "verso-accounts", "exp": exp, "did": "dev-1", "ent": { "plan": "pro" }
+        }));
+        let (ent, got_exp) = verify(&token, &x(), "dev-1").expect("valid token");
+        assert_eq!(ent["plan"], "pro");
+        assert_eq!(got_exp, exp);
+        assert!(verify(&token, &x(), "dev-2").is_none());
+        assert!(verify(&format!("{token}x"), &x(), "dev-1").is_none());
+    }
+}
