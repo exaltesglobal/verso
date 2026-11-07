@@ -74,16 +74,14 @@ pub fn decode(
                 carry.clear();
             }
         }
-        let mut it = chunk.chunks_exact(4);
-        for b in &mut it {
-            samples.push(f32::from_le_bytes([b[0], b[1], b[2], b[3]]));
-        }
-        carry.extend_from_slice(it.remainder());
-        if let Some(total) = expected {
-            if samples.len() - last_report > rate as usize {
-                last_report = samples.len();
-                progress((samples.len() as f64 / total as f64).min(1.0));
-            }
+        let (whole, rest) = chunk.as_chunks::<4>();
+        samples.extend(whole.iter().map(|b| f32::from_le_bytes(*b)));
+        carry.extend_from_slice(rest);
+        if let Some(total) = expected
+            && samples.len() - last_report > rate as usize
+        {
+            last_report = samples.len();
+            progress((samples.len() as f64 / total as f64).min(1.0));
         }
     }
     let _ = child.wait();

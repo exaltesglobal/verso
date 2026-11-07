@@ -198,10 +198,10 @@ fn store_tokens(app: &AppHandle, v: &Value) -> Result<String, String> {
 pub(crate) fn access_token(app: &AppHandle, api: &str) -> Result<String, String> {
     let state = app.state::<AccountState>();
     let _guard = state.refresh_lock.lock().unwrap();
-    if let Some((token, exp)) = state.access.lock().unwrap().clone() {
-        if exp > Instant::now() + Duration::from_secs(60) {
-            return Ok(token);
-        }
+    if let Some((token, exp)) = state.access.lock().unwrap().clone()
+        && exp > Instant::now() + Duration::from_secs(60)
+    {
+        return Ok(token);
     }
     let refresh = stored_refresh().ok_or("You're signed out.")?;
     let body = json!({ "grant_type": "refresh_token", "refresh_token": refresh });
@@ -301,10 +301,12 @@ fn fetch(app: &AppHandle, api: &str) -> Result<Entitlements, String> {
     let mut cache = load_cache(app);
     cache.offline_token = v["offlineToken"].as_str().map(String::from);
     // shortcut: debug builds trust the server's key on first use; release builds must pin it.
-    if PINNED_KEY.is_none() && cfg!(debug_assertions) && cache.dev_public_key.is_none() {
-        if let Ok(jwks) = send(ureq2::get(&endpoint(api, "/.well-known/jwks.json")?), None) {
-            cache.dev_public_key = jwks["keys"][0]["x"].as_str().map(String::from);
-        }
+    if PINNED_KEY.is_none()
+        && cfg!(debug_assertions)
+        && cache.dev_public_key.is_none()
+        && let Ok(jwks) = send(ureq2::get(&endpoint(api, "/.well-known/jwks.json")?), None)
+    {
+        cache.dev_public_key = jwks["keys"][0]["x"].as_str().map(String::from);
     }
     save_cache(app, &cache)?;
     *app.state::<AccountState>().online.lock().unwrap() = Some(v);

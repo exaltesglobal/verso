@@ -128,9 +128,10 @@ fn track(env: &[f32], period: f64) -> Vec<usize> {
         let hi = i as f64 - period / 2.0;
         let mut best: Option<(f64, usize)> = None;
         if hi >= 1.0 {
-            for j in (lo.max(0.0) as usize)..=(hi as usize) {
+            let window = score.iter().enumerate().take(hi as usize + 1);
+            for (j, &prev) in window.skip(lo.max(0.0) as usize) {
                 let pen = TIGHTNESS * ((i - j) as f64 / period).ln().powi(2);
-                let s = score[j] - pen;
+                let s = prev - pen;
                 if best.is_none_or(|b| s > b.0) {
                     best = Some((s, j));
                 }

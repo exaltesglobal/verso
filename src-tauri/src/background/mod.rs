@@ -369,7 +369,7 @@ fn load_picture(path: &Path, w: u32, h: u32) -> Result<Vec<u8>, String> {
         ])
         .stderr(Stdio::null())
         .output()
-        .map_err(|e| spawn_err(e))?;
+        .map_err(spawn_err)?;
     if out.stdout.len() < (w * h * 3) as usize {
         return Err("We couldn't open that picture. Try a JPG or PNG.".into());
     }
