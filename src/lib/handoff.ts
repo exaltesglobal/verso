@@ -10,6 +10,7 @@ export type HandoffTarget = "premiere" | "resolve";
 const CANVAS: Record<AspectRatio, [number, number]> = {
   "9:16": [1080, 1920],
   "1:1": [1080, 1080],
+  "4:5": [1080, 1350],
   "16:9": [1920, 1080],
 };
 

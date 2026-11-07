@@ -80,7 +80,8 @@ export type IconName =
   // Drawn for the premium shell (docs/design/premium-ui, the mock's <defs>).
   | "boost"
   | "speaker"
-  | "video";
+  | "video"
+  | "thirds";
 
 interface IconProps {
   name: IconName;

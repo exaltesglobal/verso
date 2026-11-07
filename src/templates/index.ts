@@ -10,7 +10,7 @@ import { festivePack } from "./packs/festive";
 import { podcastPack } from "./packs/podcast";
 import { sizeFloor, withRules } from "./rules";
 
-export { BEAT_SNAP_TOLERANCE, SAFE_ZONE, beatSnapTolerance, limitLook } from "./rules";
+export { BEAT_SNAP_TOLERANCE, SAFE_ZONE, beatSnapTolerance, limitLook, safeZoneFor } from "./rules";
 import type { PackId, Template, TemplateLang, TemplatePack, TemplateSlot, TemplateText } from "./types";
 
 export type { Template, TemplateLang, TemplatePack, TemplateSlot, TextRole } from "./types";

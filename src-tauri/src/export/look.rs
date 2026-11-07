@@ -92,6 +92,7 @@ pub fn letterbox_bar(ratio: Option<&str>, aspect: Aspect) -> f64 {
             };
         }
         Aspect::Square => 1.0,
+        Aspect::Portrait => 0.8,
         Aspect::Wide => 16.0 / 9.0,
     };
     ((1.0 - a / r) / 2.0).max(0.0)
@@ -321,6 +322,22 @@ mod tests {
         assert_eq!(letterbox_bar(Some("2.39"), Aspect::Vertical), 0.12);
         assert!((letterbox_bar(Some("2.39"), Aspect::Wide) - 0.128).abs() < 0.001);
         assert_eq!(letterbox_bar(None, Aspect::Wide), 0.0);
+        assert!((letterbox_bar(Some("2.39"), Aspect::Portrait) - 0.3326).abs() < 0.001);
+    }
+
+    #[test]
+    fn portrait_canvas_is_4_by_5() {
+        use crate::export::{Quality, canvas};
+        assert_eq!(canvas(Aspect::Portrait, Quality::Standard), (1080, 1350));
+        assert_eq!(canvas(Aspect::Portrait, Quality::Draft), (720, 900));
+    }
+
+    #[test]
+    fn background_colour_is_validated() {
+        use crate::export::background_color;
+        assert_eq!(background_color(Some("#1A2b3C")), "0x1A2b3C");
+        assert_eq!(background_color(Some("red;[x]")), "black");
+        assert_eq!(background_color(None), "black");
     }
 
     #[test]

@@ -191,6 +191,12 @@ assert.deepEqual(
   [fmt.attrs.id, fmt.attrs.width, fmt.attrs.height, fmt.attrs.frameDuration],
   ["r1", "1080", "1920", "100/2500s"],
 );
+// 4:5 feed posts hand off at 1080x1350 in both formats.
+const feed = { ...project, aspect: "4:5" as const };
+const fmt45 = one(parseXml(toFcpxml(feed)), "resources/format");
+assert.deepEqual([fmt45.attrs.width, fmt45.attrs.height], ["1080", "1350"], "4:5 FCPXML format");
+const sc45 = one(parseXml(toXmeml(feed)), "sequence/media/video/format/samplecharacteristics");
+assert.deepEqual([one(sc45, "width").text, one(sc45, "height").text], ["1080", "1350"], "4:5 xmeml sequence");
 const assets = all(fcp, "asset");
 assert.equal(assets.length, 2, "one asset per file");
 assert.equal(one(assets[0], "media-rep").attrs.src, fileUrl(PATH));

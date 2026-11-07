@@ -839,14 +839,6 @@ kbd {
   display: block;
 }
 
-.look-pick__bars {
-  position: absolute;
-  inset: 0;
-  border-top: 7px solid #000;
-  border-bottom: 7px solid #000;
-  pointer-events: none;
-}
-
 .reframe {
   display: flex;
   flex-direction: column;
@@ -2187,4 +2179,232 @@ html:not([data-mode="studio"]) .tooltip .kbd {
   background: var(--ui-tr-text);
   clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
   z-index: 2;
+}
+
+/* ---------- 4. Preview zoom, thirds grid, speaker tracking ---------- */
+.frame.is-portrait {
+  height: min(100cqh, calc(100cqw * 5 / 4));
+  width: min(100cqw, calc(100cqh * 4 / 5));
+}
+
+.fitbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border-radius: var(--ui-r-md);
+  color: var(--ui-t2);
+  font-weight: 600;
+}
+
+.fitbtn:hover:not(:disabled) {
+  background: var(--ui-bg-raised);
+  color: var(--ui-t1);
+}
+
+.fitbtn:disabled {
+  color: var(--ui-t-disabled);
+}
+
+.preview__stage {
+  overflow: hidden;
+}
+
+.preview__stage.is-zoomed {
+  cursor: grab;
+}
+
+.preview__stage.is-zoomed:active {
+  cursor: grabbing;
+}
+
+.frame {
+  flex: none;
+  transform-origin: 50% 50%;
+}
+
+.frame__thirds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.frame__thirds i {
+  position: absolute;
+  background: rgba(245, 244, 240, 0.1);
+}
+
+.frame__thirds i:nth-child(1),
+.frame__thirds i:nth-child(2) {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  left: 33.333%;
+}
+
+.frame__thirds i:nth-child(2) {
+  left: 66.667%;
+}
+
+.frame__thirds i:nth-child(3),
+.frame__thirds i:nth-child(4) {
+  left: 0;
+  right: 0;
+  height: 1px;
+  top: 33.333%;
+}
+
+.frame__thirds i:nth-child(4) {
+  top: 66.667%;
+}
+
+/* Tracking brackets: four 1.5px Paper corners around the speaker, with a tag. */
+.frame__track {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  --c: rgba(245, 244, 240, 0.9);
+  --l: 14px;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / var(--l) 1.5px,
+    linear-gradient(var(--c), var(--c)) top left / 1.5px var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 1.5px,
+    linear-gradient(var(--c), var(--c)) top right / 1.5px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1.5px,
+    linear-gradient(var(--c), var(--c)) bottom left / 1.5px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1.5px,
+    linear-gradient(var(--c), var(--c)) bottom right / 1.5px var(--l);
+  background-repeat: no-repeat;
+  transition:
+    left 120ms linear,
+    top 120ms linear,
+    width 120ms linear,
+    height 120ms linear;
+}
+
+.frame__track-tag {
+  position: absolute;
+  left: 0;
+  top: -18px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(11, 11, 15, 0.72);
+  color: var(--ui-t1);
+  font:
+    700 9px/14px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame__track {
+    transition: none;
+  }
+}
+
+/* ---------- 2. Inspector with nothing selected: project settings ---------- */
+.pset__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--ui-grp-gap);
+}
+
+.pset__unit {
+  color: var(--ui-t3);
+}
+
+.swatch--pick {
+  position: relative;
+  overflow: hidden;
+  background-image: conic-gradient(#ff4a2b, #ffb547, #2fd4a3, #5b8cff, #c084fc, #ff4a2b);
+}
+
+.swatch--pick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.export__qualities--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Safe zones per shape (SafeZoneOverlay): side bands for the 4:5 grid crop, dashed title-safe. */
+.safe-zones__left {
+  top: var(--sz-top);
+  bottom: var(--sz-bottom);
+  left: 0;
+  width: var(--sz-left);
+}
+
+.safe-zones > span.safe-zones__title {
+  inset: 10%;
+  background: none;
+  outline: 1px dashed rgba(245, 244, 240, 0.32);
+  outline-offset: 0;
+}
+
+/* Caption chips grouped into readable phrases (Timeline captionGroups). */
+.cap-group {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  z-index: 1;
+  padding: 0 6px;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ui-t1);
+  font:
+    600 11px/18px "Manrope Variable",
+    Manrope,
+    sans-serif;
+}
+
+.ruler__label.is-covered {
+  visibility: hidden;
+}
+
+/* Inspector scroll-edge fade (spec 1.1): only while the body has more below. */
+.inspector {
+  position: relative;
+}
+
+.inspector::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 10px;
+  bottom: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, rgba(17, 17, 22, 0), var(--ui-bg-panel));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms var(--ui-ease);
+}
+
+.inspector.can-scroll::after {
+  opacity: 1;
+}
+
+/* The header hairline runs the full panel width, through the scrollbar gutter:
+   the scroller paints it (a child can't paint into the gutter) and the header
+   stays put above the list so the two always line up. */
+.panel__body:has(> .panel__head:first-child) {
+  background: linear-gradient(var(--ui-hair), var(--ui-hair)) 0 35px / 100% 1px no-repeat;
+}
+
+.panel__body > .panel__head:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ui-bg-panel) padding-box;
+  border-bottom-color: transparent;
 }

@@ -1,4 +1,10 @@
-import { useEffect, useState, type MutableRefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { ContextMenu } from "../ContextMenu";
 import { Timecode, TimecodeField } from "../Timecode";
 import { FPS } from "../../lib/timecode";
@@ -12,14 +18,28 @@ import { LookOverlay } from "./LookOverlay";
 import { EnhancedSound } from "../smart/EnhancePanel";
 import { colorFilter, colorWashStyle } from "../../lib/color";
 import { sourceTimeAt } from "../../lib/speed";
-import { cropStyle, panelBoxes, sampleCropPath, sourceTimeFor } from "../../lib/reframe";
+import {
+  cropStyle,
+  panelBoxes,
+  sampleCropPath,
+  sourceTimeFor,
+  speakerAt,
+  type Rect,
+} from "../../lib/reframe";
 import type { CSSProperties } from "react";
 import { CaptionText } from "./CaptionStylePreview";
 import { captionStyle } from "../../lib/captionStyles";
 import { zoomAt } from "../../lib/smart";
 import { Button, IconButton, Segmented } from "../ui";
 import { frameAt, useFilmstrip } from "../../lib/filmstrip";
-import { videoClipAt, type AspectRatio, type Project } from "../../lib/project";
+import {
+  ASPECTS,
+  ASPECT_NAME,
+  ASPECT_SIZE,
+  videoClipAt,
+  type AspectRatio,
+  type Project,
+} from "../../lib/project";
 
 interface PreviewProps {
   project: Project;
@@ -37,13 +57,22 @@ interface PreviewProps {
   bar?: "ratio" | "full";
 }
 
-const RATIOS = ["9:16", "1:1", "16:9"] as const;
-
 const RATIO_CLASS: Record<AspectRatio, string> = {
   "9:16": "is-vertical",
   "1:1": "is-square",
+  "4:5": "is-portrait",
   "16:9": "is-wide",
 };
+
+/** Preview zoom: fit the stage, or a share of the output's real pixels. */
+type Zoom = "fit" | 0.5 | 1 | 2;
+const ZOOMS: { value: Zoom; label: string }[] = [
+  { value: "fit", label: "Fit" },
+  { value: 0.5, label: "50%" },
+  { value: 1, label: "100%" },
+  { value: 2, label: "200%" },
+];
+const THIRDS_KEY = "verso.thirds";
 
 export function Preview({
   project,
@@ -105,8 +134,77 @@ export function Preview({
     localStorage.setItem(SAFE_ZONES_KEY, safe ? "0" : "1");
     setSafe(!safe);
   };
+  const [thirds, setThirds] = useState(() => localStorage.getItem(THIRDS_KEY) === "1");
+  const toggleThirds = () => {
+    localStorage.setItem(THIRDS_KEY, thirds ? "0" : "1");
+    setThirds(!thirds);
+  };
   const [full, setFull] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [zoomMenu, setZoomMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Zoom scales the fitted frame (so captions and overlays scale with it); drag pans.
+  const [zoomPick, setZoom] = useState<Zoom>("fit");
+  const zoom: Zoom = full_ ? zoomPick : "fit";
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [fitW, setFitW] = useState(0);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setFitW(el.offsetWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const k = zoom === "fit" || !fitW ? 1 : (ASPECT_SIZE[aspect][0] * zoom) / fitW;
+  const clampPan = (x: number, y: number) => {
+    const st = stageRef.current;
+    const fr = frameRef.current;
+    if (!st || !fr) return { x: 0, y: 0 };
+    const mx = Math.max(0, (fr.offsetWidth * k - st.clientWidth) / 2 + 24);
+    const my = Math.max(0, (fr.offsetHeight * k - st.clientHeight) / 2 + 24);
+    return { x: Math.max(-mx, Math.min(mx, x)), y: Math.max(-my, Math.min(my, y)) };
+  };
+  const pickZoom = (z: Zoom) => {
+    setZoom(z);
+    setPan({ x: 0, y: 0 });
+  };
+  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const onStageDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (zoom === "fit" || e.button !== 0) return;
+    drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Synthetic or already-released pointer: panning still follows moves over the stage.
+    }
+  };
+  const onStageMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d) setPan(clampPan(d.px + e.clientX - d.x, d.py + e.clientY - d.y));
+  };
+  const onStageUp = () => {
+    drag.current = null;
+  };
+
+  // Speaker tracking brackets: only while a reframe plan follows someone (spec section 4).
+  const tracking = !!clip?.cropPath && clip.cropPath.mode !== "centre" && boxes.length <= 1 && !!rects[0];
+  const seen = tracking && clip?.source ? speakerAt(clip.source.path, sourceTimeFor(clip, time)) : null;
+  const bracket: { box: Rect; label: string } | null = !tracking
+    ? null
+    : seen && rects[0]
+      ? {
+          box: {
+            x: (seen.box.x - rects[0].x) / rects[0].w,
+            y: (seen.box.y - rects[0].y) / rects[0].h,
+            w: seen.box.w / rects[0].w,
+            h: seen.box.h / rects[0].h,
+          },
+          label: seen.label,
+        }
+      : // The plan keeps the speaker centred; without face boxes from this session, bracket the centre.
+        { box: { x: 0.28, y: 0.16, w: 0.44, h: 0.36 }, label: "Speaker 1" };
 
   // F toggles full screen, Esc leaves it. Text fields and dialogs keep their keys.
   useEffect(() => {
@@ -128,11 +226,35 @@ export function Preview({
   return (
     <section className={full ? "preview is-full" : "preview"} aria-label="Preview">
       <div className="ptool">
-        <Segmented label="Reel shape" options={RATIOS} value={aspect} onChange={onAspect} />
+        <Segmented label="Reel shape" options={ASPECTS} value={aspect} onChange={onAspect} />
         {full_ && (
           <>
-            <span className="ptool__spec tc">1080p · {FPS} fps</span>
+            <span className="ptool__spec tc">
+              {Math.min(...ASPECT_SIZE[aspect])}p · {project.fps ?? FPS} fps
+            </span>
             <span className="ptool__fill" />
+            <button
+              type="button"
+              className="fitbtn"
+              aria-haspopup="menu"
+              aria-expanded={!!zoomMenu}
+              disabled={empty}
+              data-tip="Preview zoom"
+              onClick={(e) => {
+                const b = e.currentTarget.getBoundingClientRect();
+                setZoomMenu({ x: b.left, y: b.bottom + 4 });
+              }}
+            >
+              {ZOOMS.find((z) => z.value === zoom)?.label}
+              <Icon name="chevron-down" size={16} />
+            </button>
+            <IconButton
+              icon="thirds"
+              label="Thirds grid"
+              aria-pressed={thirds}
+              onClick={toggleThirds}
+              data-tip="Show a rule-of-thirds grid"
+            />
             <IconButton
               icon="safe-zone"
               label="Safe zones"
@@ -152,13 +274,26 @@ export function Preview({
         )}
       </div>
       <div
-        className="preview__stage"
+        ref={stageRef}
+        className={zoom === "fit" ? "preview__stage" : "preview__stage is-zoomed"}
+        onPointerDown={onStageDown}
+        onPointerMove={onStageMove}
+        onPointerUp={onStageUp}
+        onPointerCancel={onStageUp}
         onContextMenu={(e) => {
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY });
         }}
       >
-        <div className={`frame ${RATIO_CLASS[aspect]}`}>
+        <div
+          ref={frameRef}
+          className={`frame ${RATIO_CLASS[aspect]}`}
+          style={{
+            background: project.background,
+            transform:
+              k !== 1 || pan.x || pan.y ? `translate(${pan.x}px, ${pan.y}px) scale(${k})` : undefined,
+          }}
+        >
           {!picture && (
             <div className="frame__scene">
               <div className="frame__light" />
@@ -206,7 +341,29 @@ export function Preview({
           <BrandLogo project={project} />
           <MusicLayer project={project} time={time} playing={playing} />
           <EnhancedSound project={project} time={time} playing={playing} />
-          {safe && <SafeZoneOverlay />}
+          {thirds && (
+            <span className="frame__thirds" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          )}
+          {bracket && (
+            <span
+              className="frame__track"
+              aria-hidden="true"
+              style={{
+                left: `${bracket.box.x * 100}%`,
+                top: `${bracket.box.y * 100}%`,
+                width: `${bracket.box.w * 100}%`,
+                height: `${bracket.box.h * 100}%`,
+              }}
+            >
+              <span className="frame__track-tag">Auto · {bracket.label}</span>
+            </span>
+          )}
+          {safe && <SafeZoneOverlay aspect={aspect} />}
           {empty && (
             <div className="frame__empty">
               <Icon name="import" size={32} />
@@ -282,6 +439,18 @@ export function Preview({
           />
         </div>
       </div>
+      {zoomMenu && (
+        <ContextMenu
+          x={zoomMenu.x}
+          y={zoomMenu.y}
+          onClose={() => setZoomMenu(null)}
+          items={ZOOMS.map((z) => ({
+            label: z.label,
+            icon: z.value === zoom ? ("check" as const) : undefined,
+            onSelect: () => pickZoom(z.value),
+          }))}
+        />
+      )}
       {menu && (
         <ContextMenu
           x={menu.x}
@@ -304,8 +473,8 @@ export function Preview({
               onSelect: () => setFull(!full),
             },
             { separator: true },
-            ...RATIOS.map((r) => ({
-              label: `${r} ${r === "9:16" ? "reel" : r === "1:1" ? "square" : "wide"}`,
+            ...ASPECTS.map((r) => ({
+              label: `${r} ${ASPECT_NAME[r]}`,
               icon: r === aspect ? ("check" as const) : undefined,
               onSelect: () => onAspect(r),
             })),

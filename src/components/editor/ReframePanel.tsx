@@ -10,6 +10,7 @@ import {
   downloadReframeModel,
   planCrop,
   reframeModels,
+  rememberAnalysis,
   type CropPath,
   type ReframeAnalysis,
   type ReframeMode,
@@ -115,6 +116,7 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
         ),
       );
       setAnalysis(a);
+      rememberAnalysis(a);
       if (a.speakers.length) setSpeakerId((id) => id ?? a.speakers[0].id);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
