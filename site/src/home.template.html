@@ -138,8 +138,9 @@ section.block{padding-block:120px 0}
 .viz{border-radius:14px;background:var(--ink);border:1px solid var(--line);padding:18px;min-height:190px;display:grid;align-content:center;gap:10px;min-width:0}
 /* auto-cut viz */
 .clips{display:grid;gap:8px}
-.clip{display:grid;grid-template-columns:52px minmax(0,1fr) 44px;align-items:center;gap:12px;font-size:13px}
-.clip .th{height:30px;border-radius:5px;background:linear-gradient(135deg,#2a2233,#141019)}
+.clip{display:grid;grid-template-columns:72px minmax(0,1fr) 44px;align-items:center;gap:12px;font-size:13px}
+.clip .th{aspect-ratio:16/9;border-radius:6px;background:var(--raised) center/cover no-repeat;border:1px solid var(--line)}
+.clip:not(.top) .th{filter:grayscale(.7) brightness(.6)}
 .clip .bar{height:6px;border-radius:3px;background:var(--raised);overflow:hidden}
 .clip .bar i{display:block;height:100%;background:var(--grad);border-radius:3px}
 .clip b{font:600 12px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
@@ -149,14 +150,23 @@ section.block{padding-block:120px 0}
 /* reframe viz */
 .frames{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .fr{display:grid;gap:8px;justify-items:center;font-size:12px;font-weight:600;color:var(--text-2);text-align:center}
-.fr .ph{width:100%;max-width:84px;aspect-ratio:9/16;border-radius:10px;border:1px solid var(--line-strong);background:linear-gradient(180deg,#1b1620,#0e0c12);position:relative;overflow:hidden}
+.fr .ph{width:100%;max-width:96px;aspect-ratio:9/16;border-radius:10px;border:1px solid var(--line-strong);background-color:#0e0c12;background-size:auto 100%;background-repeat:no-repeat;position:relative;overflow:hidden}
+.fr .ph.split2{display:grid;grid-template-rows:1fr 1fr;gap:2px;background:var(--ember)}
+.fr .ph.split2 span{background-size:auto 210%;background-repeat:no-repeat}
 .fr .ph i{position:absolute;left:50%;transform:translateX(-50%);border-radius:50% 50% 0 0;background:linear-gradient(180deg,#3a2f3a,#211b24)}
 .fr .ph i.h{width:34%;aspect-ratio:1;border-radius:50%;top:30%}
 .fr .ph i.b{width:76%;height:34%;bottom:0}
 .fr .ph .split{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--ember)}
 .fr.on .ph{border-color:var(--ember);box-shadow:0 0 0 3px var(--ember-tint)}
 /* captions viz */
-.capstyles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.capviz{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;align-items:center}
+.capphone{aspect-ratio:9/16;border-radius:14px;border:1px solid var(--line-strong);background:center/cover no-repeat;position:relative;overflow:hidden}
+.capphone::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.6))}
+.capphone b{position:absolute;left:6px;right:6px;bottom:18%;z-index:1;text-align:center;font-size:14px;line-height:1.25;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.capphone .hl{background:var(--ember);color:var(--ink);border-radius:4px;padding:0 3px}
+.capstyles{display:grid;gap:8px}
+.capstyles .cs{padding:10px 12px;font-size:15px;text-align:left}
+.capstyles .cs small{margin-top:4px}
 .cs{border-radius:10px;border:1px solid var(--line);background:linear-gradient(180deg,#17131b,#0d0c11);padding:16px 12px;text-align:center;font-weight:800;font-size:17px;line-height:1.25;min-width:0}
 .cs small{display:block;margin-top:8px;font:500 10px var(--mono);letter-spacing:.06em;color:var(--dim);text-transform:uppercase}
 .cs .hl{background:var(--ember);color:var(--ink);border-radius:5px;padding:0 4px}
@@ -347,8 +357,8 @@ footer a:hover{color:var(--paper)}
         <div class="demo-stage">
           <div class="src">
             <div class="src-frame">
-              <canvas id="studio" width="1280" height="720"></canvas>
-              <div class="crop" id="crop" style="left:9%;width:31.64%;opacity:0"></div>
+              <canvas id="studio" width="1600" height="900" role="img" aria-label="Two podcast hosts talking at microphones in a dark studio"></canvas>
+              <div class="crop" id="crop" style="left:5.2%;width:31.64%;opacity:0"></div>
               <div class="src-tag"><span class="chip">16:9 · 1080p · 47:12</span><span class="chip live" id="who" hidden>Following: Priya</span></div>
             </div>
             <div class="tl">
@@ -404,10 +414,10 @@ footer a:hover{color:var(--paper)}
           <div><span class="tag">Auto-cut</span><h3>Finds the moments worth posting</h3><p>Verso listens to the whole video and ranks every moment by hook, energy and how well it stands alone. Pick the top ones, or let it pick for you.</p></div>
           <div class="viz">
             <div class="clips">
-              <div class="clip top"><span class="th"></span><div><div class="bar"><i style="width:94%"></i></div></div><b>94</b></div>
-              <div class="clip top"><span class="th"></span><div><div class="bar"><i style="width:88%"></i></div></div><b>88</b></div>
-              <div class="clip top"><span class="th"></span><div><div class="bar"><i style="width:81%"></i></div></div><b>81</b></div>
-              <div class="clip"><span class="th"></span><div><div class="bar"><i style="width:52%"></i></div></div><b>52</b></div>
+              <div class="clip top"><span class="th" style="background-image:url({{IMG:clip-podcast}})"></span><div><div class="bar"><i style="width:94%"></i></div></div><b>94</b></div>
+              <div class="clip top"><span class="th" style="background-image:url({{IMG:clip-vlog}})"></span><div><div class="bar"><i style="width:88%"></i></div></div><b>88</b></div>
+              <div class="clip top"><span class="th" style="background-image:url({{IMG:clip-food}})"></span><div><div class="bar"><i style="width:81%"></i></div></div><b>81</b></div>
+              <div class="clip"><span class="th" style="background-image:url({{IMG:clip-teacher}})"></span><div><div class="bar"><i style="width:52%"></i></div></div><b>52</b></div>
             </div>
           </div>
         </article>
@@ -415,20 +425,22 @@ footer a:hover{color:var(--paper)}
           <div><span class="tag">Reframe</span><h3>Wide video, made vertical</h3><p>Follow one person, switch to whoever is talking, or stack two speakers for podcast reels. Faces stay in frame on their own.</p></div>
           <div class="viz">
             <div class="frames">
-              <div class="fr"><div class="ph"><i class="h"></i><i class="b"></i></div>Follow one</div>
-              <div class="fr on"><div class="ph"><i class="h" style="left:44%"></i><i class="b" style="left:44%"></i></div>Who's talking</div>
-              <div class="fr"><div class="ph"><i class="h" style="top:8%;width:24%"></i><i class="b" style="height:16%;bottom:50%;width:56%"></i><i class="h" style="top:58%;width:24%"></i><i class="b" style="height:16%;width:56%"></i><span class="split"></span></div>Both speakers</div>
+              <div class="fr"><div class="ph" style="background-image:url({{IMG:hero-podcast}});background-position:7.6% 0"></div>Follow one</div>
+              <div class="fr on"><div class="ph" style="background-image:url({{IMG:hero-podcast}});background-position:93.9% 0"></div>Who's talking</div>
+              <div class="fr"><div class="ph split2"><span style="background-image:url({{IMG:hero-podcast}});background-position:12% 22%"></span><span style="background-image:url({{IMG:hero-podcast}});background-position:84% 22%"></span></div>Both speakers</div>
             </div>
           </div>
         </article>
         <article class="feat">
           <div><span class="tag">Captions</span><h3>Captions in the language you speak</h3><p>Accurate word-by-word captions in English, Hindi, Marathi and Hinglish, made on your computer. Seven styles, each one tap.</p></div>
           <div class="viz">
-            <div class="capstyles">
-              <div class="cs">यही <span class="hl">असली</span> गेम है<small>Hindi · Pop</small></div>
-              <div class="cs">Roz ek <span class="yl">reel.</span><br>Bas itna.<small>Hinglish · Bold</small></div>
-              <div class="cs">आज <span class="hl">सुरुवात</span> करा<small>Marathi · Pop</small></div>
-              <div class="cs" style="font-weight:600;font-size:15px">Start before you're ready.<small>English · Clean</small></div>
+            <div class="capviz">
+              <div class="capphone" style="background-image:url({{IMG:creator-portrait}})"><b>यही <span class="hl">असली</span><br>गेम है</b></div>
+              <div class="capstyles">
+                <div class="cs">Roz ek <span class="yl">reel.</span> Bas itna.<small>Hinglish · Bold</small></div>
+                <div class="cs">आज <span class="hl">सुरुवात</span> करा<small>Marathi · Pop</small></div>
+                <div class="cs" style="font-weight:600;font-size:15px">Start before you're ready.<small>English · Clean</small></div>
+              </div>
             </div>
           </div>
         </article>
@@ -601,70 +613,36 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* ---------- studio scene (procedural podcast set) ---------- */
 const cv = document.getElementById('studio'), cx = cv.getContext('2d');
 const W = cv.width, H = cv.height;
-const speakers = [
-  {name:'Priya', x:.30, rim:'255,148,102', shirt:['#3b2b2a','#1d1517'], hair:'#120c0c', talk:0},
-  {name:'Arjun', x:.72, rim:'120,150,255', shirt:['#22283a','#12141d'], hair:'#0d0c10', talk:0}
-];
+const speakers = [ {name:'Priya', x:.21, y:.32, talk:0}, {name:'Arjun', x:.80, y:.32, talk:0} ];
 let active = 0, t0 = performance.now();
-function bg(){
-  const g = cx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#1a1418'); g.addColorStop(1,'#0b090c');
-  cx.fillStyle = g; cx.fillRect(0,0,W,H);
-  // warm wall wash
-  let r = cx.createRadialGradient(W*.5,H*.25,10,W*.5,H*.25,W*.55); r.addColorStop(0,'rgba(255,120,80,.16)'); r.addColorStop(1,'rgba(255,120,80,0)');
-  cx.fillStyle=r; cx.fillRect(0,0,W,H);
-  // shelves + bokeh
-  cx.fillStyle='rgba(255,255,255,.035)'; cx.fillRect(W*.06,H*.30,W*.22,6); cx.fillRect(W*.74,H*.24,W*.2,6);
-  const bok=[[.12,.22,22,'255,180,120'],[.2,.18,14,'255,140,90'],[.86,.16,18,'140,170,255'],[.92,.3,10,'255,190,140'],[.55,.12,12,'255,170,120'],[.44,.2,8,'255,210,170']];
-  for(const [x,y,s,c] of bok){const b=cx.createRadialGradient(W*x,H*y,0,W*x,H*y,s*2.2);b.addColorStop(0,`rgba(${c},.55)`);b.addColorStop(1,`rgba(${c},0)`);cx.fillStyle=b;cx.beginPath();cx.arc(W*x,H*y,s*2.2,0,7);cx.fill();}
-  // neon sign
-  cx.save(); cx.font='800 34px Manrope, sans-serif'; cx.fillStyle='rgba(255,74,43,.9)'; cx.shadowColor='rgba(255,74,43,.9)'; cx.shadowBlur=24; cx.fillText('ON AIR',W*.455,H*.11); cx.restore();
-  // table
-  const tg=cx.createLinearGradient(0,H*.8,0,H); tg.addColorStop(0,'#241a1a'); tg.addColorStop(1,'#0e0a0b');
-  cx.fillStyle=tg; cx.fillRect(0,H*.82,W,H*.18);
-  cx.fillStyle='rgba(255,148,102,.18)'; cx.fillRect(0,H*.82,W,2);
-}
-function person(p, t){
-  const x=W*p.x, talk=p.talk, bob=Math.sin(t*3.1+p.x*9)*2*talk + Math.sin(t*.9+p.x*5)*1.5;
-  const hx=x+Math.sin(t*1.3+p.x*3)*3*talk, hy=H*.40+bob;
-  // body
-  const bg2=cx.createLinearGradient(0,H*.55,0,H); bg2.addColorStop(0,p.shirt[0]); bg2.addColorStop(1,p.shirt[1]);
-  cx.fillStyle=bg2; cx.beginPath();
-  cx.moveTo(x-150,H); cx.bezierCurveTo(x-150,H*.68,x-110,H*.6,x-40,H*.585); cx.lineTo(x+40,H*.585); cx.bezierCurveTo(x+110,H*.6,x+150,H*.68,x+150,H); cx.fill();
-  // neck
-  cx.fillStyle='#1e1411'; cx.fillRect(hx-20,hy+50,40,40);
-  // head
-  const sk=cx.createRadialGradient(hx-14,hy-10,6,hx,hy,82); sk.addColorStop(0,'#3b2822'); sk.addColorStop(1,'#140d0b');
-  cx.fillStyle=sk; cx.beginPath(); cx.ellipse(hx,hy,52,64,0,0,7); cx.fill();
-  // hair
-  cx.fillStyle=p.hair; cx.beginPath(); cx.ellipse(hx,hy-30,56,42,0,Math.PI,0); cx.fill();
-  if(p.name==='Priya'){cx.beginPath();cx.ellipse(hx-46,hy+10,16,58,.1,0,7);cx.fill();cx.beginPath();cx.ellipse(hx+46,hy+10,16,58,-.1,0,7);cx.fill();}
-  // rim light
-  cx.save(); cx.globalCompositeOperation='lighter'; cx.strokeStyle=`rgba(${p.rim},${.45+.45*talk})`; cx.lineWidth=4; cx.shadowColor=`rgba(${p.rim},.8)`; cx.shadowBlur=18;
-  const side = p.x<.5?-1:1; cx.beginPath(); cx.ellipse(hx,hy,53,65,0, side<0?Math.PI*.55:-Math.PI*.45, side<0?Math.PI*1.45:Math.PI*.45); cx.stroke(); cx.restore();
-  // mic arm
-  cx.strokeStyle='#2a2a33'; cx.lineWidth=8; cx.lineCap='round'; cx.beginPath();
-  const mx = hx + (p.x<.5?70:-70); cx.moveTo(p.x<.5?x+170:x-170,H*.82); cx.lineTo(p.x<.5?x+130:x-130,H*.58); cx.lineTo(mx,hy+40); cx.stroke();
-  cx.fillStyle='#16161c'; cx.beginPath(); cx.ellipse(mx,hy+40,18,30,p.x<.5?-.5:.5,0,7); cx.fill();
-}
-let ffs = 1;
+const heroImg = new Image(); heroImg.src = '{{IMG:hero-podcast}}';
+let ready = false; heroImg.onload = () => { ready = true; };
 function draw(now){
   const t=(now-t0)/1000;
-  speakers.forEach((s,i)=>{ s.talk += ((i===active?1:0)-s.talk)*.08; });
-  bg(); speakers.forEach(s=>person(s,t));
-  // grain
-  cx.fillStyle='rgba(255,255,255,.015)'; for(let i=0;i<220;i++){cx.fillRect(Math.random()*W,Math.random()*H,2,2);}
+  speakers.forEach((s,i)=>{ s.talk += ((i===active?1:0)-s.talk)*.06; });
+  cx.fillStyle='#0B0B0F'; cx.fillRect(0,0,W,H);
+  if(ready){
+    const z = 1.02 + Math.sin(t*.25)*.015;            // slow camera breathing
+    const dw = W*z, dh = H*z;
+    cx.drawImage(heroImg, (W-dw)/2, (H-dh)/2, dw, dh);
+    // soft ember key on whoever is talking
+    cx.save(); cx.globalCompositeOperation='soft-light';
+    speakers.forEach(s=>{ if(s.talk<.02) return; const g=cx.createRadialGradient(W*s.x,H*s.y,10,W*s.x,H*s.y,W*.2); g.addColorStop(0,`rgba(255,148,102,${.35*s.talk})`); g.addColorStop(1,'rgba(255,148,102,0)'); cx.fillStyle=g; cx.fillRect(0,0,W,H); });
+    cx.restore();
+  }
+  cx.fillStyle='rgba(255,255,255,.018)'; for(let i=0;i<260;i++){cx.fillRect(Math.random()*W,Math.random()*H,2,2);}
   reelDraw();
   if(!reduce) requestAnimationFrame(draw);
 }
 
 /* ---------- reel view = live crop of studio canvas ---------- */
 const rc=document.getElementById('reel'), rx=rc.getContext('2d');
-let cropX = .09, cropTarget=.09; const cropW = (H*9/16)/W; // fraction of width
+let cropX = .052, cropTarget=.052; const cropW = (H*9/16)/W; // fraction of width
 function reelDraw(){
   cropX += (cropTarget-cropX)*.09;
   const sx = cropX*W, sw = cropW*W, zoom = punch;
   const zw = sw/zoom, zh = H/zoom;
-  rx.drawImage(cv, sx+(sw-zw)/2, (H-zh)*.35, zw, zh, 0, 0, rc.width, rc.height);
+  rx.drawImage(cv, sx+(sw-zw)/2, (H-zh)*.3, zw, zh, 0, 0, rc.width, rc.height);
   const v=rx.createLinearGradient(0,rc.height*.55,0,rc.height); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.65)');
   rx.fillStyle=v; rx.fillRect(0,0,rc.width,rc.height);
 }
@@ -703,7 +681,7 @@ const lines=[
   {s:1, words:['Roz','ek','reel.','Bas','itna.']},
   {s:0, words:['Perfect','hone','ka','wait','mat','karo.']}
 ];
-const posFor = s => s===0 ? .30-cropW/2 : .72-cropW/2;
+const posFor = s => Math.min(1-cropW, Math.max(0, speakers[s].x-cropW/2));
 let timers=[], loop=null;
 const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
 function counts(){ document.querySelectorAll('[data-count]').forEach(el=>{ const end=+el.dataset.count, suf=el.dataset.suffix||''; let i=0; const steps=24; const iv=setInterval(()=>{ i++; el.textContent=Math.round(end*i/steps)+suf; if(i>=steps) clearInterval(iv); }, reduce?0:40); }); }
