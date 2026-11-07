@@ -70,6 +70,8 @@ export function colorFilter(c: ClipColor | undefined): string | undefined {
   if (!c) return undefined;
   const { b, ct, sat } = effective(c);
   const parts = [
+    // Look grades are an SVG filter with the export's exact maths (LookFilters.tsx).
+    ...(c.curve && c.preset ? [`url(#vs-${c.preset})`] : []),
     `brightness(${(1 + b / 2).toFixed(3)})`,
     `contrast(${(1 + ct / 2).toFixed(3)})`,
     `saturate(${(Math.max(0, 1 + sat) * (1 + c.vibrance * 0.5)).toFixed(3)})`,

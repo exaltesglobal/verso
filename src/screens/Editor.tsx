@@ -47,6 +47,7 @@ import { redoTimeSaved, undoTimeSaved } from "../lib/timeSaved";
 import { useOneTapRunner } from "../components/workspaces/useOneTapRunner";
 import { OneTapPanel } from "../components/workspaces/OneTapPanel";
 import { MakeItBetter } from "../components/workspaces/MakeItBetter";
+import { LookFilters } from "../components/editor/LookFilters";
 import { BusyBlock } from "../components/workspaces/BusyBlock";
 import { ReelChecklist } from "../components/workspaces/ReelChecklist";
 import { CraftWorkspace, QuickWorkspace, StudioWorkspace } from "../components/workspaces/Workspaces";
@@ -843,6 +844,7 @@ export function Editor({
           )}
           {showShortcuts && <ShortcutSheet onClose={() => setShowShortcuts(false)} />}
           <BusyBlock runner={runner} />
+          <LookFilters />
         </>
       }
     />

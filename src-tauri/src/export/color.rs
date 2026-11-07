@@ -24,6 +24,59 @@ pub struct ClipColor {
     /// 0..1
     pub lut_strength: f64,
     pub preset: Option<String>,
+    /// A Look grade (looks.ts `LOOK_CURVES`), applied before the sliders.
+    pub curve: Option<GradeCurve>,
+}
+
+/// Mirrors `GradeCurve` in src/lib/project.ts: a Rec. 709 saturation matrix,
+/// then per channel `lift + (gain - lift) * clamp(0.5 + (x - 0.5) * contrast) ^ (1 / gamma)`.
+/// The preview applies the same maths as an SVG filter (LookFilters.tsx).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct GradeCurve {
+    pub saturation: f64,
+    pub contrast: f64,
+    /// [lift, gamma, gain]
+    pub r: [f64; 3],
+    pub g: [f64; 3],
+    pub b: [f64; 3],
+}
+
+/// `colorchannelmixer` + two `lutrgb` passes for a Look grade. No commas, so the
+/// chain stays graph-safe: the first lutrgb clamps the contrast step, the second
+/// raises to 1/gamma as exp(log(x)/gamma) (FFmpeg clips lutrgb output to 0..255).
+pub fn curve_filters(c: &GradeCurve) -> String {
+    let (lr, lg, lb) = (0.2126, 0.7152, 0.0722);
+    let s = c.saturation;
+    let m = [
+        [lr + (1.0 - lr) * s, lg - lg * s, lb - lb * s],
+        [lr - lr * s, lg + (1.0 - lg) * s, lb - lb * s],
+        [lr - lr * s, lg - lg * s, lb + (1.0 - lb) * s],
+    ];
+    let mixer = format!(
+        "colorchannelmixer=rr={}:rg={}:rb={}:gr={}:gg={}:gb={}:br={}:bg={}:bb={}",
+        n(m[0][0]),
+        n(m[0][1]),
+        n(m[0][2]),
+        n(m[1][0]),
+        n(m[1][1]),
+        n(m[1][2]),
+        n(m[2][0]),
+        n(m[2][1]),
+        n(m[2][2])
+    );
+    let k = n(c.contrast);
+    let contrast =
+        format!("lutrgb=r=(val-127.5)*{k}+127.5:g=(val-127.5)*{k}+127.5:b=(val-127.5)*{k}+127.5");
+    let ch = |[lift, gamma, gain]: [f64; 3]| {
+        format!(
+            "255*({}+{}*exp(log(val/255)/{}))",
+            n(lift),
+            n(gain - lift),
+            n(gamma)
+        )
+    };
+    let curve = format!("lutrgb=r={}:g={}:b={}", ch(c.r), ch(c.g), ch(c.b));
+    format!("{mixer},{contrast},{curve}")
 }
 
 impl Default for ClipColor {
@@ -38,6 +91,7 @@ impl Default for ClipColor {
             lut: None,
             lut_strength: 1.0,
             preset: None,
+            curve: None,
         }
     }
 }
@@ -84,6 +138,9 @@ const EPS: f64 = 0.005;
 pub fn color_chain(c: &ClipColor) -> Option<String> {
     let k = |x: f64| x.clamp(-1.0, 1.0);
     let mut f = Vec::new();
+    if let Some(curve) = &c.curve {
+        f.push(curve_filters(curve));
+    }
     let (b, ct) = (k(c.brightness), k(c.contrast));
     if b.abs() > EPS || ct.abs() > EPS {
         // lutrgb clips results to 0..255 itself; no commas keeps it graph-safe.
@@ -292,5 +349,26 @@ mod tests {
         assert!((d - 12.5).abs() < 0.01, "{d}");
         assert_eq!(atempo_chain(0.2), "atempo=0.5,atempo=0.5,atempo=0.8");
         assert_eq!(color_chain(&ClipColor::default()), None);
+    }
+
+    #[test]
+    fn look_curve_is_graph_safe() {
+        let c = GradeCurve {
+            saturation: 0.5,
+            contrast: 1.1,
+            r: [0.0, 0.8, 0.7],
+            g: [0.01, 0.86, 0.8],
+            b: [0.05, 1.0, 1.0],
+        };
+        let f = curve_filters(&c);
+        // Three filters, two separators: no commas inside an expression.
+        assert_eq!(f.matches(',').count(), 2, "{f}");
+        assert!(f.starts_with("colorchannelmixer=rr=0.6063:rg=0.3576:rb=0.0361:"));
+        assert!(f.ends_with("b=255*(0.05+0.95*exp(log(val/255)/1))"), "{f}");
+        let col = ClipColor {
+            curve: Some(c),
+            ..ClipColor::default()
+        };
+        assert!(color_chain(&col).unwrap().starts_with("colorchannelmixer"));
     }
 }

@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Icon, type IconName } from "../Icon";
 import { useFilmstrip, frameAt } from "../../lib/filmstrip";
 import { colorFilter, colorWashStyle } from "../../lib/color";
-import { gradeParams } from "../../lib/looks";
+import { LOOK_PICKS, lookColor } from "../../lib/looks";
 import { CreditsError, useCharged, useCredits } from "../../lib/credits";
 import {
   applyEnhanced,
@@ -28,15 +28,7 @@ export function Group({ icon, title, children }: { icon: IconName; title: string
   );
 }
 
-const LOOKS: { id: string | null; label: string; grade?: string }[] = [
-  { id: null, label: "Original" },
-  { id: "warm", label: "Warm", grade: "golden-hour" },
-  { id: "film", label: "Film", grade: "teal-orange" },
-  { id: "clean", label: "Clean", grade: "clean-bright" },
-  { id: "night", label: "Night", grade: "night-blue" },
-];
-
-/** Look swatches drawn from the clip's own frame with each grade applied (spec 1.5). */
+/** Look swatches: the clip's own frame through the same grade the preview and export use (spec 1.5). */
 export function LookGroup({
   clip,
   time,
@@ -54,9 +46,9 @@ export function LookGroup({
   return (
     <Group icon="filters" title="Look">
       <div className="look-picks" role="radiogroup" aria-label="Look">
-        {LOOKS.map((l) => {
-          const color = l.grade ? gradeParams(l.grade, 1) : undefined;
-          const selected = l.grade ? current === l.grade : !current;
+        {LOOK_PICKS.map((l) => {
+          const color = l.id ? lookColor(l.id) : undefined;
+          const selected = l.id ? current === color?.preset : !current;
           return (
             <button
               key={l.label}
@@ -69,7 +61,6 @@ export function LookGroup({
               <span className="look-pick__sw">
                 {src && <img src={src} alt="" style={{ filter: colorFilter(color) }} draggable={false} />}
                 {color && <span style={colorWashStyle(color)} />}
-                {l.id === "film" && <span className="look-pick__bars" />}
               </span>
               {l.label}
             </button>
