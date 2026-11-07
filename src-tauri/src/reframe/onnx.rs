@@ -28,7 +28,7 @@ fn env() -> Result<&'static Environment, String> {
 
 pub(crate) fn load(path: &Path) -> Result<Session, String> {
     let fail =
-        |e: ort::Error| format!("We couldn't load an AI model ({e}). Try downloading it again.");
+        |e: ort::Error| format!("We couldn't load an AI pack ({e}). Try downloading it again.");
     #[allow(unused_mut)]
     let mut eps = Vec::new();
     #[cfg(feature = "directml")]
@@ -44,7 +44,7 @@ pub(crate) fn load(path: &Path) -> Result<Session, String> {
 }
 
 pub(crate) fn run_err(e: ort::Error) -> String {
-    format!("The AI model stopped unexpectedly ({e}).")
+    format!("The AI pack stopped unexpectedly ({e}).")
 }
 
 // ---------- YuNet ----------
@@ -102,7 +102,7 @@ impl FaceDetector for YuNet {
                 let key = format!("{name}_{stride}");
                 let v = outputs
                     .get(key.as_str())
-                    .ok_or_else(|| format!("The face finder model is missing output {key}."))?;
+                    .ok_or_else(|| format!("The face finder AI pack is missing output {key}."))?;
                 Ok(v.try_extract_tensor::<f32>().map_err(run_err)?.1.to_vec())
             };
             let (cls, obj, bbox, kps) = (get("cls")?, get("obj")?, get("bbox")?, get("kps")?);

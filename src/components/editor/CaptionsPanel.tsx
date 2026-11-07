@@ -5,7 +5,8 @@ import { ProBadge } from "../account/ProBadge";
 const FREE_STYLE_COUNT = 3;
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../Icon";
-import { type ToastMessage } from "../ui";
+import { Button, type ToastMessage } from "../ui";
+import { MoreSettings } from "../MoreSettings";
 import { CaptionStylePreview } from "./CaptionStylePreview";
 import { CostConfirm } from "../credits/CostConfirm";
 import { newSpendKey, useCredits } from "../../lib/credits";
@@ -37,6 +38,8 @@ interface CaptionsPanelProps {
   /** Called with fresh caption clips for `clip`; the editor swaps them in (see `replaceCaptions`). */
   onApply: (captions: Clip[], clip: Clip) => void;
   notify: (m: ToastMessage) => void;
+  /** Empty state action: bring in a video to caption. */
+  onAddVideo?: () => void;
 }
 
 type Phase =
@@ -50,7 +53,14 @@ const fmt = (t: number) => {
   return `${m}:${s}`;
 };
 
-export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }: CaptionsPanelProps) {
+export function CaptionsPanel({
+  clip,
+  styleId,
+  onStyleChange,
+  onApply,
+  notify,
+  onAddVideo,
+}: CaptionsPanelProps) {
   const { can, openUpgrade } = useEntitlements();
   const { spend, refund } = useCredits();
   const [language, setLanguage] = useState<CaptionLanguage>("hinglish");
@@ -172,7 +182,7 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
 
   const status =
     phase.kind === "downloading"
-      ? `Downloading the speech model… ${phase.percent}%`
+      ? `Getting the captions AI pack… ${phase.percent}%`
       : phase.kind === "listening"
         ? phase.stage === "loading"
           ? "Getting ready…"
@@ -193,56 +203,18 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
         <p className="panel__lede">Words appear as you speak. Most people watch reels with the sound off.</p>
       </div>
 
-      <h3 className="section-label">Language</h3>
-      <div className="cap-choices" role="radiogroup" aria-label="Language">
-        {CAPTION_LANGUAGES.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            role="radio"
-            aria-checked={language === l.id}
-            className={language === l.id ? "cap-choice is-selected" : "cap-choice"}
-            onClick={() => setLanguage(l.id)}
-            disabled={busy}
-          >
-            <span className="cap-choice__label">{l.label}</span>
-            <span className="cap-choice__hint">{l.hint}</span>
-          </button>
-        ))}
-      </div>
-
-      <h3 className="section-label">Accuracy</h3>
-      <div className="cap-choices cap-choices--three" role="radiogroup" aria-label="Accuracy">
-        {ACCURACY.map((a) => {
-          const m = models.find((x) => x.id === a.modelId);
-          return (
-            <button
-              key={a.id}
-              type="button"
-              role="radio"
-              aria-checked={accuracy === a.id}
-              className={accuracy === a.id ? "cap-choice is-selected" : "cap-choice"}
-              onClick={() => setAccuracy(a.id)}
-              disabled={busy}
-            >
-              <span className="cap-choice__label">{a.label}</span>
-              <span className="cap-choice__hint">{a.hint}</span>
-              <span className={m?.present ? "cap-choice__meta is-ready" : "cap-choice__meta"}>
-                {m?.present ? "Ready offline" : m ? formatMegabytes(m.sizeBytes) : ""}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {!model?.present && (
-        <p className="cap-note">
-          <Icon name="import" size={16} />
-          {model ? `${formatMegabytes(model.sizeBytes)} · ` : ""}Download once, works offline.
-          {model && model.partialBytes > 0 ? " We'll resume where it stopped." : ""}
-        </p>
-      )}
-
-      {busy ? (
+      {!clip?.source && !busy ? (
+        <div className="empty">
+          <Icon name="captions" size={32} />
+          <p className="empty__title">Add a video to caption</p>
+          <p>Put a video with talking on the timeline, then tap Write captions.</p>
+          {onAddVideo && (
+            <Button icon="import" onClick={onAddVideo}>
+              Add a video
+            </Button>
+          )}
+        </div>
+      ) : busy ? (
         <div className="cap-progress" role="status" aria-live="polite">
           <div className="cap-progress__row">
             <span>{status}</span>
@@ -262,7 +234,36 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
           onContinue={() => void write()}
         />
       )}
+      {clip?.source && !model?.present && (
+        <p className="cap-note">
+          <Icon name="import" size={16} />
+          {model ? `${formatMegabytes(model.sizeBytes)} · ` : ""}The captions AI pack downloads once, then
+          works offline.
+          {model && model.partialBytes > 0 ? " We'll resume where it stopped." : ""}
+        </p>
+      )}
 
+      <h3 className="section-label">Style</h3>
+      <div className="cap-styles">
+        {CAPTION_STYLES.map((s, i) => (
+          <button
+            key={s.id}
+            type="button"
+            className={s.id === styleId ? "cap-style is-selected" : "cap-style"}
+            onClick={() =>
+              i >= FREE_STYLE_COUNT && !can("caption_styles_pro")
+                ? openUpgrade(`The ${s.name} caption style is part of Verso Pro.`)
+                : onStyleChange(s.id)
+            }
+            aria-pressed={s.id === styleId}
+          >
+            <CaptionStylePreview style={s} playing={s.id === styleId} />
+            <span className="cap-style__name">
+              {s.name} {i >= FREE_STYLE_COUNT && !can("caption_styles_pro") && <ProBadge />}
+            </span>
+          </button>
+        ))}
+      </div>
       {segments.length > 0 && (
         <>
           <h3 className="section-label">Your captions</h3>
@@ -284,27 +285,49 @@ export function CaptionsPanel({ clip, styleId, onStyleChange, onApply, notify }:
         </>
       )}
 
-      <h3 className="section-label">Caption style</h3>
-      <div className="cap-styles">
-        {CAPTION_STYLES.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            className={s.id === styleId ? "cap-style is-selected" : "cap-style"}
-            onClick={() =>
-              i >= FREE_STYLE_COUNT && !can("caption_styles_pro")
-                ? openUpgrade(`The ${s.name} caption style is part of Verso Pro.`)
-                : onStyleChange(s.id)
-            }
-            aria-pressed={s.id === styleId}
-          >
-            <CaptionStylePreview style={s} playing={s.id === styleId} />
-            <span className="cap-style__name">
-              {s.name} {i >= FREE_STYLE_COUNT && !can("caption_styles_pro") && <ProBadge />}
-            </span>
-          </button>
-        ))}
-      </div>
+      <MoreSettings>
+        <h3 className="section-label">Language</h3>
+        <div className="cap-choices" role="radiogroup" aria-label="Language">
+          {CAPTION_LANGUAGES.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              role="radio"
+              aria-checked={language === l.id}
+              className={language === l.id ? "cap-choice is-selected" : "cap-choice"}
+              onClick={() => setLanguage(l.id)}
+              disabled={busy}
+            >
+              <span className="cap-choice__label">{l.label}</span>
+              <span className="cap-choice__hint">{l.hint}</span>
+            </button>
+          ))}
+        </div>
+
+        <h3 className="section-label">Accuracy</h3>
+        <div className="cap-choices cap-choices--three" role="radiogroup" aria-label="Accuracy">
+          {ACCURACY.map((a) => {
+            const m = models.find((x) => x.id === a.modelId);
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={accuracy === a.id}
+                className={accuracy === a.id ? "cap-choice is-selected" : "cap-choice"}
+                onClick={() => setAccuracy(a.id)}
+                disabled={busy}
+              >
+                <span className="cap-choice__label">{a.label}</span>
+                <span className="cap-choice__hint">{a.hint}</span>
+                <span className={m?.present ? "cap-choice__meta is-ready" : "cap-choice__meta"}>
+                  {m?.present ? "Ready offline" : m ? formatMegabytes(m.sizeBytes) : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </MoreSettings>
     </div>
   );
 }

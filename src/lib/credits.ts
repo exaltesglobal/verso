@@ -29,7 +29,7 @@ export type CreditAction =
 export const ACTION_LABELS: Record<CreditAction, string> = {
   auto_cut: "Auto-cut",
   captions: "Captions",
-  speaker_reframe: "Speaker reframe",
+  speaker_reframe: "Follow the speaker",
   dubbing: "Dubbing",
   voiceover: "Voiceover",
   background_removal: "Background removal",

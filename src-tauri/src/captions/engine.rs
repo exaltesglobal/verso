@@ -29,7 +29,9 @@ pub fn load(model: &Path) -> Result<Box<dyn SpeechEngine>, String> {
         model,
         whisper_rs::WhisperContextParameters::default(),
     )
-    .map_err(|e| format!("We couldn't load the speech model ({e}). Try downloading it again."))?;
+    .map_err(|e| {
+        format!("We couldn't load the captions AI pack ({e}). Try downloading it again.")
+    })?;
     Ok(Box::new(Whisper { ctx }))
 }
 

@@ -83,7 +83,7 @@ pub fn find(id: &str) -> Result<&'static ModelSpec, String> {
     MODELS
         .iter()
         .find(|m| m.id == id)
-        .ok_or_else(|| format!("We don't know the speech model \"{id}\"."))
+        .ok_or_else(|| format!("We don't know the captions AI pack \"{id}\"."))
 }
 
 pub fn url(spec: &ModelSpec) -> String {
@@ -129,13 +129,14 @@ pub fn statuses(dir: &Path) -> Vec<ModelStatus> {
 }
 
 pub fn sha256_file(path: &Path) -> Result<String, String> {
-    let mut f = File::open(path).map_err(|e| format!("We couldn't open the model file ({e})."))?;
+    let mut f =
+        File::open(path).map_err(|e| format!("We couldn't open the AI pack file ({e})."))?;
     let mut h = Sha256::new();
     let mut buf = vec![0u8; 1 << 20];
     loop {
         let n = f
             .read(&mut buf)
-            .map_err(|e| format!("We couldn't read the model file ({e})."))?;
+            .map_err(|e| format!("We couldn't read the AI pack file ({e})."))?;
         if n == 0 {
             break;
         }
@@ -148,11 +149,11 @@ pub fn sha256_file(path: &Path) -> Result<String, String> {
 pub fn verify(path: &Path, spec: &ModelSpec) -> Result<(), String> {
     let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
     if len != spec.size_bytes {
-        return Err("The speech model download was incomplete. Please try again.".into());
+        return Err("The captions AI pack download was incomplete. Please try again.".into());
     }
     if sha256_file(path)? != spec.sha256 {
         return Err(
-            "The speech model download was damaged, so we removed it. Please try again.".into(),
+            "The captions AI pack download was damaged, so we removed it. Please try again.".into(),
         );
     }
     Ok(())
@@ -173,7 +174,7 @@ pub fn download(
         return Ok(dest);
     }
     std::fs::create_dir_all(dir)
-        .map_err(|e| format!("We couldn't create the models folder ({e})."))?;
+        .map_err(|e| format!("We couldn't create the AI packs folder ({e})."))?;
     let part = part_path(dir, spec);
     let mut have = std::fs::metadata(&part).map_or(0, |m| m.len());
     if have > spec.size_bytes {
@@ -188,10 +189,10 @@ pub fn download(
         }
         let resp = req.call().map_err(|e| match e {
             ureq2::Error::Status(code, _) => {
-                format!("The model server said no (error {code}). Please try again later.")
+                format!("The download server said no (error {code}). Please try again later.")
             }
             ureq2::Error::Transport(_) => {
-                "We couldn't reach the internet to download the speech model. Check your connection and try again.".to_string()
+                "We couldn't reach the internet to download the captions AI pack. Check your connection and try again.".to_string()
             }
         })?;
         // 206 = server honoured the range; anything else restarts from zero.
@@ -205,7 +206,7 @@ pub fn download(
             .append(append)
             .truncate(!append)
             .open(&part)
-            .map_err(|e| format!("We couldn't save the speech model ({e})."))?;
+            .map_err(|e| format!("We couldn't save the captions AI pack ({e})."))?;
         let mut reader = resp.into_reader();
         let mut buf = vec![0u8; 256 * 1024];
         progress(have, spec.size_bytes);
@@ -214,18 +215,18 @@ pub fn download(
                 return Err(CANCELLED.into());
             }
             let n = reader.read(&mut buf).map_err(|_| {
-                "The download stopped part-way. Pick the model again to resume.".to_string()
+                "The download stopped part-way. Pick it again to resume.".to_string()
             })?;
             if n == 0 {
                 break;
             }
             out.write_all(&buf[..n])
-                .map_err(|e| format!("We couldn't save the speech model ({e})."))?;
+                .map_err(|e| format!("We couldn't save the captions AI pack ({e})."))?;
             have += n as u64;
             progress(have, spec.size_bytes);
         }
         out.flush()
-            .map_err(|e| format!("We couldn't save the speech model ({e})."))?;
+            .map_err(|e| format!("We couldn't save the captions AI pack ({e})."))?;
     }
 
     if let Err(e) = verify(&part, spec) {
@@ -233,6 +234,6 @@ pub fn download(
         return Err(e);
     }
     std::fs::rename(&part, &dest)
-        .map_err(|e| format!("We couldn't finish saving the speech model ({e})."))?;
+        .map_err(|e| format!("We couldn't finish saving the captions AI pack ({e})."))?;
     Ok(dest)
 }

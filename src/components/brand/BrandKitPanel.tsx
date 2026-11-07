@@ -3,6 +3,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Icon } from "../Icon";
 import { Button, IconButton, Segmented } from "../ui";
+import { MoreSettings } from "../MoreSettings";
 import { CAPTION_STYLES } from "../../lib/captionStyles";
 import {
   applyBrandKit,
@@ -86,32 +87,6 @@ export function BrandKitPanel({ project, onApply }: BrandKitPanelProps) {
             {kit.logo ? "Change logo" : "Add logo"}
           </Button>
         </div>
-        {kit.logo && (
-          <>
-            <Segmented
-              label="Logo corner"
-              options={CORNERS.map((c) => CORNER_LABEL[c])}
-              value={CORNER_LABEL[kit.logoCorner]}
-              onChange={(label) =>
-                update(kit.id, { logoCorner: CORNERS.find((c) => CORNER_LABEL[c] === label) ?? "top-right" })
-              }
-            />
-            <label className="slider">
-              <span className="slider__top">
-                <span className="slider__label">Size</span>
-                <span className="slider__value">{Math.round(kit.logoSize * 100)}%</span>
-              </span>
-              <input
-                type="range"
-                min={6}
-                max={40}
-                value={Math.round(kit.logoSize * 100)}
-                onChange={(e) => update(kit.id, { logoSize: Number(e.target.value) / 100 })}
-              />
-            </label>
-          </>
-        )}
-
         <h3 className="section-label">Accent colour</h3>
         <div className="swatches">
           {ACCENTS.map((c) => (
@@ -119,6 +94,7 @@ export function BrandKitPanel({ project, onApply }: BrandKitPanelProps) {
               key={c}
               type="button"
               aria-label={`Accent ${c}`}
+              data-tip={`Accent ${c}`}
               className={c === kit.accent ? "swatch is-active" : "swatch"}
               style={{ background: c }}
               onClick={() => update(kit.id, { accent: c })}
@@ -126,41 +102,70 @@ export function BrandKitPanel({ project, onApply }: BrandKitPanelProps) {
           ))}
         </div>
 
-        <label className="field">
-          <span className="field__label">Caption look</span>
-          <Select
-            className="field__input"
-            value={kit.captionStyleId ?? ""}
-            onChange={(v) => update(kit.id, { captionStyleId: v || undefined })}
-            options={[
-              { value: "", label: "Keep the reel's choice" },
-              ...CAPTION_STYLES.map((s) => ({ value: s.id, label: s.name })),
-            ]}
-          />
-        </label>
-
-        <h3 className="section-label">Intro and outro</h3>
-        {(["intro", "outro"] as const).map((role) => (
-          <div key={role} className="brand-clip-row">
-            <span>{role === "intro" ? "Intro" : "Outro"}</span>
-            <span className="muted small">{kit[role]?.fileName ?? "None"}</span>
-            <Button
-              onClick={async () => {
-                const m = await pick(`Choose your ${role}`, ["mp4", "mov", "m4v", "webm"]);
-                if (m) update(kit.id, { [role]: m });
-              }}
-            >
-              {kit[role] ? "Change" : "Add"}
-            </Button>
-            {kit[role] && (
-              <IconButton
-                icon="delete"
-                label={`Remove ${role}`}
-                onClick={() => update(kit.id, { [role]: undefined })}
+        <MoreSettings>
+          {kit.logo && (
+            <>
+              <Segmented
+                label="Logo corner"
+                options={CORNERS.map((c) => CORNER_LABEL[c])}
+                value={CORNER_LABEL[kit.logoCorner]}
+                onChange={(label) =>
+                  update(kit.id, {
+                    logoCorner: CORNERS.find((c) => CORNER_LABEL[c] === label) ?? "top-right",
+                  })
+                }
               />
-            )}
-          </div>
-        ))}
+              <label className="slider">
+                <span className="slider__top">
+                  <span className="slider__label">Size</span>
+                  <span className="slider__value">{Math.round(kit.logoSize * 100)}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={6}
+                  max={40}
+                  value={Math.round(kit.logoSize * 100)}
+                  onChange={(e) => update(kit.id, { logoSize: Number(e.target.value) / 100 })}
+                />
+              </label>
+            </>
+          )}
+          <label className="field">
+            <span className="field__label">Caption look</span>
+            <Select
+              className="field__input"
+              value={kit.captionStyleId ?? ""}
+              onChange={(v) => update(kit.id, { captionStyleId: v || undefined })}
+              options={[
+                { value: "", label: "Keep the reel's choice" },
+                ...CAPTION_STYLES.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
+          </label>
+
+          <h3 className="section-label">Intro and outro</h3>
+          {(["intro", "outro"] as const).map((role) => (
+            <div key={role} className="brand-clip-row">
+              <span>{role === "intro" ? "Intro" : "Outro"}</span>
+              <span className="muted small">{kit[role]?.fileName ?? "None"}</span>
+              <Button
+                onClick={async () => {
+                  const m = await pick(`Choose your ${role}`, ["mp4", "mov", "m4v", "webm"]);
+                  if (m) update(kit.id, { [role]: m });
+                }}
+              >
+                {kit[role] ? "Change" : "Add"}
+              </Button>
+              {kit[role] && (
+                <IconButton
+                  icon="delete"
+                  label={`Remove ${role}`}
+                  onClick={() => update(kit.id, { [role]: undefined })}
+                />
+              )}
+            </div>
+          ))}
+        </MoreSettings>
 
         <Button
           icon="one-click"

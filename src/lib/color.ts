@@ -130,9 +130,9 @@ export interface ImportedLut {
 /** Opens a file picker for a .cube LUT. Rust checks it (3D, size up to 65) and keeps a copy. */
 export async function importLut(): Promise<ImportedLut | null> {
   const path = await open({
-    title: "Import a LUT",
+    title: "Import a colour file",
     multiple: false,
-    filters: [{ name: "Cube LUT", extensions: ["cube"] }],
+    filters: [{ name: "Colour file (.cube)", extensions: ["cube"] }],
   });
   if (!path || Array.isArray(path)) return null;
   return invoke<ImportedLut>("import_lut", { path });

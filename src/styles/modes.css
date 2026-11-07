@@ -1,0 +1,389 @@
+/* Quick / Craft / Studio workspaces and one-tap edits.
+   Chrome density stays Premiere-grade; simplicity comes from fewer choices, not bigger type.
+   Tokens only: --ui-* aliases from app.css and --vs-* brand tokens. */
+
+/* ---------- Mode switch, centred in the title bar ---------- */
+.topbar {
+  position: relative;
+}
+
+.topbar__modes {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px;
+}
+
+.topbar__modes .segmented__item {
+  height: var(--ui-control-xs);
+  min-width: 64px;
+}
+
+.topbar__saved {
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Below this width the title bar has no room for the saved-time line next to the switch. */
+@media (max-width: 1360px) {
+  .topbar__saved {
+    display: none;
+  }
+}
+
+/* ---------- 200 ms crossfade on switch ---------- */
+@keyframes ws-fade {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.editor.is-switching > :not(.topbar) {
+  animation: ws-fade 200ms var(--ui-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor.is-switching > :not(.topbar) {
+    animation: none;
+  }
+}
+
+/* ---------- Quick: steps | preview + clip strip | one-tap options ---------- */
+.editor--quick {
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  grid-template-rows: var(--ui-topbar) minmax(0, 1fr);
+  grid-template-areas:
+    "top top top"
+    "panel centre inspector";
+}
+
+@media (max-width: 1360px) {
+  .editor--quick {
+    grid-template-columns: 260px minmax(0, 1fr) 264px;
+  }
+}
+
+.quick-centre {
+  grid-area: centre;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.quick-centre .preview {
+  flex: 1;
+  min-height: 0;
+}
+
+.quick-centre .timeline {
+  flex: 0 0 auto;
+  height: 196px;
+}
+
+.preview-bar--ratio {
+  justify-content: center;
+  gap: var(--vs-space-4);
+}
+
+.timeline--strip .timeline__toolbar {
+  justify-content: flex-start;
+}
+
+/* ---------- Steps list (Quick left column) ---------- */
+.panel--steps {
+  display: flex;
+  flex-direction: column;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.step-card {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+  padding: var(--vs-space-3);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  text-align: left;
+  transition:
+    background var(--ui-base) var(--ui-ease),
+    border-color var(--ui-base) var(--ui-ease);
+}
+
+.step-card:hover {
+  background: var(--ui-bg-raised);
+  border-color: var(--ui-border);
+}
+
+.step-card:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.step-card__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+
+.step-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.step-card__title {
+  font-size: var(--ui-text-sm);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--ui-text);
+}
+
+.step-card__body {
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-3);
+}
+
+.step-card__go {
+  color: var(--ui-text-3);
+}
+
+.steps__back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 var(--ui-pad);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--ui-text-3);
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.steps__back:hover {
+  color: var(--ui-text);
+}
+
+.steps__back-icon {
+  transform: rotate(180deg);
+}
+
+/* ---------- Make it better row ---------- */
+.make-better {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+  min-width: 0;
+  padding: var(--vs-space-2) var(--vs-space-3);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-bg-panel);
+}
+
+.make-better__label {
+  flex: 0 0 auto;
+  font-size: var(--ui-text-2xs);
+  font-weight: var(--vs-font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+
+.make-better__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vs-space-2);
+  min-width: 0;
+}
+
+.one-tap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: var(--ui-control-sm);
+  padding: 0 var(--vs-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  font-size: var(--ui-text-xs);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--ui-text-2);
+  background: var(--ui-bg-surface);
+  white-space: nowrap;
+  transition:
+    background var(--ui-base) var(--ui-ease),
+    color var(--ui-base) var(--ui-ease);
+}
+
+.one-tap-chip:hover {
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+
+.one-tap-chip[aria-disabled="true"] {
+  color: var(--ui-text-disabled);
+  cursor: default;
+}
+
+.one-tap-chip.is-busy {
+  color: var(--ui-text);
+}
+
+.cost-chip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--vs-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-2);
+  background: var(--ui-bg-pressed);
+}
+
+/* ---------- One-tap options (Quick right column) ---------- */
+.quick-options {
+  grid-area: inspector;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-3);
+  padding: 0 var(--ui-pad) var(--vs-space-6);
+  overflow-y: auto;
+  border-left: 1px solid var(--ui-border);
+  background: var(--ui-bg-panel);
+}
+
+.quick-options__step,
+.quick-options__muted {
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-3);
+}
+
+.quick-options__confirm,
+.quick-options__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+  padding: var(--vs-space-3);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  font-size: var(--ui-text-sm);
+}
+
+.quick-options__summary-title {
+  font-weight: var(--vs-font-weight-semibold);
+}
+
+.quick-options__plan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ui-text-2);
+  font-size: var(--ui-text-xs);
+}
+
+.quick-options__plan li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-options__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-2);
+}
+
+.quick-options__text {
+  width: 100%;
+  resize: vertical;
+  padding: var(--vs-space-2);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-r-sm);
+  background: var(--ui-bg-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: var(--ui-text-sm);
+}
+
+.quick-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--vs-space-3);
+  height: var(--ui-control-lg);
+  padding: 0 var(--vs-space-3);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  color: var(--ui-text);
+  font-size: var(--ui-text-sm);
+  font-weight: var(--vs-font-weight-semibold);
+  text-align: left;
+}
+
+.quick-choice:hover {
+  background: var(--ui-bg-raised);
+}
+
+.quick-choice[aria-disabled="true"] {
+  color: var(--ui-text-disabled);
+  cursor: default;
+}
+
+.quick-choice__label {
+  flex: 1;
+}
+
+.quick-choice--danger {
+  color: var(--vs-color-semantic-danger);
+}
+
+/* ---------- Welcome: drop anywhere ---------- */
+.welcome.is-dropping::after {
+  content: "Drop your video to start";
+  position: fixed;
+  inset: var(--vs-space-4);
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: var(--ui-r-lg);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--ui-text);
+  font-size: var(--ui-text-lg);
+  font-weight: var(--vs-font-weight-semibold);
+  pointer-events: none;
+  z-index: var(--ui-z-modal);
+}
+
+/* Welcome: the recents title on the left, its three links grouped on the right. */
+.recent__head {
+  gap: var(--vs-space-2);
+}
+
+.recent__head h2 {
+  margin-right: auto;
+}

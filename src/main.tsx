@@ -5,6 +5,8 @@ import "./styles/verso-tokens.css"; // brand kit tokens: single source of stylin
 import "./styles/app.css";
 import "./styles/account.css";
 import "./styles/credits.css";
+import "./styles/modes.css"; // Quick / Craft / Studio workspaces, one-tap edits
+import "./styles/panels.css"; // simple panel structure: primary action, big choices, More settings
 import App from "./App";
 import { AccountHost } from "./components/account/AccountHost";
 import { CreditsHost } from "./components/credits/CreditsHost";

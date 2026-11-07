@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Button, Progress } from "../ui";
 import { Icon } from "../Icon";
+import { MoreSettings } from "../MoreSettings";
 import { useCharged } from "../../lib/credits";
 import type { AspectRatio, Clip } from "../../lib/project";
 import {
@@ -143,9 +144,21 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
   const matcher = models.find((m) => !m.required && !m.installed);
 
   return (
-    <div className="reframe" aria-label="Reframe">
+    <div className="reframe" aria-label="Fit to shape">
+      {busy ? (
+        <Progress
+          value={/(\d+)%/.test(busy) ? Number(/(\d+)%/.exec(busy)?.[1]) : undefined}
+          label={busy.replace(/\s*\d+%$/, "")}
+        />
+      ) : (
+        <Button icon="subject-track" onClick={findSpeakers}>
+          {analysis ? "Find speakers again" : "Find speakers"}
+          {!can("speaker_reframe") && <ProBadge />}
+        </Button>
+      )}
+
       <div className="reframe__modes" role="radiogroup" aria-label="How the camera follows">
-        {MODES.map((m) => {
+        {MODES.slice(0, 3).map((m) => {
           const disabled = speakers.length < m.needsSpeakers;
           return (
             <button
@@ -206,30 +219,46 @@ export function ReframePanel({ clip, aspect, onCropPath }: ReframePanelProps) {
         <p className="muted small">We didn't find any faces in this clip.</p>
       )}
 
-      {busy ? (
-        <Progress
-          value={/(\d+)%/.test(busy) ? Number(/(\d+)%/.exec(busy)?.[1]) : undefined}
-          label={busy.replace(/\s*\d+%$/, "")}
-        />
-      ) : (
-        <Button icon="subject-track" onClick={findSpeakers}>
-          {analysis ? "Find speakers again" : "Find speakers"}
-          {!can("speaker_reframe") && <ProBadge />}
-        </Button>
-      )}
-
-      {matcher && !busy && (
-        <button
-          type="button"
-          className="reframe__link"
-          onClick={() => getMatcher(matcher)}
-          data-tip={`${mb(matcher.sizeBytes)} download`}
-        >
-          <Icon name="import" size={16} />
-          Recognise people after camera cuts
-        </button>
-      )}
-
+      <MoreSettings>
+        <div className="reframe__modes" role="radiogroup" aria-label="More ways to follow">
+          {MODES.slice(3).map((m) => {
+            const disabled = speakers.length < m.needsSpeakers;
+            return (
+              <button
+                key={m.mode}
+                type="button"
+                role="radio"
+                aria-checked={choice === m.mode}
+                className={choice === m.mode ? "reframe__mode is-active" : "reframe__mode"}
+                disabled={disabled || !!busy}
+                onClick={() => setMode(m.mode)}
+              >
+                {m.label}
+                {m.mode === "auto" && (
+                  <span className="reframe__mode-hint">
+                    {speakers.length > 1
+                      ? "Switches to whoever's talking"
+                      : speakers.length === 1
+                        ? "Follows the speaker"
+                        : "Centred until speakers are found"}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {matcher && !busy && (
+          <button
+            type="button"
+            className="reframe__link"
+            onClick={() => getMatcher(matcher)}
+            data-tip={`${mb(matcher.sizeBytes)} download`}
+          >
+            <Icon name="import" size={16} />
+            Recognise people after camera cuts
+          </button>
+        )}
+      </MoreSettings>
       {error && (
         <p className="reframe__error" role="alert">
           {error}

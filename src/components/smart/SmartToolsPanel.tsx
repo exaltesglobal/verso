@@ -29,6 +29,7 @@ import {
 import { CutToBeatToggle } from "./CutToBeatToggle";
 import { plural, useAnalysisProgress } from "./hooks";
 import { LevelSlider, Listening, SmartCard } from "./parts";
+import { MoreSettings } from "../MoreSettings";
 
 export interface SmartToolsPanelProps {
   project: Project;
@@ -41,6 +42,8 @@ export interface SmartToolsPanelProps {
 
 /** The "Magic" tab: one-click smart edits. */
 export function SmartToolsPanel({ project, onApply, onNeedCaptions, notify }: SmartToolsPanelProps) {
+  const [sensitivity, setSensitivity] = useState<PauseSensitivity>("Normal");
+  const [lang, setLang] = useState<LangChoice>("Both");
   return (
     <div className="panel__body smart-tools">
       <div className="panel__head">
@@ -50,10 +53,27 @@ export function SmartToolsPanel({ project, onApply, onNeedCaptions, notify }: Sm
         </h2>
         <p className="panel__lede">One-click edits. Each one is a single step you can undo.</p>
       </div>
-      <RemovePauses project={project} onApply={onApply} />
-      <RemoveFillers project={project} onApply={onApply} onNeedCaptions={onNeedCaptions} />
+      {/* A new sensitivity clears old results; Find pauses runs again with it. */}
+      <RemovePauses key={sensitivity} project={project} onApply={onApply} sensitivity={sensitivity} />
+      <RemoveFillers project={project} onApply={onApply} onNeedCaptions={onNeedCaptions} lang={lang} />
       <PunchIns project={project} onApply={onApply} notify={notify} />
       <CutToBeat project={project} onApply={onApply} />
+      <MoreSettings>
+        <span className="smart-level__label">How tight to cut pauses</span>
+        <Segmented
+          label="Pause sensitivity"
+          options={["Gentle", "Normal", "Tight"] as const}
+          value={sensitivity}
+          onChange={setSensitivity}
+        />
+        <span className="smart-level__label">Filler word language</span>
+        <Segmented
+          label="Filler word language"
+          options={["English", "Hindi", "Both"] as const}
+          value={lang}
+          onChange={setLang}
+        />
+      </MoreSettings>
     </div>
   );
 }
@@ -84,8 +104,11 @@ function useSequence(task: Parameters<typeof useAnalysisProgress>[0]) {
   return { run, busy: step !== null, overall };
 }
 
-function RemovePauses({ project, onApply }: Pick<ApplyProps, "project" | "onApply">) {
-  const [sensitivity, setSensitivity] = useState<PauseSensitivity>("Normal");
+function RemovePauses({
+  project,
+  onApply,
+  sensitivity,
+}: Pick<ApplyProps, "project" | "onApply"> & { sensitivity: PauseSensitivity }) {
   const [found, setFound] = useState<{ clipId: string; spans: Span[] }[] | null>(null);
   const [error, setError] = useState<string>();
   const { run, busy, overall } = useSequence("silences");
@@ -115,15 +138,6 @@ function RemovePauses({ project, onApply }: Pick<ApplyProps, "project" | "onAppl
         <p className="smart-note">Add a video with sound to use this.</p>
       ) : (
         <>
-          <Segmented
-            label="Sensitivity"
-            options={["Gentle", "Normal", "Tight"] as const}
-            value={sensitivity}
-            onChange={(s) => {
-              setSensitivity(s);
-              if (found) void find(s);
-            }}
-          />
           {busy && <Listening percent={overall} />}
           {!busy && found && (
             <p className="smart-result">
@@ -131,7 +145,7 @@ function RemovePauses({ project, onApply }: Pick<ApplyProps, "project" | "onAppl
                 ? `We found ${plural(all.length, "pause")} (${fmtSec(totalLength(all))}).`
                 : sensitivity === "Tight"
                   ? "No pauses to remove. Your reel is already tight."
-                  : "No long pauses found. Try Tight."}
+                  : "No long pauses found. Try Tight in More settings."}
             </p>
           )}
           {error && <p className="smart-note smart-note--error">{error}</p>}
@@ -162,9 +176,9 @@ function RemoveFillers({
   project,
   onApply,
   onNeedCaptions,
-}: Pick<SmartToolsPanelProps, "project" | "onApply" | "onNeedCaptions">) {
+  lang,
+}: Pick<SmartToolsPanelProps, "project" | "onApply" | "onNeedCaptions"> & { lang: LangChoice }) {
   const words = useMemo(() => collectWords(project), [project]);
-  const [lang, setLang] = useState<LangChoice>("Both");
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const languages = [...LANGS[lang]];
   const counts = useMemo(() => countFillers(words, [...LANGS[lang]]), [words, lang]);
@@ -189,12 +203,6 @@ function RemoveFillers({
 
   return (
     <SmartCard icon="captions" title="Remove filler words" lede="Um, uh, matlab and repeated words, gone.">
-      <Segmented
-        label="Language"
-        options={["English", "Hindi", "Both"] as const}
-        value={lang}
-        onChange={setLang}
-      />
       {rows.length === 0 ? (
         <p className="smart-result">No filler words found. Nicely said.</p>
       ) : (

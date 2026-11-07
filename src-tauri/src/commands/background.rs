@@ -49,7 +49,7 @@ pub async fn download_background_model(app: AppHandle, id: String) -> Result<(),
     let spec = background::MODELS
         .iter()
         .find(|m| m.id == id)
-        .ok_or_else(|| format!("We don't know the model \"{id}\"."))?;
+        .ok_or_else(|| format!("We don't know the AI pack \"{id}\"."))?;
     tauri::async_runtime::spawn_blocking(move || {
         models::download_spec(&dir, spec, |percent| {
             let _ = app.emit(

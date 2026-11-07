@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { Icon } from "../Icon";
+import { Icon, type IconName } from "../Icon";
+import { MoreSettings } from "../MoreSettings";
 import { probeMedia } from "../../lib/media";
 import { uid, type Project } from "../../lib/project";
 
@@ -18,6 +19,27 @@ interface SoundsPanelProps {
   /** Where new sounds land. */
   time: number;
   onApply: (next: Project, message: string) => void;
+}
+
+/** One-tap mixes: voice (video + its Sound) against music, both as clip volume 0..1. */
+const MIXES: { id: string; label: string; icon: IconName; voice: number; music: number }[] = [
+  { id: "louder", label: "Louder", icon: "volume", voice: 1, music: 0.6 },
+  { id: "balanced", label: "Balanced", icon: "headphones", voice: 0.9, music: 0.35 },
+  { id: "under", label: "Music under voice", icon: "voiceover", voice: 1, music: 0.15 },
+];
+
+function applyMix(project: Project, voice: number, music: number): Project {
+  return {
+    ...project,
+    updatedAt: Date.now(),
+    tracks: project.tracks.map((t) =>
+      t.kind === "music"
+        ? { ...t, clips: t.clips.map((c) => ({ ...c, volume: music })) }
+        : t.kind === "video" || t.kind === "audio"
+          ? { ...t, clips: t.clips.map((c) => (c.source?.hasAudio ? { ...c, volume: voice } : c)) }
+          : t,
+    ),
+  };
 }
 
 /** Built-in sound effects and music beds, made by Verso (no licences to worry about). */
@@ -89,6 +111,7 @@ export function SoundsPanel({ project, time, onApply }: SoundsPanelProps) {
                   type="button"
                   className="audio-item__play"
                   aria-label={playing === s.id ? `Stop ${s.name}` : `Play ${s.name}`}
+                  data-tip={playing === s.id ? "Stop" : "Listen"}
                   onClick={() => preview(s)}
                 >
                   <Icon name={playing === s.id ? "pause" : "play"} size={16} />
@@ -113,10 +136,27 @@ export function SoundsPanel({ project, time, onApply }: SoundsPanelProps) {
     </>
   );
 
+  const hasSound = project.tracks.some((t) => t.kind !== "text" && t.kind !== "captions" && t.clips.length);
   return (
     <>
+      <h3 className="section-label">Mix in one tap</h3>
+      <div className="mix-presets" role="group" aria-label="Mix">
+        {MIXES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className="mix-preset"
+            disabled={!hasSound}
+            data-tip={hasSound ? undefined : "Add a video or music first"}
+            onClick={() => onApply(applyMix(project, m.voice, m.music), `${m.label} mix on.`)}
+          >
+            <Icon name={m.icon} size={20} />
+            {m.label}
+          </button>
+        ))}
+      </div>
       {group("music", "Music beds")}
-      {group("sfx", "Sound effects")}
+      <MoreSettings label="Sound effects">{group("sfx", "Sound effects")}</MoreSettings>
     </>
   );
 }

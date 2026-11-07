@@ -1,0 +1,98 @@
+/* Panel structure for the simple flow: one primary action, a few big choices,
+   and one "More settings" row. Uses the --ui-* tokens from app.css. */
+
+.more-settings {
+  margin-top: var(--vs-space-3);
+  border-top: 1px solid var(--ui-border-subtle);
+}
+
+.more-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  font-size: var(--ui-text-2xs);
+  font-weight: var(--vs-font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+  text-align: left;
+  transition: color var(--ui-base) var(--ui-ease);
+}
+
+.more-settings__toggle:hover,
+.more-settings.is-open .more-settings__toggle {
+  color: var(--ui-text-2);
+}
+
+.more-settings__toggle:focus-visible {
+  outline: none;
+  color: var(--ui-text);
+  text-decoration: underline;
+  text-decoration-color: var(--ui-focus);
+  text-underline-offset: 4px;
+}
+
+.more-settings__chevron {
+  transition: transform var(--ui-base) var(--ui-ease);
+}
+
+.more-settings.is-open .more-settings__chevron {
+  transform: rotate(90deg);
+}
+
+.more-settings__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vs-space-3);
+  padding-bottom: var(--vs-space-3);
+}
+
+/* Template cards: a quiet "Apply" cue so one tap reads as one tap. */
+.tpl-card__apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--ui-text-2xs);
+  font-weight: var(--vs-font-weight-semibold);
+  color: var(--ui-text-2);
+}
+
+/* One-tap mix presets in the Audio panel. */
+.mix-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--vs-space-2);
+}
+
+.mix-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--vs-space-3) var(--vs-space-2);
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  box-shadow: var(--ui-e1);
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-2);
+  text-align: center;
+  transition:
+    background var(--ui-base) var(--ui-ease),
+    color var(--ui-base) var(--ui-ease);
+}
+
+.mix-preset:hover:not(:disabled) {
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+
+.mix-preset:disabled {
+  opacity: 0.5;
+}
+
+.mix-preset:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 1px;
+}

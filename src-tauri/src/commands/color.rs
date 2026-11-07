@@ -170,7 +170,7 @@ pub struct Cube {
 pub const MAX_LUT_SIZE: usize = 65;
 
 pub fn parse_cube(text: &str) -> Result<Cube, String> {
-    let bad = |m: &str| format!("This LUT file can't be used: {m}.");
+    let bad = |m: &str| format!("This colour file can't be used: {m}.");
     let (mut size, mut title, mut data) = (0usize, None, Vec::new());
     let (mut lo, mut hi) = ([0.0; 3], [1.0; 3]);
     for line in text.lines().map(str::trim) {
@@ -191,7 +191,11 @@ pub fn parse_cube(text: &str) -> Result<Cube, String> {
                     .and_then(|s| s.parse().ok())
                     .ok_or_else(|| bad("the size is missing"))?
             }
-            "LUT_1D_SIZE" => return Err(bad("it is a 1D LUT, and Verso needs a 3D one")),
+            "LUT_1D_SIZE" => {
+                return Err(bad(
+                    "it is a simple 1D colour file, and Verso needs a 3D one",
+                ));
+            }
             "DOMAIN_MIN" => lo = nums(parts).ok_or_else(|| bad("DOMAIN_MIN is broken"))?,
             "DOMAIN_MAX" => hi = nums(parts).ok_or_else(|| bad("DOMAIN_MAX is broken"))?,
             _ if first.parse::<f64>().is_ok() => {
@@ -263,18 +267,20 @@ pub async fn import_lut(app: AppHandle, path: String) -> Result<ImportedLut, Str
     tauri::async_runtime::spawn_blocking(move || {
         let src = Path::new(&path);
         let meta =
-            std::fs::metadata(src).map_err(|_| "We couldn't find that LUT file.".to_string())?;
+            std::fs::metadata(src).map_err(|_| "We couldn't find that colour file.".to_string())?;
         if meta.len() > 64 * 1024 * 1024 {
-            return Err("This LUT file is too big to be a .cube LUT.".into());
+            return Err("This file is too big to be a .cube colour file.".into());
         }
         let text = std::fs::read_to_string(src)
-            .map_err(|_| "We couldn't read that LUT file.".to_string())?;
+            .map_err(|_| "We couldn't read that colour file.".to_string())?;
         let cube = parse_cube(&text)?;
         let mut h = DefaultHasher::new();
         text.hash(&mut h);
-        std::fs::create_dir_all(&dir).map_err(|e| format!("We couldn't save the LUT ({e})."))?;
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| format!("We couldn't save the colour file ({e})."))?;
         let dest = dir.join(format!("{:016x}.cube", h.finish()));
-        std::fs::write(&dest, &text).map_err(|e| format!("We couldn't save the LUT ({e})."))?;
+        std::fs::write(&dest, &text)
+            .map_err(|e| format!("We couldn't save the colour file ({e})."))?;
         let name = src
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
@@ -287,5 +293,5 @@ pub async fn import_lut(app: AppHandle, path: String) -> Result<ImportedLut, Str
         })
     })
     .await
-    .map_err(|e| format!("Something went wrong while importing the LUT ({e})."))?
+    .map_err(|e| format!("Something went wrong while importing the colour file ({e})."))?
 }

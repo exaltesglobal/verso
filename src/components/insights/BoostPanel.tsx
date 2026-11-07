@@ -2,8 +2,16 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useCharged } from "../../lib/credits";
 import { Icon } from "../Icon";
 import { Button } from "../ui";
+import { MoreSettings } from "../MoreSettings";
 import { useWaveform } from "../../lib/waveform";
-import { applyColdOpen, applyHookTitle, hookIdeas, predictWatchTime, type Check } from "../../lib/insights";
+import {
+  applyColdOpen,
+  applyHookTitle,
+  hookIdeas,
+  predictWatchTime,
+  type Check,
+  type HookIdea,
+} from "../../lib/insights";
 import type { Project } from "../../lib/project";
 
 interface BoostPanelProps {
@@ -37,6 +45,30 @@ export function BoostPanel({ project, onApply, onFix }: BoostPanelProps) {
     );
   // `seed` lets people ask for fresh ideas after editing.
   const ideas = useMemo(() => hookIdeas(project), [project, seed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hook = (h: HookIdea) => (
+    <li key={h.id} className="hook">
+      <span className="hook__title">{h.title}</span>
+      <span className="hook__why">{h.why}</span>
+      <span className="hook__actions">
+        <Button
+          onClick={() => onApply(applyHookTitle(project, h.title), "Title added to the first 3 seconds.")}
+        >
+          Use as title
+        </Button>
+        {h.coldOpen && (
+          <Button
+            icon="split"
+            onClick={() =>
+              onApply(applyColdOpen(project, h.coldOpen!), "Your reel now opens on its strongest line.")
+            }
+          >
+            Open on this line
+          </Button>
+        )}
+      </span>
+    </li>
+  );
 
   const tone = report.score >= 75 ? "good" : report.score >= 50 ? "ok" : "low";
 
@@ -87,39 +119,14 @@ export function BoostPanel({ project, onApply, onFix }: BoostPanelProps) {
         ))}
       </ul>
 
-      <div className="section-label hooks__head">
-        Hook ideas
+      <h3 className="section-label">Hook ideas</h3>
+      <ul className="hooks">{ideas.slice(0, 3).map(hook)}</ul>
+      <MoreSettings label="More hook ideas">
+        {ideas.length > 3 && <ul className="hooks">{ideas.slice(3).map(hook)}</ul>}
         <button type="button" className="btn btn--ghost" onClick={newIdeas}>
           <span>New ideas</span>
         </button>
-      </div>
-      <ul className="hooks">
-        {ideas.map((h) => (
-          <li key={h.id} className="hook">
-            <span className="hook__title">{h.title}</span>
-            <span className="hook__why">{h.why}</span>
-            <span className="hook__actions">
-              <Button
-                onClick={() =>
-                  onApply(applyHookTitle(project, h.title), "Title added to the first 3 seconds.")
-                }
-              >
-                Use as title
-              </Button>
-              {h.coldOpen && (
-                <Button
-                  icon="split"
-                  onClick={() =>
-                    onApply(applyColdOpen(project, h.coldOpen!), "Your reel now opens on its strongest line.")
-                  }
-                >
-                  Open on this line
-                </Button>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+      </MoreSettings>
     </div>
   );
 }

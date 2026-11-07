@@ -19,6 +19,7 @@ import {
   type BackgroundOptions,
 } from "../../lib/background";
 import { LevelSlider, Listening, SmartCard } from "./parts";
+import { MoreSettings } from "../MoreSettings";
 
 const MODES: { mode: BackgroundMode; title: string; hint: string }[] = [
   { mode: "blur", title: "Blur the background", hint: "Keeps you sharp" },
@@ -210,16 +211,6 @@ export function BackgroundPanel({ clip, playhead, onChange }: BackgroundPanelPro
         ))}
       </div>
 
-      {(mode === "blur" || mode === "studio") && (
-        <LevelSlider
-          label={mode === "blur" ? "How much blur" : "How soft"}
-          low="A little"
-          high="A lot"
-          value={strength}
-          onChange={setStrength}
-        />
-      )}
-
       {mode === "replace" && (
         <div className="bg-fill">
           <div className="bg-swatches" role="radiogroup" aria-label="New background">
@@ -234,7 +225,7 @@ export function BackgroundPanel({ clip, playhead, onChange }: BackgroundPanelPro
                   role="radio"
                   aria-checked={active}
                   aria-label={s.label}
-                  title={s.label}
+                  data-tip={s.label}
                   className={active ? "bg-swatch is-active" : "bg-swatch"}
                   style={{
                     background: s.gradient ? `linear-gradient(${s.gradient[0]}, ${s.gradient[1]})` : s.color,
@@ -296,6 +287,17 @@ export function BackgroundPanel({ clip, playhead, onChange }: BackgroundPanelPro
         <p className="smart-note smart-note--error" role="alert">
           {error}
         </p>
+      )}
+      {(mode === "blur" || mode === "studio") && (
+        <MoreSettings>
+          <LevelSlider
+            label={mode === "blur" ? "How much blur" : "How soft"}
+            low="A little"
+            high="A lot"
+            value={strength}
+            onChange={setStrength}
+          />
+        </MoreSettings>
       )}
     </SmartCard>
   );

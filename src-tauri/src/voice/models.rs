@@ -311,7 +311,7 @@ pub fn spec(id: &str) -> Result<&'static PackSpec, String> {
     PACKS
         .iter()
         .find(|p| p.id == id)
-        .ok_or_else(|| format!("We don't know the model \"{id}\"."))
+        .ok_or_else(|| format!("We don't know the AI pack \"{id}\"."))
 }
 
 pub fn voice(id: &str) -> Result<&'static VoiceSpec, String> {
@@ -333,7 +333,7 @@ pub fn installed(root: &Path, id: &str) -> Option<PathBuf> {
 
 pub fn require(root: &Path, id: &str) -> Result<PathBuf, String> {
     installed(root, id).ok_or_else(|| {
-        let name = spec(id).map(|p| p.name).unwrap_or("model");
+        let name = spec(id).map(|p| p.name).unwrap_or("AI pack");
         format!("Download \"{name}\" first. It works offline after that.")
     })
 }
@@ -357,7 +357,7 @@ pub fn download(root: &Path, id: &str, mut progress: impl FnMut(f64)) -> Result<
     let p = spec(id)?;
     let dir = root.join(p.id);
     std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("We couldn't create the models folder ({e})."))?;
+        .map_err(|e| format!("We couldn't create the AI packs folder ({e})."))?;
     let total: u64 = p.files.iter().map(|f| f.size).sum();
     let mut done: u64 = 0;
     let mut last_pct = -1.0;
@@ -379,7 +379,7 @@ pub fn download(root: &Path, id: &str, mut progress: impl FnMut(f64)) -> Result<
         let mut body = resp.into_body();
         let mut reader = body.as_reader();
         let mut file = std::fs::File::create(&part)
-            .map_err(|e| format!("We couldn't save the model ({e})."))?;
+            .map_err(|e| format!("We couldn't save the AI pack ({e})."))?;
         let mut hasher = Sha256::new();
         let mut buf = vec![0u8; 64 * 1024];
         loop {
@@ -391,7 +391,7 @@ pub fn download(root: &Path, id: &str, mut progress: impl FnMut(f64)) -> Result<
             }
             hasher.update(&buf[..n]);
             file.write_all(&buf[..n])
-                .map_err(|e| format!("We couldn't save the model ({e})."))?;
+                .map_err(|e| format!("We couldn't save the AI pack ({e})."))?;
             done += n as u64;
             let pct = (done as f64 / total as f64 * 100.0).min(100.0).floor();
             if pct > last_pct {
@@ -408,7 +408,7 @@ pub fn download(root: &Path, id: &str, mut progress: impl FnMut(f64)) -> Result<
             ));
         }
         std::fs::rename(&part, &dest)
-            .map_err(|e| format!("We couldn't install the model ({e})."))?;
+            .map_err(|e| format!("We couldn't install the AI pack ({e})."))?;
     }
     progress(100.0);
     Ok(dir)

@@ -14,6 +14,7 @@ import {
   type EnhanceStrength,
 } from "../../lib/enhance";
 import { Listening, SmartCard } from "./parts";
+import { MoreSettings } from "../MoreSettings";
 import { useCharged } from "../../lib/credits";
 import { playbackRateAt, sourceTimeAt } from "../../lib/speed";
 
@@ -88,12 +89,6 @@ export function EnhancePanel({ project, clipId, onApply }: EnhancePanelProps) {
         <p className="smart-note">Pick a clip with sound to use this.</p>
       ) : (
         <>
-          <Segmented
-            label="Strength"
-            options={["Light", "Normal", "Strong"] as const}
-            value={strength}
-            onChange={setStrength}
-          />
           {busy && <Listening percent={progress.percent} label={STAGE[progress.stage]} />}
           {error && <p className="smart-note smart-note--error">{error}</p>}
           <div className="smart-actions enhance-actions">
@@ -113,6 +108,14 @@ export function EnhancePanel({ project, clipId, onApply }: EnhancePanelProps) {
               />
             )}
           </div>
+          <MoreSettings>
+            <Segmented
+              label="Strength"
+              options={["Light", "Normal", "Strong"] as const}
+              value={strength}
+              onChange={setStrength}
+            />
+          </MoreSettings>
         </>
       )}
     </SmartCard>

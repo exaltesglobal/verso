@@ -233,6 +233,7 @@ export function PublishDialog({ outputPath, project, aspect, transcript, onClose
                     role="radio"
                     aria-checked={cover === i}
                     aria-label={`Frame ${i + 1}`}
+                    data-tip={`Use frame ${i + 1} as the cover`}
                     className={cover === i ? "publish__frame is-active" : "publish__frame"}
                     onClick={() => setCover(i)}
                   >

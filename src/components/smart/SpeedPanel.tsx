@@ -3,6 +3,7 @@ import { Button, Segmented } from "../ui";
 import { findClip, type Project } from "../../lib/project";
 import { RAMP_PRESETS, applySpeedRamp, freezeFrame, rampTimeFactor, sourceSpan } from "../../lib/speed";
 import { SmartCard } from "./parts";
+import { MoreSettings } from "../MoreSettings";
 
 export interface SpeedPanelProps {
   project: Project;
@@ -88,7 +89,6 @@ export function SpeedPanel({ project, clipId, time, onApply }: SpeedPanelProps) 
       </SmartCard>
 
       <SmartCard icon="pause" title="Freeze frame" lede="Hold the picture at the playhead, then carry on.">
-        <Segmented label="How long" options={HOLD} value={hold} onChange={setHold} />
         {!canFreeze && <p className="smart-note">Move the playhead over this clip first.</p>}
         {error && <p className="smart-note smart-note--error">{error}</p>}
         <div className="smart-actions">
@@ -96,6 +96,9 @@ export function SpeedPanel({ project, clipId, time, onApply }: SpeedPanelProps) 
             {busy ? "Grabbing the frame…" : "Freeze frame at playhead"}
           </Button>
         </div>
+        <MoreSettings>
+          <Segmented label="How long" options={HOLD} value={hold} onChange={setHold} />
+        </MoreSettings>
       </SmartCard>
     </>
   );

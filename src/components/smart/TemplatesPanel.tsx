@@ -26,6 +26,7 @@ import {
 } from "../../templates";
 import type { PackId } from "../../templates/types";
 import { Select } from "../Select";
+import { MoreSettings } from "../MoreSettings";
 
 export interface TemplatesPanelProps {
   /** Imported media; video files can fill slots. */
@@ -76,6 +77,12 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
     );
   }
 
+  // One tap applies a template with the clips you already have; with none, pick them first.
+  const clips = media.some((m) => m.hasVideo)
+    ? media.filter((m) => m.hasVideo)
+    : (project?.tracks.find((t) => t.kind === "video")?.clips ?? [])
+        .flatMap((c) => (c.source?.hasVideo ? [c.source] : []))
+        .filter((m, i, all) => all.findIndex((x) => x.path === m.path) === i);
   const q = query.trim().toLowerCase();
   const shown = TEMPLATES.filter((t) => (pack === "all" || t.pack === pack) && matches(t, q));
   // One row per slot (split layouts put several pieces of one slot on the track).
@@ -89,33 +96,35 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
           <Icon name="templates" size={20} />
           Templates
         </h2>
-        <p className="panel__lede">Ready-made reels. Pick one and drop in your own clips.</p>
+        <p className="panel__lede">Ready-made reels. Tap one to apply it to your clips.</p>
       </div>
       {project && slotted.length > 0 && (
         <SwapSlots project={project} clips={slotted} media={media} dropError={dropError} onApply={onApply} />
       )}
-      {project && <LetterboxPicker project={project} onApply={onApply} />}
-      <input
-        className="tpl-search"
-        type="search"
-        placeholder="Search templates"
-        aria-label="Search templates"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <div className="chips" role="group" aria-label="Template packs">
-        {[{ id: "all" as const, name: "All" }, ...TEMPLATE_PACKS].map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={p.id === pack ? "chip is-active" : "chip"}
-            aria-pressed={p.id === pack}
-            onClick={() => setPack(p.id)}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
+      <MoreSettings label="Filter and look">
+        {project && <LetterboxPicker project={project} onApply={onApply} />}
+        <input
+          className="tpl-search"
+          type="search"
+          placeholder="Search templates"
+          aria-label="Search templates"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div className="chips" role="group" aria-label="Template packs">
+          {[{ id: "all" as const, name: "All" }, ...TEMPLATE_PACKS].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={p.id === pack ? "chip is-active" : "chip"}
+              aria-pressed={p.id === pack}
+              onClick={() => setPack(p.id)}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </MoreSettings>
       {shown.length === 0 ? (
         <p className="tpl-none">No templates match “{query}”. Try another word.</p>
       ) : (
@@ -129,7 +138,12 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
               onClick={() =>
                 t.pro && !can("templates_pro")
                   ? openUpgrade(`The "${t.name}" template is part of Verso Pro.`)
-                  : setPicked(t)
+                  : clips.length
+                    ? onApply(
+                        applyTemplate(t, clips, project, defaultLang(t)),
+                        `"${t.name}" is on. Drag a clip onto a slot to change it.`,
+                      )
+                    : setPicked(t)
               }
             >
               <TemplatePreview template={t} />
@@ -140,6 +154,10 @@ export function TemplatesPanel({ media, project, onApply }: TemplatesPanelProps)
               </span>
               <span className="tpl-card__meta">
                 {Math.round(t.duration)} s · {t.slots.length} clips · {t.musicMood}
+              </span>
+              <span className="tpl-card__apply">
+                <Icon name="check" size={16} />
+                {clips.length ? "Apply" : "Choose clips"}
               </span>
             </button>
           ))}

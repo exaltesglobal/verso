@@ -13,6 +13,7 @@ import {
   withLut,
 } from "../../lib/color";
 import { LevelSlider, SmartCard } from "./parts";
+import { MoreSettings } from "../MoreSettings";
 
 export interface ColorPanelProps {
   project: Project;
@@ -32,7 +33,7 @@ const SLIDERS: { key: SliderKey; label: string; low: string; high: string }[] = 
   { key: "tint", label: "Tint", low: "Greener", high: "Pinker" },
 ];
 
-/** Colour tab: looks, sliders, custom LUTs and auto fix for the selected video clip. */
+/** Colour tab: looks, sliders, custom LUTs (shown as "colour files") and auto fix for the selected video clip. */
 export function ColorPanel({ project, clipId, onApply }: ColorPanelProps) {
   const clip = clipId ? findClip(project, clipId) : undefined;
   const video = clip?.kind === "video" && (clip.source?.hasVideo || clip.still) ? clip : undefined;
@@ -76,7 +77,7 @@ export function ColorPanel({ project, clipId, onApply }: ColorPanelProps) {
       <SmartCard
         icon="filters"
         title="Looks"
-        lede="Tap a look to try it. You can fine-tune it below."
+        lede="Tap a look to try it. Fine-tune it in More settings."
         aside={
           <Button
             icon="one-click"
@@ -120,73 +121,77 @@ export function ColorPanel({ project, clipId, onApply }: ColorPanelProps) {
         </div>
       </SmartCard>
 
-      <SmartCard icon="adjust" title="Adjust" lede="Small changes go a long way.">
-        {SLIDERS.map((s) => (
-          <LevelSlider
-            key={s.key}
-            label={s.label}
-            low={s.low}
-            high={s.high}
-            value={(color[s.key] + 1) / 2}
-            onChange={(v) =>
-              setDraft({ id: video.id, color: { ...color, [s.key]: v * 2 - 1, preset: undefined } })
-            }
-            onCommit={() => draft && commit(draft.color, `${s.label} changed.`)}
-          />
-        ))}
-        <div className="smart-actions">
-          <Button
-            icon="undo"
-            onClick={() => commit({ ...NEUTRAL_COLOR }, "Colours reset.")}
-            disabled={!video.color}
-          >
-            Reset colours
-          </Button>
-        </div>
-      </SmartCard>
-
-      <SmartCard
-        icon="layers"
-        title="Your own LUT"
-        lede="Use a .cube colour file from your camera or editor."
-      >
-        {color.lut ? (
-          <>
+      <MoreSettings>
+        <SmartCard icon="adjust" title="Adjust" lede="Small changes go a long way.">
+          {SLIDERS.map((s) => (
             <LevelSlider
-              label="LUT strength"
-              low="Off"
-              high="Full"
-              value={color.lutStrength}
-              onChange={(v) => setDraft({ id: video.id, color: { ...color, lutStrength: v } })}
-              onCommit={() => draft && commit(draft.color, "LUT strength changed.")}
+              key={s.key}
+              label={s.label}
+              low={s.low}
+              high={s.high}
+              value={(color[s.key] + 1) / 2}
+              onChange={(v) =>
+                setDraft({ id: video.id, color: { ...color, [s.key]: v * 2 - 1, preset: undefined } })
+              }
+              onCommit={() => draft && commit(draft.color, `${s.label} changed.`)}
             />
-            <p className="smart-note">The preview is close. Your export uses the exact LUT.</p>
-          </>
-        ) : null}
-        {error && <p className="smart-note smart-note--error">{error}</p>}
-        <div className="smart-actions">
-          <Button
-            icon="import"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                const lut = await importLut();
-                if (lut) commit(withLut(color, lut), `LUT added: ${lut.title}.`);
-              })
-            }
-          >
-            {color.lut ? "Change LUT" : "Import LUT"}
-          </Button>
-          {color.lut && (
+          ))}
+          <div className="smart-actions">
             <Button
-              icon="delete"
-              onClick={() => commit({ ...color, lut: undefined, lutLook: undefined }, "LUT removed.")}
+              icon="undo"
+              onClick={() => commit({ ...NEUTRAL_COLOR }, "Colours reset.")}
+              disabled={!video.color}
             >
-              Remove LUT
+              Reset colours
             </Button>
-          )}
-        </div>
-      </SmartCard>
+          </div>
+        </SmartCard>
+
+        <SmartCard
+          icon="layers"
+          title="Your own colour file"
+          lede="Use a .cube colour file from your camera or editor."
+        >
+          {color.lut ? (
+            <>
+              <LevelSlider
+                label="Strength"
+                low="Off"
+                high="Full"
+                value={color.lutStrength}
+                onChange={(v) => setDraft({ id: video.id, color: { ...color, lutStrength: v } })}
+                onCommit={() => draft && commit(draft.color, "Colour file strength changed.")}
+              />
+              <p className="smart-note">The preview is close. Your exported reel uses the exact colours.</p>
+            </>
+          ) : null}
+          {error && <p className="smart-note smart-note--error">{error}</p>}
+          <div className="smart-actions">
+            <Button
+              icon="import"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const lut = await importLut();
+                  if (lut) commit(withLut(color, lut), `Colour file added: ${lut.title}.`);
+                })
+              }
+            >
+              {color.lut ? "Change colour file" : "Import colour file"}
+            </Button>
+            {color.lut && (
+              <Button
+                icon="delete"
+                onClick={() =>
+                  commit({ ...color, lut: undefined, lutLook: undefined }, "Colour file removed.")
+                }
+              >
+                Remove colour file
+              </Button>
+            )}
+          </div>
+        </SmartCard>
+      </MoreSettings>
     </>
   );
 }

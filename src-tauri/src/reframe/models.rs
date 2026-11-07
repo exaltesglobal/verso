@@ -90,7 +90,7 @@ pub fn spec(id: &str) -> Result<&'static ModelSpec, String> {
     MODELS
         .iter()
         .find(|m| m.id == id)
-        .ok_or_else(|| format!("We don't know the model \"{id}\"."))
+        .ok_or_else(|| format!("We don't know the AI pack \"{id}\"."))
 }
 
 /// Path of an installed model, if present.
@@ -135,7 +135,7 @@ pub fn download_spec(
         return Ok(dest);
     }
     std::fs::create_dir_all(dir)
-        .map_err(|e| format!("We couldn't create the models folder ({e})."))?;
+        .map_err(|e| format!("We couldn't create the AI packs folder ({e})."))?;
     let part = dest.with_extension("part");
 
     let resp = ureq::get(&mirrored(m.url)).call().map_err(|e| {
@@ -147,7 +147,7 @@ pub fn download_spec(
     let mut body = resp.into_body();
     let mut reader = body.as_reader();
     let mut file =
-        std::fs::File::create(&part).map_err(|e| format!("We couldn't save the model ({e})."))?;
+        std::fs::File::create(&part).map_err(|e| format!("We couldn't save the AI pack ({e})."))?;
     let mut hasher = Sha256::new();
     let mut buf = vec![0u8; 64 * 1024];
     let mut done: u64 = 0;
@@ -161,7 +161,7 @@ pub fn download_spec(
         }
         hasher.update(&buf[..n]);
         file.write_all(&buf[..n])
-            .map_err(|e| format!("We couldn't save the model ({e})."))?;
+            .map_err(|e| format!("We couldn't save the AI pack ({e})."))?;
         done += n as u64;
         let pct = (done as f64 / m.size_bytes as f64 * 100.0)
             .min(100.0)
@@ -180,6 +180,6 @@ pub fn download_spec(
             m.name.to_lowercase()
         ));
     }
-    std::fs::rename(&part, &dest).map_err(|e| format!("We couldn't install the model ({e})."))?;
+    std::fs::rename(&part, &dest).map_err(|e| format!("We couldn't install the AI pack ({e})."))?;
     Ok(dest)
 }

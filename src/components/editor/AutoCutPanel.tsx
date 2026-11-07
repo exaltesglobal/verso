@@ -10,6 +10,8 @@ import { formatDuration, type MediaInfo } from "../../lib/media";
 import { findMoments, projectForMoment, type Moment, type TranscriptWord } from "../../lib/autoclips";
 import type { Project } from "../../lib/project";
 import { Select } from "../Select";
+import { MoreSettings } from "../MoreSettings";
+import { useMode } from "../../lib/modes";
 
 export type Transcriber = (
   media: MediaInfo,
@@ -44,6 +46,8 @@ export function AutoCutPanel({
 }: AutoCutPanelProps) {
   const { can, openUpgrade } = useEntitlements();
   const charge = useCharged();
+  // Quick shows the candidate reels and one button each; nothing else.
+  const quick = useMode() === "quick";
   const videos = media.filter((m) => m.hasVideo && m.hasAudio);
   const [path, setPath] = useState<string | undefined>(videos[0]?.path);
   const source = videos.find((m) => m.path === path) ?? videos[0];
@@ -97,27 +101,20 @@ export function AutoCutPanel({
         </h2>
         <p className="panel__lede">
           {phase.kind === "done"
-            ? `We found ${shown.length} moments in your ${formatDuration(source?.durationSec ?? 0)} video that work as reels. Pick one to start editing.`
+            ? `We found ${shown.length} moments in your ${formatDuration(source?.durationSec ?? 0)} video that work as reels. Pick one to make it.`
             : "Give us a long video. We'll find the moments that work best as reels."}
         </p>
       </div>
 
       {!videos.length ? (
-        <>
-          <div className="empty">
-            <Icon name="import" size={32} />
-            <p>Import a podcast, interview or vlog to begin.</p>
-          </div>
-          <Button
-            icon="import"
-            size="lg"
-            className="btn--block"
-            onClick={() => void onImport()}
-            disabled={importing}
-          >
+        <div className="empty">
+          <Icon name="import" size={32} />
+          <p className="empty__title">Start with a long video</p>
+          <p>Import a podcast, interview or vlog. We find the reels inside it.</p>
+          <Button icon="import" size="lg" onClick={() => void onImport()} disabled={importing}>
             {importing ? "Reading your file…" : "Import a long video"}
           </Button>
-        </>
+        </div>
       ) : (
         phase.kind !== "done" && (
           <>
@@ -154,22 +151,23 @@ export function AutoCutPanel({
         )
       )}
 
-      {phase.kind === "done" && source && (
+      {phase.kind === "done" && source && quick && (
+        <ul className="moment-list">
+          {shown.map((m, i) => (
+            <li key={m.id}>
+              <MomentCard
+                moment={m}
+                media={source}
+                simple
+                onOpen={() => onOpenProject(projectForMoment(source, m, i, shown.length))}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {phase.kind === "done" && source && !quick && (
         <>
-          <label className="slider">
-            <span className="slider__top">
-              <span className="slider__label">Sensitivity (lowest hook score shown)</span>
-              <span className="slider__value">{minScore}</span>
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={90}
-              step={5}
-              value={minScore}
-              onChange={(e) => setMinScore(Number(e.target.value))}
-            />
-          </label>
           <ul className="moment-list">
             {shown.map((m, i) => (
               <li key={m.id}>
@@ -193,9 +191,25 @@ export function AutoCutPanel({
           >
             Make all {shown.length} reels
           </Button>
-          <button type="button" className="btn btn--ghost" onClick={() => setPhase({ kind: "idle" })}>
-            <span>Start over</span>
-          </button>
+          <MoreSettings>
+            <label className="slider">
+              <span className="slider__top">
+                <span className="slider__label">Show only strong hooks (lowest hook score)</span>
+                <span className="slider__value">{minScore}</span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={90}
+                step={5}
+                value={minScore}
+                onChange={(e) => setMinScore(Number(e.target.value))}
+              />
+            </label>
+            <button type="button" className="btn btn--ghost" onClick={() => setPhase({ kind: "idle" })}>
+              <span>Start over</span>
+            </button>
+          </MoreSettings>
         </>
       )}
     </div>
@@ -205,20 +219,36 @@ export function AutoCutPanel({
 function MomentCard({
   moment: m,
   media,
-  selected,
+  simple,
+  selected = false,
   onPick,
   onOpen,
   onReject,
 }: {
   moment: Moment;
   media: MediaInfo;
-  selected: boolean;
-  onPick: () => void;
+  /** Quick: title, length and one "Make this reel" button. */
+  simple?: boolean;
+  selected?: boolean;
+  onPick?: () => void;
   onOpen: () => void;
-  onReject: () => void;
+  onReject?: () => void;
 }) {
   const frames = useFilmstrip(media);
   const thumb = frameAt(frames, media.durationSec, (m.start + m.end) / 2);
+  if (simple)
+    return (
+      <div className="moment is-selected">
+        <span className="moment__thumb">{thumb && <img src={thumb} alt="" />}</span>
+        <span className="moment__text">
+          <span className="moment__title">{m.title}</span>
+          <span className="moment__meta">{formatDuration(m.end - m.start)}</span>
+          <button type="button" className="btn btn--secondary moment__open" onClick={onOpen}>
+            <span>Make this reel</span>
+          </button>
+        </span>
+      </div>
+    );
   return (
     <div
       className={selected ? "moment is-selected" : "moment"}
@@ -242,12 +272,12 @@ function MomentCard({
               className="btn btn--secondary moment__open"
               onClick={(e) => (e.stopPropagation(), onOpen())}
             >
-              <span>Edit this reel</span>
+              <span>Make this reel</span>
             </button>
             <button
               type="button"
               className="btn btn--ghost moment__open"
-              onClick={(e) => (e.stopPropagation(), onReject())}
+              onClick={(e) => (e.stopPropagation(), onReject?.())}
             >
               <span>Not this one</span>
             </button>

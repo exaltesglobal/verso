@@ -30,6 +30,7 @@ import {
   type VoiceProgress,
 } from "../../lib/voice";
 import { Listening, SmartCard } from "./parts";
+import { MoreSettings } from "../MoreSettings";
 
 export interface VoicePanelProps {
   project: Project;
@@ -112,7 +113,9 @@ function Downloads({ packs, need, onDone }: { packs: VoicePack[]; need: string[]
 
   return (
     <div className="voice-downloads">
-      <p className="smart-note">Download once, works offline. Nothing you type leaves your computer.</p>
+      <p className="smart-note">
+        Get the voice AI pack once and it works offline. Nothing you type leaves your computer.
+      </p>
       {missing.map((p) => (
         <div key={p.id} className="voice-download">
           <span className="voice-download__text">
@@ -307,7 +310,6 @@ function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
       lede="Type or paste a script. We add the voice at the playhead."
     >
       <Downloads packs={models.packs} need={packsFor(lang, lang)} onDone={() => void models.reload()} />
-      <LanguageChips label="Language" options={VOICE_LANGUAGES} value={lang} onChange={pickLang} />
       <VoicePicker voices={models.voices} lang={lang} value={voiceId} onChange={setVoiceId} ready={ready} />
       <label className="voice-field">
         <span className="voice-field__label">Script</span>
@@ -324,12 +326,15 @@ function VoiceoverTab({ project, playhead, onApply, models }: TabProps) {
           Use my caption text
         </button>
       )}
-      <Segmented
-        label="Speed"
-        options={Object.keys(SPEEDS) as SpeedName[]}
-        value={speed}
-        onChange={setSpeed}
-      />
+      <MoreSettings>
+        <LanguageChips label="Language" options={VOICE_LANGUAGES} value={lang} onChange={pickLang} />
+        <Segmented
+          label="Speed"
+          options={Object.keys(SPEEDS) as SpeedName[]}
+          value={speed}
+          onChange={setSpeed}
+        />
+      </MoreSettings>
       {busy && <Listening percent={percent} label="Making the voice…" />}
       {error && <p className="smart-note smart-note--error">{error}</p>}
       <div className="smart-actions">
@@ -423,18 +428,26 @@ function DubTab({ project, onApply, onNeedCaptions, models }: TabProps) {
       ) : (
         <>
           {pro && <Downloads packs={models.packs} need={need} onDone={() => void models.reload()} />}
-          <LanguageChips
-            label="My captions are in"
-            options={SOURCE_LANGUAGES}
-            value={from}
-            onChange={pickFrom}
-          />
           <LanguageChips label="Dub into" options={targets} value={to} onChange={pickTo} />
-          <VoicePicker voices={models.voices} lang={to} value={voiceId} onChange={setVoiceId} ready={ready} />
           <p className="smart-note">
             {segments.length} caption {segments.length === 1 ? "line" : "lines"}. Check the translation in
-            Captions afterwards: machine translation can miss slang.
+            Captions afterwards: automatic translation can miss slang.
           </p>
+          <MoreSettings>
+            <LanguageChips
+              label="My captions are in"
+              options={SOURCE_LANGUAGES}
+              value={from}
+              onChange={pickFrom}
+            />
+            <VoicePicker
+              voices={models.voices}
+              lang={to}
+              value={voiceId}
+              onChange={setVoiceId}
+              ready={ready}
+            />
+          </MoreSettings>
           {stage === "translating" && <Listening percent={tPercent} label="Translating…" />}
           {stage === "speaking" && <Listening percent={dPercent} label="Making the voice…" />}
           {error && <p className="smart-note smart-note--error">{error}</p>}

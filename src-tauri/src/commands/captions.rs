@@ -62,7 +62,7 @@ pub async fn download_caption_model(app: AppHandle, id: String) -> Result<(), St
     let spec = models::find(&id)?;
     let dir = models_dir(&app)?;
     if DOWNLOADS.lock().unwrap().contains_key(&id) {
-        return Err("That model is already downloading.".into());
+        return Err("That AI pack is already downloading.".into());
     }
     let flag = register(&DOWNLOADS, &id);
     let result = tauri::async_runtime::spawn_blocking(move || {
@@ -132,7 +132,7 @@ pub fn transcribe(
     let spec = models::find(&model_id)?;
     let dir = models_dir(&app)?;
     if !models::is_present(&dir, spec) {
-        return Err("Download the speech model first. It only takes a minute, once.".into());
+        return Err("Download the captions AI pack first. It only takes a minute, once.".into());
     }
     let model = models::model_path(&dir, spec);
     let job_id = format!("cap{}", NEXT_JOB.fetch_add(1, Ordering::Relaxed));
