@@ -50,6 +50,8 @@ interface ExportDialogProps {
   aspect: AspectRatio;
   onClose: () => void;
   notify: (m: ToastMessage) => void;
+  /** Called when a video export finishes. */
+  onExported?: () => void;
 }
 
 const cleanName = (s: string) => s.replace(/[<>:"/\\|?*]+/g, "").trim();
@@ -61,7 +63,7 @@ function formatEta(sec: number | null) {
   return m === 1 ? "About 1 minute left" : `About ${m} minutes left`;
 }
 
-export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogProps) {
+export function ExportDialog({ project, aspect, onClose, notify, onExported }: ExportDialogProps) {
   const { can, openUpgrade } = useEntitlements();
   const [name, setName] = useState(() => cleanName(project.name) || "My reel");
   const [folder, setFolder] = useState(() => getSettings().exportFolder);
@@ -78,6 +80,10 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
   const [tab, setTab] = useState<(typeof TABS)[number]>("Video");
   const handoff = tab === TABS[1];
   const jobId = useRef<string | null>(null);
+  const exportedRef = useRef(onExported);
+  useEffect(() => {
+    exportedRef.current = onExported;
+  }, [onExported]);
   const running = phase.step === "running";
 
   useEffect(() => {
@@ -104,6 +110,7 @@ export function ExportDialog({ project, aspect, onClose, notify }: ExportDialogP
         if (d.jobId !== jobId.current) return;
         jobId.current = null;
         setPhase({ step: "done", outputPath: d.outputPath });
+        exportedRef.current?.();
         notify({
           tone: "success",
           text: "Your reel is ready.",

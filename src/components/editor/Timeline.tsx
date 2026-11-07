@@ -83,8 +83,12 @@ const STEPS = [
 const zoomToSlider = (z: number) => (Math.log(z / ZOOM_MIN) / Math.log(ZOOM_MAX / ZOOM_MIN)) * 1000;
 const sliderToZoom = (v: number) => ZOOM_MIN * Math.pow(ZOOM_MAX / ZOOM_MIN, v / 1000);
 
+export type TimelineTool = "select" | "razor" | "slip";
+export type TrackFlag = "hidden" | "locked" | "muted";
+
 export type TimelineEdit =
   | { type: "move"; id: string; delta: number }
+  | { type: "slip"; id: string; delta: number }
   | { type: "trim"; id: string; edge: "start" | "end"; time: number }
   | { type: "end" };
 
@@ -122,6 +126,18 @@ interface TimelineProps {
   /** Mutes or unmutes the selected clip (Quick strip). */
   onMute?: () => void;
   selectedMuted?: boolean;
+  /** Studio: track header eye / lock / mute buttons. Shown elsewhere only when a flag is on. */
+  trackToggles?: boolean;
+  onTrackFlag?: (kind: TrackKind, flag: TrackFlag) => void;
+  /** Studio: the second tool row (select, razor, slip, snap, markers). */
+  toolRow?: boolean;
+  tool?: TimelineTool;
+  onTool?: (t: TimelineTool) => void;
+  /** Razor click: split this clip at this timeline time. */
+  onRazor?: (id: string, time: number) => void;
+  markers?: number[];
+  onAddMarker?: () => void;
+  onJumpMarker?: (dir: -1 | 1) => void;
 }
 
 export function Timeline(props: TimelineProps) {
@@ -381,9 +397,77 @@ export function Timeline(props: TimelineProps) {
         )}
       </div>
 
+      {props.toolRow && (
+        <div className="timeline__toolrow" role="toolbar" aria-label="Timeline tools">
+          <IconButton
+            icon="cursor"
+            label="Select"
+            shortcut="V"
+            size={16}
+            aria-pressed={props.tool === "select"}
+            onClick={() => props.onTool?.("select")}
+          />
+          <IconButton
+            icon="split"
+            label="Razor: click a clip to cut it there"
+            shortcut="C"
+            size={16}
+            aria-pressed={props.tool === "razor"}
+            onClick={() => props.onTool?.("razor")}
+          />
+          <IconButton
+            icon="slip"
+            label="Slip: drag to change which part of the clip shows"
+            shortcut="Y"
+            size={16}
+            aria-pressed={props.tool === "slip"}
+            onClick={() => props.onTool?.("slip")}
+          />
+          <span className="timeline__sep" />
+          <IconButton
+            icon="magnet"
+            label={props.snapping ? "Snapping on" : "Snapping off"}
+            shortcut="N"
+            size={16}
+            aria-pressed={props.snapping}
+            onClick={props.onToggleSnap}
+          />
+          <span className="timeline__sep" />
+          <IconButton
+            icon="marker"
+            label="Add marker at playhead"
+            shortcut="M"
+            size={16}
+            onClick={props.onAddMarker}
+          />
+          <IconButton
+            icon="step-back"
+            label="Previous marker"
+            shortcut="Shift+M"
+            size={16}
+            disabled={!props.markers?.length}
+            onClick={() => props.onJumpMarker?.(-1)}
+          />
+          <IconButton
+            icon="step-forward"
+            label="Next marker"
+            shortcut="M"
+            size={16}
+            disabled={!props.markers?.length}
+            onClick={() => props.onJumpMarker?.(1)}
+          />
+          <span className="timeline__toolrow-hint">
+            {props.tool === "razor"
+              ? "Click a clip to cut it"
+              : props.tool === "slip"
+                ? "Drag a clip to slip its content"
+                : `${props.markers?.length ?? 0} markers`}
+          </span>
+        </div>
+      )}
       <div
         ref={scroller}
-        className="timeline__scroll"
+        className={`timeline__scroll timeline__scroll--${props.tool ?? "select"}`}
         onScroll={(e) => {
           const el = e.currentTarget;
           if (playing && !selfScroll.current) manualScroll.current = true;
@@ -406,6 +490,20 @@ export function Timeline(props: TimelineProps) {
               <span key={t} className={`ruler__tick is-l${level}`} style={{ left: x(t) }}>
                 {level === 0 && <span className="ruler__label">{label(t)}</span>}
               </span>
+            ))}
+            {props.markers?.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className="ruler__marker"
+                style={{ left: Math.round(x(m)) }}
+                aria-label={`Marker at ${formatTimecode(m)}`}
+                data-tip={`Marker · ${formatTimecode(m)}`}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  onSeek(m);
+                }}
+              />
             ))}
             {snapAt !== null && (
               <span className="ruler__flag tc" style={{ left: Math.round(x(snapAt)) }}>
@@ -448,6 +546,9 @@ export function Timeline(props: TimelineProps) {
               key={t.kind}
               header={headers}
               thin={isThin(t.kind)}
+              track={t}
+              toggles={!!props.trackToggles}
+              onFlag={(f) => props.onTrackFlag?.(t.kind, f)}
               row={row + 2}
               kind={t.kind}
               label={t.label}
@@ -468,6 +569,9 @@ export function Timeline(props: TimelineProps) {
                   selected={c.id === selectedClip}
                   onSelect={() => onSelectClip(c.id)}
                   onEdit={onEdit}
+                  locked={!!t.locked}
+                  tool={props.tool ?? "select"}
+                  onRazor={(time) => props.onRazor?.(c.id, time)}
                   makeSnapper={() => snapper(linkedIds(project, c.id))}
                   onSnap={setSnapAt}
                   onMenu={(mx, my) => {
@@ -505,6 +609,9 @@ export function Timeline(props: TimelineProps) {
 function TrackRow({
   header,
   thin,
+  track,
+  toggles,
+  onFlag,
   row,
   kind,
   label,
@@ -516,6 +623,9 @@ function TrackRow({
 }: {
   header: boolean;
   thin: boolean;
+  track: { hidden?: boolean; locked?: boolean; muted?: boolean };
+  toggles: boolean;
+  onFlag: (f: TrackFlag) => void;
   row: number;
   kind: TrackKind;
   label: string;
@@ -535,10 +645,40 @@ function TrackRow({
         <div className={`track-head track-head--${kind}`} style={{ gridRow: row }} onContextMenu={menu}>
           <Icon name={TRACK_ICON[kind]} size={16} />
           <span className="track-head__name">{label}</span>
+          <span className="track-head__tg">
+            {kind === "audio" || kind === "music"
+              ? (toggles || track.muted) && (
+                  <IconButton
+                    icon={track.muted ? "volume-off" : "volume"}
+                    label={track.muted ? `Unmute ${label}` : `Mute ${label}`}
+                    size={16}
+                    aria-pressed={!!track.muted}
+                    onClick={() => onFlag("muted")}
+                  />
+                )
+              : (toggles || track.hidden) && (
+                  <IconButton
+                    icon={track.hidden ? "eye-off" : "eye"}
+                    label={track.hidden ? `Show ${label}` : `Hide ${label}`}
+                    size={16}
+                    aria-pressed={!!track.hidden}
+                    onClick={() => onFlag("hidden")}
+                  />
+                )}
+            {(toggles || track.locked) && (
+              <IconButton
+                icon={track.locked ? "lock" : "unlock"}
+                label={track.locked ? `Unlock ${label}` : `Lock ${label}`}
+                size={16}
+                aria-pressed={!!track.locked}
+                onClick={() => onFlag("locked")}
+              />
+            )}
+          </span>
         </div>
       )}
       <div
-        className={`track track--${kind}${count ? "" : " is-empty"}${thin ? " is-thin" : ""}`}
+        className={`track track--${kind}${count ? "" : " is-empty"}${thin ? " is-thin" : ""}${track.hidden ? " is-hidden" : ""}${track.locked ? " is-locked" : ""}`}
         style={{ gridRow: row }}
         onContextMenu={(e) => e.target === e.currentTarget && menu(e)}
         onPointerDown={(e) => {
@@ -568,10 +708,13 @@ interface ClipViewProps {
   makeSnapper: () => (t: number, bypass: boolean) => [number, boolean];
   onSnap: (t: number | null) => void;
   onMenu: (x: number, y: number) => void;
+  locked: boolean;
+  tool: TimelineTool;
+  onRazor: (time: number) => void;
 }
 
 type Drag = {
-  mode: "move" | "start" | "end";
+  mode: "move" | "start" | "end" | "slip";
   x0: number;
   start0: number;
   end0: number;
@@ -591,6 +734,9 @@ function ClipView({
   makeSnapper,
   onSnap,
   onMenu,
+  locked,
+  tool,
+  onRazor,
 }: ClipViewProps) {
   const drag = useRef<Drag | null>(null);
   const widthPx = Math.max(12, Math.round((c.end - c.start) * pps) - 2);
@@ -602,9 +748,16 @@ function ClipView({
   const onPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return;
     onSelect();
+    // A locked track's clips can be selected, never changed.
+    if (locked) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const px = e.clientX - rect.left;
-    const mode = px < EDGE_PX ? "start" : px > rect.width - EDGE_PX ? "end" : "move";
+    if (tool === "razor") {
+      onRazor(c.start + px / pps);
+      return;
+    }
+    const mode =
+      tool === "slip" ? "slip" : px < EDGE_PX ? "start" : px > rect.width - EDGE_PX ? "end" : "move";
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = {
       mode,
@@ -626,7 +779,10 @@ function ClipView({
     const dt = dx / pps;
     // Hold Alt to drag without snapping.
     const bypass = e.altKey;
-    if (d.mode === "move") {
+    if (d.mode === "slip") {
+      onEdit({ type: "slip", id: c.id, delta: dt - d.applied });
+      d.applied = dt;
+    } else if (d.mode === "move") {
       // Snap whichever edge is closer to a snap point.
       let start = d.start0 + dt;
       const len = d.end0 - d.start0;

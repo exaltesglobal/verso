@@ -17,10 +17,10 @@ export interface Layout {
 export type Splitter = "left" | "insp" | "tl";
 
 const KEY = "verso.layout.v1";
-export const DEFAULT_LAYOUT: Layout = { left: 320, insp: 300, tl: 260, leftOpen: true, inspOpen: true };
+export const DEFAULT_LAYOUT: Layout = { left: 296, insp: 384, tl: 260, leftOpen: true, inspOpen: true };
 const LIMITS: Record<Splitter, (h: number) => [number, number]> = {
   left: () => [260, 440],
-  insp: () => [260, 420],
+  insp: () => [320, 480],
   tl: (h) => [180, Math.round(h * 0.55)],
 };
 
@@ -31,7 +31,9 @@ const clamp = (k: Splitter, v: number) => {
 
 function load(): Layout {
   try {
-    return { ...DEFAULT_LAYOUT, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") };
+    const l: Layout = { ...DEFAULT_LAYOUT, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") };
+    // Saved sizes from older versions can be narrower than the panels now need.
+    return { ...l, left: clamp("left", l.left), insp: clamp("insp", l.insp), tl: clamp("tl", l.tl) };
   } catch {
     return DEFAULT_LAYOUT;
   }
@@ -78,7 +80,10 @@ export function useLayout() {
     [commit],
   );
 
-  const reset = useCallback((k: Splitter) => commit({ ...latest.current, [k]: DEFAULT_LAYOUT[k] }, true), [commit]);
+  const reset = useCallback(
+    (k: Splitter) => commit({ ...latest.current, [k]: DEFAULT_LAYOUT[k] }, true),
+    [commit],
+  );
   const toggle = useCallback(
     (k: "leftOpen" | "inspOpen", open?: boolean) =>
       commit({ ...latest.current, [k]: open ?? !latest.current[k] }, true),

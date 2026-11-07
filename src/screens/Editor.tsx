@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ToastMessage } from "../components/ui";
 import { TopBar } from "../components/editor/TopBar";
 import { LeftPanel } from "../components/editor/LeftPanel";
 import { Preview } from "../components/editor/Preview";
 import { Inspector } from "../components/editor/Inspector";
-import { Timeline, type TimelineEdit } from "../components/editor/Timeline";
+import {
+  Timeline,
+  type TimelineEdit,
+  type TimelineTool,
+  type TrackFlag,
+} from "../components/editor/Timeline";
 import { ShortcutSheet } from "../components/ShortcutSheet";
 import { IconButton } from "../components/ui";
 import { clampZoom, useLayout } from "../lib/layout";
@@ -18,8 +23,11 @@ import {
   deleteClip,
   findClip,
   linkedIds,
+  isLocked,
   moveClip,
+  playableProject,
   projectDuration,
+  splitClip,
   splitAtPlayhead,
   trimClip,
   updateClip,
@@ -34,12 +42,13 @@ import { useHistory } from "../lib/useHistory";
 import { replaceCaptions } from "../lib/captions";
 import type { CropPath } from "../lib/reframe";
 import { setMode, useMode, VISIBILITY, type Mode } from "../lib/modes";
-import { actionsFor } from "../lib/oneTap";
+import { actionsFor, oneTap } from "../lib/oneTap";
 import { redoTimeSaved, undoTimeSaved } from "../lib/timeSaved";
 import { useOneTapRunner } from "../components/workspaces/useOneTapRunner";
 import { OneTapPanel } from "../components/workspaces/OneTapPanel";
 import { MakeItBetter } from "../components/workspaces/MakeItBetter";
 import { BusyBlock } from "../components/workspaces/BusyBlock";
+import { ReelChecklist } from "../components/workspaces/ReelChecklist";
 import { CraftWorkspace, QuickWorkspace, StudioWorkspace } from "../components/workspaces/Workspaces";
 
 const WORKSPACE = { quick: QuickWorkspace, craft: CraftWorkspace, studio: StudioWorkspace } as const;
@@ -116,7 +125,46 @@ export function Editor({
       }),
     [],
   );
+  const [tool, setTool] = useState<TimelineTool>("select");
+  const toggleTrack = useCallback(
+    (kind: TrackKind, flag: TrackFlag) =>
+      setProject((p) => ({
+        ...p,
+        tracks: p.tracks.map((t) => (t.kind === kind ? { ...t, [flag]: !t[flag] } : t)),
+      })),
+    [setProject],
+  );
+  const addMarker = useCallback(() => {
+    const at = Math.round(time * FPS) / FPS;
+    setProject((p) => {
+      const ms = p.markers ?? [];
+      // A second press on the same frame removes the marker.
+      const next = ms.some((m) => Math.abs(m - at) < 0.5 / FPS)
+        ? ms.filter((m) => Math.abs(m - at) >= 0.5 / FPS)
+        : [...ms, at].sort((a, b) => a - b);
+      return { ...p, markers: next };
+    });
+  }, [time, setProject]);
+  const jumpMarker = useCallback(
+    (dir: -1 | 1) => {
+      const ms = project.markers ?? [];
+      const t = dir > 0 ? ms.find((m) => m > time + 1e-3) : [...ms].reverse().find((m) => m < time - 1e-3);
+      if (t !== undefined) setTime(t);
+    },
+    [project.markers, time],
+  );
+  const razor = useCallback(
+    (id: string, at: number) => {
+      const { project: next, rightId } = splitClip(project, id, Math.round(at * FPS) / FPS);
+      if (next === project) return;
+      setProject(next);
+      if (rightId) setSelectedClip(rightId);
+    },
+    [project, setProject],
+  );
   const [exporting, setExporting] = useState(false);
+  /** An export finished in this session (ticks "Export" in Quick's checklist). */
+  const [exported, setExported] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [trackMenu, setTrackMenu] = useState<{ kind: TrackKind; x: number; y: number } | null>(null);
@@ -135,6 +183,8 @@ export function Editor({
   }, [time]);
 
   const duration = projectDuration(project);
+  /** What plays and exports: hidden tracks drop out, muted tracks go silent. */
+  const playable = useMemo(() => playableProject(project), [project]);
   const aspect = project.aspect;
 
   // ---------- Playback clock ----------
@@ -205,7 +255,19 @@ export function Editor({
   );
 
   // ---------- Editing ----------
+  const lockedNote = useCallback(
+    () => notify({ tone: "info", text: "That track is locked. Unlock it in the track header to change it." }),
+    [notify],
+  );
+
   const split = useCallback(() => {
+    const target = selectedClip && findClip(project, selectedClip) ? selectedClip : undefined;
+    if (
+      target
+        ? isLocked(project, target)
+        : project.tracks.some((t) => t.locked && (t.kind === "video" || t.kind === "audio"))
+    )
+      return lockedNote();
     const { project: next, rightId } = splitAtPlayhead(project, time, selectedClip || undefined);
     if (next === project) {
       notify({ tone: "info", text: "Move the playhead over a clip to split it." });
@@ -213,15 +275,16 @@ export function Editor({
     }
     setProject(next);
     if (rightId) setSelectedClip(rightId);
-  }, [project, time, selectedClip, setProject, notify]);
+  }, [project, time, selectedClip, setProject, notify, lockedNote]);
 
   const remove = useCallback(
     (ripple = false) => {
       if (!selectedClip || !findClip(project, selectedClip)) return;
+      if (isLocked(project, selectedClip)) return lockedNote();
       setProject((p) => deleteClip(p, selectedClip, ripple));
       setSelectedClip("");
     },
-    [project, selectedClip, setProject],
+    [project, selectedClip, setProject, lockedNote],
   );
 
   const save = useCallback(
@@ -253,6 +316,21 @@ export function Editor({
           break;
         case "trim":
           livePatch((p) => trimClip(p, edit.id, edit.edge, edit.time));
+          break;
+        case "slip":
+          // Slip: the clip stays put; which part of its file shows moves (linked sound too).
+          livePatch((p) => {
+            const c = findClip(p, edit.id);
+            if (!c?.source) return p;
+            const len = c.end - c.start;
+            const inPoint = Math.min(
+              Math.max(0, (c.inPoint ?? 0) - edit.delta),
+              Math.max(0, c.source.durationSec - len),
+            );
+            let next = p;
+            for (const id of linkedIds(p, edit.id)) next = updateClip(next, id, { inPoint });
+            return next;
+          });
           break;
         case "end":
           commit();
@@ -289,7 +367,16 @@ export function Editor({
   );
 
   // ---------- Keyboard ----------
+  // Tooltips show shortcut keys in Studio only (premium.css reads this).
+  useEffect(() => {
+    document.documentElement.dataset.mode = mode;
+    return () => {
+      delete document.documentElement.dataset.mode;
+    };
+  }, [mode]);
   const proShortcuts = vis.proShortcuts;
+  /** Studio extras: timeline tools, markers, track toggles. */
+  const studio = vis.keyframes;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // The target can be the window or document (not an Element) when nothing has focus.
@@ -306,6 +393,14 @@ export function Editor({
         e.code === "Backslash" ||
         ((key === "delete" || key === "backspace") && e.shiftKey);
       if (pro && !proShortcuts) return;
+      if (studio && !mod && ["v", "c", "y", "m"].includes(key)) {
+        if (key === "v") setTool("select");
+        else if (key === "c") setTool("razor");
+        else if (key === "y") setTool("slip");
+        else if (e.shiftKey) jumpMarker(-1);
+        else addMarker();
+        return;
+      }
       if (e.code === "Space") {
         e.preventDefault();
         togglePlay();
@@ -375,6 +470,9 @@ export function Editor({
     toggleFocus,
     toggleSnap,
     proShortcuts,
+    studio,
+    addMarker,
+    jumpMarker,
   ]);
 
   const addToTimeline = useCallback(
@@ -497,6 +595,16 @@ export function Editor({
           onTogglePanel={() => togglePanel("leftOpen")}
           stepsList={stepsList}
           onStepsList={() => setStepsList(true)}
+          stepsFooter={
+            <ReelChecklist
+              project={project}
+              exported={exported}
+              onAddVideo={() => openTab("media")}
+              onCaptions={() => openTab("captions")}
+              onFit={() => void runner.run(oneTap("fit-9-16"))}
+              onExport={startExport}
+            />
+          }
           media={media}
           importing={importing}
           onImport={importAndAdd}
@@ -516,7 +624,7 @@ export function Editor({
       makeItBetter={vis.makeItBetter ? <MakeItBetter project={project} runner={runner} /> : undefined}
       preview={
         <Preview
-          project={project}
+          project={playable}
           duration={duration}
           aspect={aspect}
           onAspect={(a: AspectRatio) => setProject((p) => ({ ...p, aspect: a }))}
@@ -594,6 +702,15 @@ export function Editor({
               : undefined
           }
           selectedMuted={selected?.volume === 0}
+          trackToggles={studio}
+          onTrackFlag={toggleTrack}
+          toolRow={studio}
+          tool={studio ? tool : "select"}
+          onTool={setTool}
+          onRazor={razor}
+          markers={project.markers}
+          onAddMarker={addMarker}
+          onJumpMarker={jumpMarker}
         />
       }
       splitters={
@@ -717,10 +834,11 @@ export function Editor({
           )}
           {exporting && (
             <ExportDialog
-              project={project}
+              project={playable}
               aspect={aspect}
               notify={notify}
               onClose={() => setExporting(false)}
+              onExported={() => setExported(true)}
             />
           )}
           {showShortcuts && <ShortcutSheet onClose={() => setShowShortcuts(false)} />}

@@ -63,6 +63,8 @@ interface LeftPanelProps {
   /** Quick: show the list of steps instead of a panel. */
   stepsList?: boolean;
   onStepsList?: () => void;
+  /** Shown under the steps list (Quick's "Your reel" checklist). */
+  stepsFooter?: ReactNode;
   media: MediaInfo[];
   importing: boolean;
   onImport: () => Promise<void>;
@@ -87,6 +89,7 @@ export function LeftPanel({
   onTogglePanel,
   stepsList,
   onStepsList,
+  stepsFooter,
   media,
   importing,
   onImport,
@@ -199,6 +202,7 @@ export function LeftPanel({
                 </button>
               ))}
             </div>
+            {stepsFooter}
           </div>
         ) : (
           <>

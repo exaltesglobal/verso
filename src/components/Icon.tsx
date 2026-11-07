@@ -73,7 +73,10 @@ export type IconName =
   | "user"
   | "volume-off"
   | "zoom-fit"
-  | "zoom-out";
+  | "zoom-out"
+  | "cursor"
+  | "marker"
+  | "slip";
 
 interface IconProps {
   name: IconName;

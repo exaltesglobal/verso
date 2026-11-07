@@ -190,8 +190,23 @@ fn render(recipe: &Recipe, out: &PathBuf) -> Result<(), String> {
         let _ = std::fs::remove_file(&tmp);
         return Err(format!("We couldn't make the {} sound.", recipe.name));
     }
-    std::fs::rename(&tmp, out).map_err(|e| e.to_string())
+    match std::fs::rename(&tmp, out) {
+        Ok(()) => Ok(()),
+        // Another call finished the same sound first: that file is just as good.
+        Err(_) if out.is_file() => {
+            let _ = std::fs::remove_file(&tmp);
+            Ok(())
+        }
+        Err(_) => Err(format!(
+            "We couldn't save the {} sound. Check there is free space on your drive and try again.",
+            recipe.name
+        )),
+    }
 }
+
+/// One library build at a time: the panel can ask twice at once (React StrictMode,
+/// quick tab switches), and two renders racing on the same temp file used to fail.
+static LIBRARY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Lists the built-in sounds, rendering any that aren't on disk yet.
 /// Files are allowed on the asset protocol so the app can preview them.
@@ -200,6 +215,7 @@ pub async fn sound_library(app: tauri::AppHandle) -> Result<Vec<SoundItem>, Stri
     let dir = sounds_dir(&app)?;
     let handle = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
+        let _guard = LIBRARY_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let mut out = Vec::new();
         for r in RECIPES {
             let path = dir.join(format!("{}.m4a", r.id));
@@ -219,5 +235,5 @@ pub async fn sound_library(app: tauri::AppHandle) -> Result<Vec<SoundItem>, Stri
         Ok(out)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|_| "We couldn't get the sound library ready. Try again.".to_string())?
 }

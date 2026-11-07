@@ -2058,3 +2058,224 @@ kbd {
 .hero__payoff {
   color: var(--ui-t2);
 }
+
+/* ---------- Review fixes: content fits every panel width, no horizontal scrollbars ---------- */
+.look-picks {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.look-pick {
+  min-width: 0;
+}
+
+.look-pick__sw {
+  width: 100%;
+  max-width: var(--ui-swatch);
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.chip,
+.tile,
+.one-tap-chip {
+  min-width: 0;
+}
+
+.chip {
+  overflow: hidden;
+  padding: 0 6px;
+}
+
+.inspector__body,
+.panel__body,
+.quick-options {
+  overflow-x: hidden;
+}
+
+.pro {
+  top: 6px;
+  right: 6px;
+}
+
+/* Quick: "Your reel" checklist under the steps. */
+.reel-check {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-hair);
+}
+
+.reel-check__title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.reel-check__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reel-check__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--ui-r-md);
+  color: var(--ui-t2);
+  text-align: left;
+}
+
+.reel-check__item:hover {
+  background: var(--ui-bg-raised);
+  color: var(--ui-t1);
+}
+
+.reel-check__tick {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--ui-border-strong);
+  color: #0b0b0f;
+}
+
+.reel-check__item.is-done {
+  color: var(--ui-t1);
+}
+
+.reel-check__item.is-done .reel-check__tick {
+  background: var(--ui-t1);
+  border-color: var(--ui-t1);
+}
+
+.reel-check__tick .vs-icon {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.reel-check__saved {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ui-t3);
+}
+
+.one-tap-chip--more {
+  flex: none;
+}
+
+/* ---------- Studio: what makes it different from Craft ---------- */
+/* Shortcut keys in tooltips: Studio only. */
+html:not([data-mode="studio"]) .tooltip .kbd {
+  display: none;
+}
+
+/* Visible drag handles between panels. */
+.editor--studio .splitter::after {
+  background: var(--ui-border);
+}
+
+.editor--studio .splitter::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  border-radius: 1px;
+  background: var(--ui-t3);
+  opacity: 0.6;
+}
+
+.editor--studio .splitter--v::before {
+  top: 50%;
+  left: 1px;
+  width: 4px;
+  height: 28px;
+  margin-top: -14px;
+  background: repeating-linear-gradient(to bottom, var(--ui-t3) 0 2px, transparent 2px 5px);
+}
+
+.editor--studio .splitter--h::before {
+  left: 50%;
+  top: 1px;
+  height: 4px;
+  width: 28px;
+  margin-left: -14px;
+  background: repeating-linear-gradient(to right, var(--ui-t3) 0 2px, transparent 2px 5px);
+}
+
+.editor--studio .splitter:hover::before {
+  opacity: 1;
+}
+
+/* Second tool row. */
+.timeline:has(.timeline__toolrow) {
+  grid-template-rows: 32px 32px minmax(0, 1fr);
+}
+
+.timeline__toolrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-bg-panel);
+}
+
+.timeline__toolrow .icon-btn {
+  width: 28px;
+  height: 24px;
+}
+
+.timeline__toolrow-hint {
+  margin-left: 8px;
+  color: var(--ui-t3);
+  font-size: 11px;
+}
+
+.timeline__scroll--razor .clip {
+  cursor: crosshair;
+}
+
+.timeline__scroll--slip .clip {
+  cursor: ew-resize;
+}
+
+/* Track header toggles. */
+.track-head__tg {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.track-head__tg .icon-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+.track.is-hidden .clip {
+  opacity: 0.35;
+}
+
+.track.is-locked {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 6px, transparent 6px 12px);
+}
+
+/* Markers on the ruler: small Paper flags; click to jump. */
+.ruler__marker {
+  position: absolute;
+  top: 0;
+  width: 9px;
+  height: 10px;
+  margin-left: -4px;
+  padding: 0;
+  background: var(--ui-tr-text);
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
+  z-index: 2;
+}

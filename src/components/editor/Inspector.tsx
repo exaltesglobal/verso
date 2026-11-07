@@ -69,6 +69,8 @@ export function Inspector({
 }: InspectorProps) {
   // Speed ramps are keyframed: a Studio control.
   const showRamp = useVisibility().keyframes;
+  // Studio shows the scrubbable rows straight away; Quick and Craft keep them one tap away.
+  const studioOpen = showRamp;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const kind = clip ? KIND[clip.kind] : null;
   return (
@@ -129,7 +131,10 @@ export function Inspector({
             {clip.source?.hasAudio && (
               <VoiceGroup project={project} clip={clip} onChange={onChange} onApply={onApply} />
             )}
-            <MoreSettings defaultOpen={false} persistKey="verso.inspector.more.v1">
+            <MoreSettings
+              defaultOpen={studioOpen}
+              persistKey={studioOpen ? undefined : "verso.inspector.more.v1"}
+            >
               <VideoAdvanced key={clip.id} clip={clip} onChange={onChange} />
               <p className="advhead">Transition in</p>
               <TransitionChips clip={clip} onChange={onChange} />
@@ -160,7 +165,10 @@ export function Inspector({
                 <CutToBeatToggle project={project} clip={clip} onApply={onApply} />
               </Group>
             )}
-            <MoreSettings defaultOpen={false} persistKey="verso.inspector.more.v1">
+            <MoreSettings
+              defaultOpen={studioOpen}
+              persistKey={studioOpen ? undefined : "verso.inspector.more.v1"}
+            >
               <AudioProps clip={clip} onChange={onChange} />
               {clip.kind === "audio" && (
                 <>
@@ -341,6 +349,7 @@ function AudioProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip
 }
 
 function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>) => void }) {
+  const studioOpen = useVisibility().keyframes;
   const style: TextStyle = clip.style ?? {
     preset: "subtitle",
     y: 0.7,
@@ -400,7 +409,7 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
           ))}
         </div>
       </Group>
-      <MoreSettings defaultOpen={false} persistKey="verso.inspector.more.v1">
+      <MoreSettings defaultOpen={studioOpen} persistKey={studioOpen ? undefined : "verso.inspector.more.v1"}>
         <p className="advhead">Advanced</p>
         <ScrubNumber
           label="Size"

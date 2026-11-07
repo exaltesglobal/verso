@@ -148,6 +148,12 @@ export interface Track {
   kind: TrackKind;
   label: string;
   clips: Clip[];
+  /** Eye off: the track neither plays nor exports. Optional, so older .verso files load as before. */
+  hidden?: boolean;
+  /** Locked: its clips can't be moved, trimmed, split or deleted. */
+  locked?: boolean;
+  /** Muted (Sound and Music): plays and exports silent. */
+  muted?: boolean;
 }
 
 export interface Project {
@@ -167,6 +173,8 @@ export interface Project {
   look?: Look;
   /** Template this reel was built from (see applyTemplate). */
   templateId?: string;
+  /** Timeline markers, in seconds (Studio). */
+  markers?: number[];
 }
 
 export const TRACK_ORDER: { kind: TrackKind; label: string }[] = [
@@ -500,3 +508,39 @@ export function snapPoints(project: Project, exclude: Set<string>, playhead: num
 export function linkedIds(project: Project, id: string) {
   return groupIds(project, id);
 }
+
+/**
+ * The project as it plays and exports: hidden tracks drop out (a hidden video
+ * track keeps its timing but shows nothing) and muted tracks go silent. The
+ * preview plays sound from video clips, so muting Sound also silences those.
+ */
+export function playableProject(project: Project): Project {
+  if (!project.tracks.some((t) => t.hidden || t.muted)) return project;
+  const soundMuted = project.tracks.some((t) => t.kind === "audio" && (t.muted || t.hidden));
+  return {
+    ...project,
+    tracks: project.tracks.map((t) => {
+      if (t.kind === "video") {
+        if (!t.hidden && !soundMuted) return t;
+        return {
+          ...t,
+          clips: t.clips.map((c) => ({
+            ...c,
+            ...(t.hidden && { opacity: 0 }),
+            ...(soundMuted && { volume: 0 }),
+          })),
+        };
+      }
+      if (t.hidden) return { ...t, clips: [] };
+      if (t.muted) return { ...t, clips: t.clips.map((c) => ({ ...c, volume: 0 })) };
+      return t;
+    }),
+  };
+}
+
+/** The track a clip sits on. */
+export const trackOf = (project: Project, clipId: string) =>
+  project.tracks.find((t) => t.clips.some((c) => c.id === clipId));
+
+/** True when the clip sits on a locked track. */
+export const isLocked = (project: Project, clipId: string) => !!trackOf(project, clipId)?.locked;

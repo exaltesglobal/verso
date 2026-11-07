@@ -240,24 +240,20 @@ export function Preview({
           </div>
         )}
         <div className="transport__buttons">
-          {full_ && (
-            <>
-              <IconButton
-                icon="skip-start"
-                label="Go to start"
-                shortcut="Home"
-                disabled={empty}
-                onClick={() => onSeek(0)}
-              />
-              <IconButton
-                icon="step-back"
-                label="Back 1 frame"
-                shortcut="←"
-                disabled={empty}
-                onClick={() => onSeek(Math.max(0, Math.round((time - 1 / FPS) * FPS) / FPS))}
-              />
-            </>
-          )}
+          <IconButton
+            icon="skip-start"
+            label="Go to start"
+            shortcut="Home"
+            disabled={empty}
+            onClick={() => onSeek(0)}
+          />
+          <IconButton
+            icon="step-back"
+            label="Back 1 frame"
+            shortcut="←"
+            disabled={empty}
+            onClick={() => onSeek(Math.max(0, Math.round((time - 1 / FPS) * FPS) / FPS))}
+          />
           <button
             type="button"
             className="play-btn"
@@ -270,24 +266,20 @@ export function Preview({
           >
             <Icon name={playing ? "pause" : "play"} size={20} />
           </button>
-          {full_ && (
-            <>
-              <IconButton
-                icon="step-forward"
-                label="Forward 1 frame"
-                shortcut="→"
-                disabled={empty}
-                onClick={() => onSeek(Math.min(duration, Math.round((time + 1 / FPS) * FPS) / FPS))}
-              />
-              <IconButton
-                icon="skip-end"
-                label="Go to end"
-                shortcut="End"
-                disabled={empty}
-                onClick={() => onSeek(duration)}
-              />
-            </>
-          )}
+          <IconButton
+            icon="step-forward"
+            label="Forward 1 frame"
+            shortcut="→"
+            disabled={empty}
+            onClick={() => onSeek(Math.min(duration, Math.round((time + 1 / FPS) * FPS) / FPS))}
+          />
+          <IconButton
+            icon="skip-end"
+            label="Go to end"
+            shortcut="End"
+            disabled={empty}
+            onClick={() => onSeek(duration)}
+          />
         </div>
       </div>
       {menu && (
