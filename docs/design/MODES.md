@@ -157,3 +157,13 @@ Dropping a file anywhere on the Welcome screen starts the right flow. A
 landscape video longer than 2 minutes opens Auto-cut; anything else opens for
 editing. In Quick, Auto-cut shows only candidate reel cards, each with "Make
 this reel".
+
+## Visual styling
+
+The look of all three workspaces comes from `src/styles/premium.css`, which
+implements `docs/design/premium-ui/PREMIUM-UI-SPEC.md` and is loaded after
+the other stylesheets. Craft is the mock's layout with the spec's fixed panel
+sizes. Studio uses the same chrome with drag-to-resize panels. Quick uses the
+same components (tiles, chips, 36px panel headers, clip strip) in its steps
+layout. Before-and-after screenshots for each restyle step are in
+`docs/screenshots/premium/`.

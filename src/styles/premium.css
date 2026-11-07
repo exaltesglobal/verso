@@ -1743,3 +1743,318 @@ kbd {
     bottom: calc(var(--tl-h, var(--ui-tl-h)) + 56px);
   }
 }
+
+/* ---------- 6. Panels and dialogs on the same primitives ---------- */
+
+/* Headings inside panels read like group titles: 12/600 Paper, no caps. */
+.section-label {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ui-t1);
+}
+
+/* Cards (Magic, Voice, Boost): one surface with a hairline, 6px radius. */
+.smart-card,
+.moment,
+.quick-options__confirm,
+.quick-options__summary {
+  padding: 12px;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  box-shadow: none;
+}
+
+.smart-card h3,
+.smart-card__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.smart-card p,
+.smart-card__lede {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ui-t3);
+}
+
+/* Big choices: tiles with the Glow selection ring. */
+.style-tile,
+.text-preset,
+.cap-style,
+.cap-choice,
+.export__quality,
+.tpl-card,
+.step-card,
+.quick-choice {
+  border-radius: var(--ui-r-md);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-surface);
+  box-shadow: none;
+}
+
+.style-tile:hover,
+.text-preset:hover,
+.cap-style:hover,
+.cap-choice:hover,
+.export__quality:hover,
+.tpl-card:hover,
+.step-card:hover,
+.quick-choice:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-surface);
+}
+
+.style-tile.is-active,
+.style-tile[aria-pressed="true"],
+.cap-style.is-active,
+.cap-style[aria-checked="true"],
+.cap-choice.is-active,
+.cap-choice[aria-checked="true"],
+.export__quality.is-active,
+.export__quality[aria-checked="true"],
+.tpl-card.is-active {
+  border-color: var(--ui-glow);
+  box-shadow: inset 0 0 0 1px var(--ui-glow);
+}
+
+.export__quality-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.export__quality-hint,
+.export__hint {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ui-t3);
+}
+
+.export__label,
+.field__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t2);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Text inputs: 28px surface fields with the Glow focus border. */
+.field__input,
+.export__input,
+.quick-options__text {
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: var(--ui-r-sm);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t1);
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.field__input:hover,
+.export__input:hover {
+  border-color: var(--ui-border-strong);
+}
+
+.field__input:focus,
+.export__input:focus,
+.quick-options__text:focus {
+  border-color: var(--ui-glow);
+  outline: none;
+}
+
+/* Empty states: one muted icon, a 13/600 line, one helper line, one button. */
+.empty {
+  gap: 6px;
+  padding: 24px 12px;
+  color: var(--ui-t3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.empty .vs-icon {
+  color: var(--ui-t-disabled);
+}
+
+.empty__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+/* Dialogs: overlay surface, 8px radius, 13/600 titles, hairline head and foot. */
+.modal {
+  border-radius: var(--ui-r-lg);
+  background: var(--ui-bg-overlay);
+  box-shadow: var(--ui-e2);
+  border: 0;
+}
+
+.modal__head {
+  min-height: 44px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--ui-hair);
+}
+
+.modal__title {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.modal__body {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ui-t2);
+}
+
+.modal__foot {
+  border-top: 1px solid var(--ui-hair);
+}
+
+/* Quick: Make it better chips and the steps list on the same chip and tile primitives. */
+.one-tap-chip {
+  height: 28px;
+  border-radius: var(--ui-r-md);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg-surface);
+  color: var(--ui-t2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.one-tap-chip:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-surface);
+  color: var(--ui-t1);
+}
+
+.one-tap-chip .vs-icon {
+  color: var(--ui-t3);
+}
+
+.make-better {
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ui-hair);
+  background: var(--ui-bg-app);
+}
+
+.make-better__label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.quick-options {
+  padding: 0 var(--ui-ipad) 8px;
+  gap: 8px;
+}
+
+.quick-options > .panel__head:first-child {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  min-height: 36px;
+  margin: 0 calc(-1 * var(--ui-ipad));
+  padding: 0 8px 0 var(--ui-ipad);
+  border-bottom: 1px solid var(--ui-hair);
+}
+
+.quick-options > .panel__head:first-child .panel__lede {
+  display: none;
+}
+
+.step-card {
+  padding: 10px 12px;
+}
+
+.step-card__icon {
+  width: 36px;
+  height: 36px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-t2);
+}
+
+.step-card__title {
+  font-size: 12px;
+}
+
+.step-card__body {
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.quick-choice {
+  height: 36px;
+  font-size: 12px;
+  color: var(--ui-t1);
+}
+
+.quick-choice .vs-icon {
+  color: var(--ui-t3);
+}
+
+.busy-block__card {
+  background: var(--ui-bg-overlay);
+  box-shadow: var(--ui-e2);
+  font-size: 12px;
+  color: var(--ui-t1);
+}
+
+.export__qualities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.export__quality {
+  padding: 8px 12px;
+}
+
+.quick-options .panel__title {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.quick-choice--danger,
+.quick-choice--danger .vs-icon {
+  color: #f87171;
+}
+
+.quick-options > .panel__head:first-child {
+  align-self: stretch;
+  justify-content: flex-start;
+}
+
+.quick-options > .panel__head:first-child .panel__title {
+  flex: 1;
+}
+
+.quick-options > .panel__head:first-child {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* Body text defaults to t2 now; headings that relied on the old Paper default keep it. */
+.hero,
+.recent__head h2,
+.action-card__title,
+.recent-card__name,
+.settings__title,
+.settings__heading,
+.settings__label {
+  color: var(--ui-t1);
+}
+
+.hero__payoff {
+  color: var(--ui-t2);
+}

@@ -43,7 +43,7 @@ pub const PACKS: &[PackSpec] = &[
     PackSpec {
         id: VOICE,
         name: "Voices",
-        purpose: "Speaks English and Hindi (Kokoro-82M)",
+        purpose: "Speaks English and Hindi",
         licence: "Apache-2.0",
         files: &[
             file!(
@@ -128,7 +128,7 @@ pub const PACKS: &[PackSpec] = &[
     PackSpec {
         id: EN_INDIC,
         name: "Translate from English",
-        purpose: "English to Hindi, Marathi and other Indian languages (IndicTrans2)",
+        purpose: "English to Hindi, Marathi and other Indian languages",
         licence: "MIT",
         files: &[
             file!(
@@ -178,7 +178,7 @@ pub const PACKS: &[PackSpec] = &[
     PackSpec {
         id: INDIC_EN,
         name: "Translate to English",
-        purpose: "Hindi, Marathi and Hinglish to English (IndicTrans2)",
+        purpose: "Hindi, Marathi and Hinglish to English",
         licence: "MIT",
         files: &[
             file!(
