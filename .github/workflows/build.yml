@@ -229,7 +229,9 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           cd dist
-          sha256sum *.dmg *.exe *.msi > SHA256SUMS.txt
+          # Artifacts keep their bundle subfolders (dmg/, nsis/, msi/); list installers by file name only.
+          find . -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.msi' \) -exec sha256sum {} + | sed 's#  .*/#  #' > SHA256SUMS.txt
+          test -s SHA256SUMS.txt
           cat SHA256SUMS.txt
           gh release upload "$TAG" SHA256SUMS.txt --clobber
           # Keep the release as a draft; the owner publishes it by hand when ready.
