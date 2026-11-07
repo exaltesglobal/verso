@@ -16,12 +16,14 @@ mkdir -p "$WORK"
 cd "$WORK/onnxruntime"
 ./build.sh --config Release --build_dir "$WORK/build" --parallel --skip_tests --skip_submodule_sync \
   --compile_no_warning_as_error --cmake_extra_defines CMAKE_OSX_ARCHITECTURES="$(uname -m)" \
-  onnxruntime_BUILD_UNIT_TESTS=OFF
+  onnxruntime_BUILD_UNIT_TESTS=OFF onnxruntime_USE_TELEMETRY=OFF
+# re2 backs the RegexFullMatch kernel but is not part of the default targets in 1.31.
+cmake --build "$WORK/build/Release" --target re2 --parallel
 
 # Keep only the static libraries, in the same layout.
 cd "$WORK/build"
 find Release -name '*.a' -print0 | while IFS= read -r -d '' f; do
   mkdir -p "$OUT/$(dirname "$f")" && cp "$f" "$OUT/$f"
 done
-ls "$OUT/Release/libonnxruntime_common.a" >/dev/null
+ls "$OUT/Release/libonnxruntime_common.a" "$OUT/Release/_deps/re2-build/libre2.a" >/dev/null
 echo "ORT_LIB_LOCATION=$OUT/Release"

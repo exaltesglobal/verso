@@ -104,20 +104,11 @@ jobs:
         run: |
           rt="$(clang -print-resource-dir)/lib/darwin/libclang_rt.osx.a"
           ls "$rt"
-          echo "CARGO_TARGET_$(echo '${{ matrix.target }}' | tr 'a-z-' 'A-Z_')_RUSTFLAGS=-C link-arg=$rt" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_$(echo '${{ matrix.target }}' | tr 'a-z-' 'A-Z_')_RUSTFLAGS=-C link-arg=$rt -C link-arg=-lsqlite3" >> "$GITHUB_ENV"
       - name: Use ONNX Runtime (Intel Mac)
         if: matrix.build_ort
         shell: bash
-        run: |
-          # ONNX Runtime 1.31 fetches re2 but no longer builds it, while ort-sys still links `re2`.
-          # An empty archive satisfies the link; the linker would report any re2 symbol ORT really needs.
-          re2="ort-out/Release/_deps/re2-build"
-          if [ ! -f "$re2/libre2.a" ]; then
-            mkdir -p "$re2"
-            echo 'static int verso_re2_stub;' | clang -x c -c -o "$re2/stub.o" -
-            ar rcs "$re2/libre2.a" "$re2/stub.o"
-          fi
-          echo "ORT_LIB_LOCATION=$PWD/ort-out/Release" >> "$GITHUB_ENV"
+        run: echo "ORT_LIB_LOCATION=$PWD/ort-out/Release" >> "$GITHUB_ENV"
       - name: FFmpeg sidecars (macOS)
         if: runner.os == 'macOS'
         shell: bash
