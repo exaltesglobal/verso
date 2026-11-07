@@ -35,3 +35,5 @@ src-tauri/binaries/
 
 # Generated in CI by .github/workflows/build.yml
 src-tauri/tauri.release.conf.json
+site/dist/
+site/waitlist-data/

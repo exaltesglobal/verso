@@ -1,5 +1,6 @@
 <title>Verso</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
 <meta name="description" content="Verso turns long videos into finished reels on your own computer. Auto-cut, vertical reframe and captions in Hindi, Marathi and Hinglish.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -591,6 +592,7 @@ footer a:hover{color:var(--paper)}
             <label class="opt"><input type="radio" id="os-mac" name="os" value="mac"><span>Mac</span></label>
           </div>
         </fieldset>
+        <input type="text" id="hp" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
         <div class="done" role="status"><b>You're on the list.</b><span>We'll email you when your batch opens. Keep an eye on your inbox.</span></div>
       </form>
     </div>
@@ -733,11 +735,29 @@ document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>set
 setMode('quick');
 
 /* ---------- waitlist ---------- */
-document.querySelectorAll('form[data-wl]').forEach(f=>f.addEventListener('submit',e=>{
+const big=document.querySelector('form.big');
+async function joinList(data){
+  try{
+    const r=await fetch('/waitlist.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    return r.ok;
+  }catch(e){ return false; }
+}
+function payload(email){
+  return { email, make:[...big.querySelectorAll('input[name=make]:checked')].map(i=>i.value),
+    os:(big.querySelector('input[name=os]:checked')||{}).value||'', lang:document.documentElement.lang||'en', hp:(document.getElementById('hp')||{}).value||'' };
+}
+document.querySelectorAll('form[data-wl]').forEach(f=>f.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(f.classList.contains('big')){ f.classList.add('sent'); return; }
-  const em=f.querySelector('input').value; const big=document.querySelector('form.big'); big.querySelector('#email2').value=em;
-  document.getElementById('download').scrollIntoView({behavior: reduce?'auto':'smooth'}); setTimeout(()=>big.classList.add('sent'),500);
+  const email=f.querySelector('input[type=email]').value.trim();
+  const btn=f.querySelector('button'); btn.disabled=true;
+  if(f!==big){ big.querySelector('#email2').value=email; document.getElementById('download').scrollIntoView({behavior: reduce?'auto':'smooth'}); }
+  const ok=await joinList(payload(email));
+  btn.disabled=false;
+  const done=big.querySelector('.done');
+  if(!ok){ done.querySelector('b').textContent='That didn\'t go through.'; done.querySelector('span').textContent='Please check your connection and try again in a moment.'; }
+  else { done.querySelector('b').textContent='You\'re on the list.'; done.querySelector('span').textContent='We\'ll email you when your batch opens. Keep an eye on your inbox.'; }
+  big.classList.add('sent');
+  if(!ok) setTimeout(()=>big.classList.remove('sent'),3500);
 }));
 
 /* ---------- languages (hero + nav; full-page translation in the build) ---------- */
