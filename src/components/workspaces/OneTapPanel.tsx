@@ -10,8 +10,8 @@ import type { OneTapRunner } from "./useOneTapRunner";
 const KIND: Record<TrackKind, { label: string; icon: IconName }> = {
   text: { label: "Text", icon: "text" },
   captions: { label: "Caption", icon: "captions" },
-  video: { label: "Video clip", icon: "play" },
-  audio: { label: "Sound", icon: "volume" },
+  video: { label: "Video clip", icon: "video" },
+  audio: { label: "Sound", icon: "voiceover" },
   music: { label: "Music", icon: "music" },
 };
 

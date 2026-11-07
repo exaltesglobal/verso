@@ -76,7 +76,11 @@ export type IconName =
   | "zoom-out"
   | "cursor"
   | "marker"
-  | "slip";
+  | "slip"
+  // Drawn for the premium shell (docs/design/premium-ui, the mock's <defs>).
+  | "boost"
+  | "speaker"
+  | "video";
 
 interface IconProps {
   name: IconName;

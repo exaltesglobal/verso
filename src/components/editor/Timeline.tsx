@@ -49,7 +49,7 @@ const THIN_H = 12;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
-  video: "play",
+  video: "video",
   audio: "voiceover",
   music: "music",
 };
@@ -649,7 +649,7 @@ function TrackRow({
             {kind === "audio" || kind === "music"
               ? (toggles || track.muted) && (
                   <IconButton
-                    icon={track.muted ? "volume-off" : "volume"}
+                    icon={track.muted ? "volume-off" : "speaker"}
                     label={track.muted ? `Unmute ${label}` : `Mute ${label}`}
                     size={16}
                     aria-pressed={!!track.muted}

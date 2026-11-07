@@ -32,8 +32,8 @@ interface InspectorProps {
 const KIND: Record<TrackKind, { label: string; icon: IconName; colour: string }> = {
   text: { label: "Text", icon: "text", colour: "var(--ui-track-text)" },
   captions: { label: "Caption", icon: "captions", colour: "var(--ui-track-captions)" },
-  video: { label: "Video clip", icon: "play", colour: "var(--ui-track-video)" },
-  audio: { label: "Sound", icon: "volume", colour: "var(--ui-track-audio)" },
+  video: { label: "Video clip", icon: "video", colour: "var(--ui-track-video)" },
+  audio: { label: "Sound", icon: "voiceover", colour: "var(--ui-track-audio)" },
   music: { label: "Music", icon: "music", colour: "var(--ui-track-audio)" },
 };
 
