@@ -1,11 +1,30 @@
 import type { FastifyBaseLogger } from 'fastify';
+import nodemailer from 'nodemailer';
 import type { Config } from './config.js';
 
 export type Mail = { to: string; subject: string; text: string; html: string };
 export type Mailer = { send: (mail: Mail) => Promise<void> };
 
-/** Resend when RESEND_API_KEY is set; otherwise the email is printed to the log (local dev). */
+/** SMTP when SMTP_HOST is set, else Resend when RESEND_API_KEY is set; otherwise the email is printed to the log (local dev). */
 export function createMailer(config: Config, log: FastifyBaseLogger): Mailer {
+  if (config.SMTP_HOST) {
+    const transport = nodemailer.createTransport({
+      host: config.SMTP_HOST,
+      port: config.SMTP_PORT,
+      secure: config.SMTP_PORT === 465, // 465 = implicit TLS; 587 upgrades with STARTTLS
+      auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS ?? '' } : undefined,
+    });
+    return {
+      async send(mail) {
+        try {
+          await transport.sendMail({ from: config.EMAIL_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html });
+        } catch (err) {
+          log.error({ err: (err as Error).message }, 'SMTP rejected email');
+          throw new Error('email_send_failed');
+        }
+      },
+    };
+  }
   if (!config.RESEND_API_KEY) {
     return {
       async send(mail) {

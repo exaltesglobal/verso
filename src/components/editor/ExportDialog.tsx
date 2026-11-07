@@ -36,7 +36,7 @@ const QUALITIES: { value: ExportQuality; title: string; hint: string }[] = [
 const PRESETS: { id: string; title: string; hint: string; aspect: AspectRatio; quality: ExportQuality }[] = [
   { id: "reel", title: "Reel", hint: "Instagram, 9:16", aspect: "9:16", quality: "standard" },
   { id: "short", title: "Short", hint: "YouTube Shorts, 9:16", aspect: "9:16", quality: "standard" },
-  { id: "story", title: "Story", hint: "Stories, 9:16", aspect: "9:16", quality: "draft" },
+  { id: "feed", title: "Feed post", hint: "Instagram feed, 4:5", aspect: "4:5", quality: "standard" },
   { id: "youtube", title: "YouTube 16:9", hint: "Wide video", aspect: "16:9", quality: "high" },
 ];
 
@@ -68,10 +68,10 @@ export function ExportDialog({ project, aspect, onClose, notify, onExported }: E
   const [name, setName] = useState(() => cleanName(project.name) || "My reel");
   const [folder, setFolder] = useState(() => getSettings().exportFolder);
   const [quality, setQuality] = useState<ExportQuality>(() => {
-    const q = getSettings().exportQuality;
+    const q = project.quality ?? getSettings().exportQuality;
     return q === "ultra" && !can("export_4k") ? "high" : q;
   });
-  const [fps, setFps] = useState(30);
+  const [fps, setFps] = useState(project.fps ?? 30);
   const [outAspect, setOutAspect] = useState<AspectRatio>(aspect);
   const [preset, setPreset] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ step: "setup" });
@@ -335,8 +335,13 @@ export function ExportDialog({ project, aspect, onClose, notify, onExported }: E
             <span className="export__label" id="export-fps">
               Smoothness
             </span>
-            <div className="export__qualities" role="radiogroup" aria-labelledby="export-fps">
+            <div
+              className="export__qualities export__qualities--3"
+              role="radiogroup"
+              aria-labelledby="export-fps"
+            >
               {[
+                { value: 24, title: "24 fps", hint: "The film look." },
                 { value: 30, title: "30 fps", hint: "Standard for Reels and Shorts." },
                 { value: 60, title: "60 fps", hint: "Smoother motion. Bigger file." },
               ].map((f) => (

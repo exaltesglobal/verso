@@ -128,14 +128,14 @@ pub async fn media_waveform(
         let key = cache_key(src)
             .ok_or("We couldn't find that file. It may have been moved or deleted.")?;
         let file = cache_dir.join(format!("{key}.bin"));
-        if let Ok(bytes) = std::fs::read(&file) {
-            if bytes.len() > 8 {
-                let pps = f64::from_le_bytes(bytes[..8].try_into().unwrap_or([0; 8]));
-                return Ok(Waveform {
-                    peaks_per_sec: pps,
-                    peaks: bytes[8..].to_vec(),
-                });
-            }
+        if let Ok(bytes) = std::fs::read(&file)
+            && bytes.len() > 8
+        {
+            let pps = f64::from_le_bytes(bytes[..8].try_into().unwrap_or([0; 8]));
+            return Ok(Waveform {
+                peaks_per_sec: pps,
+                peaks: bytes[8..].to_vec(),
+            });
         }
         let wf = compute(src, duration_sec)?;
         let _ = std::fs::create_dir_all(&cache_dir);

@@ -174,10 +174,10 @@ fn allow_sources(app: &tauri::AppHandle, json: &str) {
         let scope = app.asset_protocol_scope();
         for t in p.tracks {
             for c in t.clips {
-                if let Some(s) = c.source {
-                    if Path::new(&s.path).is_file() {
-                        let _ = scope.allow_file(&s.path);
-                    }
+                if let Some(s) = c.source
+                    && Path::new(&s.path).is_file()
+                {
+                    let _ = scope.allow_file(&s.path);
                 }
             }
         }
@@ -280,10 +280,10 @@ pub fn list_projects(app: tauri::AppHandle) -> Result<Vec<ProjectSummary>, Strin
     out.sort_by(|a, b| b.updated_at.total_cmp(&a.updated_at));
     // Allow the cover videos of listed projects on the asset protocol.
     for p in &out {
-        if let Some(src) = p.cover_source.as_ref().and_then(|s| s["path"].as_str()) {
-            if Path::new(src).is_file() {
-                let _ = app.asset_protocol_scope().allow_file(src);
-            }
+        if let Some(src) = p.cover_source.as_ref().and_then(|s| s["path"].as_str())
+            && Path::new(src).is_file()
+        {
+            let _ = app.asset_protocol_scope().allow_file(src);
         }
     }
     Ok(out)

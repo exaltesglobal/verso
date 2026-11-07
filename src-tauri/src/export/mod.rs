@@ -25,6 +25,8 @@ pub enum Aspect {
     Vertical,
     #[serde(rename = "1:1")]
     Square,
+    #[serde(rename = "4:5")]
+    Portrait,
     #[serde(rename = "16:9")]
     Wide,
 }
@@ -341,6 +343,17 @@ pub struct ExportRequest {
     /// Whole-frame look: grain, vignette, letterbox, leaks, dips (export/look.rs).
     #[serde(default)]
     pub look: Option<look::Look>,
+    /// Colour behind the picture where no clip covers the frame, "#RRGGBB". None = black.
+    #[serde(default)]
+    pub background: Option<String>,
+}
+
+/// `#RRGGBB` as FFmpeg's `0xRRGGBB`; anything else is black.
+pub fn background_color(c: Option<&str>) -> String {
+    match c.map(|c| c.trim_start_matches('#')) {
+        Some(h) if h.len() == 6 && h.chars().all(|ch| ch.is_ascii_hexdigit()) => format!("0x{h}"),
+        _ => "black".into(),
+    }
 }
 
 fn one() -> f64 {
@@ -367,6 +380,7 @@ pub fn canvas(aspect: Aspect, quality: Quality) -> (u32, u32) {
     let (w, h) = match aspect {
         Aspect::Vertical => (1080, 1920),
         Aspect::Square => (1080, 1080),
+        Aspect::Portrait => (1080, 1350),
         Aspect::Wide => (1920, 1080),
     };
     match quality {
@@ -616,7 +630,8 @@ pub fn build_plan(req: &ExportRequest, subs: Option<&Subtitles>) -> Result<Plan,
     let (w, h) = canvas(req.aspect, req.quality);
     let mut inputs = Vec::new();
     let mut graph = vec![format!(
-        "color=c=black:s={w}x{h}:r={fps}:d={}[base]",
+        "color=c={}:s={w}x{h}:r={fps}:d={}[base]",
+        background_color(req.background.as_deref()),
         t(total)
     )];
     let mut idx = 0usize;

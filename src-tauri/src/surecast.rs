@@ -621,14 +621,13 @@ fn process(app: &AppHandle, job: Job) {
 
     // 3. Cover into the media library (best effort): Surecast won't mix it into a video post yet.
     let mut cover_id = job.cover_media_id.clone();
-    if cover_id.is_none() {
-        if let Some(c) = &cover {
-            if let Ok(m) = upload_direct(&base, c, Box::new(|_, _| {})) {
-                let m2 = m.clone();
-                update_job(app, &id, |j| j.cover_media_id = Some(m2));
-                cover_id = Some(m);
-            }
-        }
+    if cover_id.is_none()
+        && let Some(c) = &cover
+        && let Ok(m) = upload_direct(&base, c, Box::new(|_, _| {}))
+    {
+        let m2 = m.clone();
+        update_job(app, &id, |j| j.cover_media_id = Some(m2));
+        cover_id = Some(m);
     }
 
     // 4. The draft post. The user schedules it in Surecast.
@@ -849,7 +848,7 @@ pub async fn surecast_jobs(app: AppHandle) -> Result<Vec<Job>, String> {
     blocking(move || {
         kick(&app);
         let mut jobs = load_jobs(&app);
-        jobs.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        jobs.sort_by_key(|j| std::cmp::Reverse(j.created_at));
         Ok(jobs)
     })
     .await
@@ -920,7 +919,7 @@ pub async fn surecast_refresh(app: AppHandle) -> Result<Vec<Job>, String> {
             }
         }
         let mut jobs = load_jobs(&app);
-        jobs.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        jobs.sort_by_key(|j| std::cmp::Reverse(j.created_at));
         Ok(jobs)
     })
     .await

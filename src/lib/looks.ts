@@ -1,6 +1,6 @@
 // Looks: colour grade presets (as plain parameter sets for Clip.color) and the
 // geometry shared by the preview overlay and the export filters.
-import type { AspectRatio, Clip, ClipColor, Look } from "./project";
+import type { AspectRatio, Clip, ClipColor, GradeCurve, Look } from "./project";
 import { NEUTRAL_COLOR } from "./color";
 
 /** How grades are authored: neutral = 0, contrast/saturation are multipliers (neutral 1). */
@@ -22,13 +22,19 @@ export const GRADES: Record<string, { name: string; params: GradeParams }> = {
     name: "Teal and ember",
     params: { contrast: 1.12, saturation: 1.05, temperature: 0.12, tint: -0.06, vibrance: 0.15 },
   },
-  "night-blue": { name: "Night blue", params: { brightness: -0.05, contrast: 1.15, saturation: 0.85, temperature: -0.25 } },
+  "night-blue": {
+    name: "Night blue",
+    params: { brightness: -0.05, contrast: 1.15, saturation: 0.85, temperature: -0.25 },
+  },
   "golden-hour": {
     name: "Golden hour",
     params: { brightness: 0.03, contrast: 1.05, saturation: 1.1, temperature: 0.18, tint: 0.04 },
   },
   // Grades named in docs/templates/TEMPLATE-BRIEF.md (parametric approximations; LUTs can replace them).
-  "clean-pop": { name: "Clean pop", params: { brightness: 0.02, contrast: 1.08, saturation: 1.15, vibrance: 0.15 } },
+  "clean-pop": {
+    name: "Clean pop",
+    params: { brightness: 0.02, contrast: 1.08, saturation: 1.15, vibrance: 0.15 },
+  },
   "teal-orange": {
     name: "Teal and orange",
     params: { contrast: 1.1, saturation: 1.05, temperature: 0.1, tint: -0.06, vibrance: 0.12 },
@@ -51,13 +57,25 @@ export const GRADES: Record<string, { name: string; params: GradeParams }> = {
     name: "Pastel fade",
     params: { brightness: 0.05, contrast: 0.9, saturation: 0.85, tint: 0.04 },
   },
-  "faded-film": { name: "Faded film", params: { brightness: 0.04, contrast: 0.88, saturation: 0.8, temperature: 0.06 } },
+  "faded-film": {
+    name: "Faded film",
+    params: { brightness: 0.04, contrast: 0.88, saturation: 0.8, temperature: 0.06 },
+  },
   "moody-mono": { name: "Moody mono", params: { contrast: 1.2, saturation: 0 } },
-  "soft-pastel": { name: "Soft pastel", params: { brightness: 0.06, contrast: 0.92, saturation: 0.9, tint: 0.05 } },
+  "soft-pastel": {
+    name: "Soft pastel",
+    params: { brightness: 0.06, contrast: 0.92, saturation: 0.9, tint: 0.05 },
+  },
   "punchy-pop": { name: "Punchy pop", params: { contrast: 1.1, saturation: 1.25, vibrance: 0.2 } },
-  "festive-warm": { name: "Festive warm", params: { contrast: 1.06, saturation: 1.18, temperature: 0.18, tint: 0.03 } },
+  "festive-warm": {
+    name: "Festive warm",
+    params: { contrast: 1.06, saturation: 1.18, temperature: 0.18, tint: 0.03 },
+  },
   "clean-bright": { name: "Clean bright", params: { brightness: 0.05, contrast: 1.04, saturation: 1.05 } },
-  "green-forest": { name: "Deep forest", params: { contrast: 1.1, saturation: 0.95, temperature: -0.05, tint: -0.12 } },
+  "green-forest": {
+    name: "Deep forest",
+    params: { contrast: 1.1, saturation: 0.95, temperature: -0.05, tint: -0.12 },
+  },
 };
 
 const NEUTRAL_ONE = new Set(["contrast", "saturation"]);
@@ -117,7 +135,7 @@ export function letterboxBar(ratio: Look["letterbox"], aspect: AspectRatio): num
   if (!ratio) return 0;
   const r = ratio === "2.39" ? 2.39 : ratio === "2.00" ? 2 : 1.85;
   if (aspect === "9:16") return ratio === "2.39" ? 0.12 : ratio === "2.00" ? 0.1 : 0.08;
-  const a = aspect === "1:1" ? 1 : 16 / 9;
+  const a = aspect === "1:1" ? 1 : aspect === "4:5" ? 0.8 : 16 / 9;
   return Math.max(0, (1 - a / r) / 2);
 }
 
@@ -127,3 +145,58 @@ export function dipAmount(look: Look | undefined, time: number, duration: number
   if (d <= 0 || duration <= 0) return 0;
   return Math.max(0, 1 - time / d, 1 - (duration - time) / d);
 }
+
+/**
+ * The inspector's Look grades. Each is a GradeCurve, so the preview (an SVG
+ * filter built from the same numbers, see LookFilters.tsx) and export
+ * (colorchannelmixer + lutrgb in export/color.rs) apply identical maths.
+ */
+export const LOOK_CURVES: Record<"warm" | "film" | "clean" | "night", GradeCurve> = {
+  // Golden: warmer highlights, a little more colour.
+  warm: { saturation: 1.12, contrast: 1.04, r: [0.02, 1.06, 1], g: [0.01, 1, 0.95], b: [0, 0.92, 0.8] },
+  // Teal shadows, amber highlights, lifted blacks, softer colour.
+  film: { saturation: 0.8, contrast: 0.94, r: [0.05, 0.98, 0.98], g: [0.07, 1, 0.92], b: [0.11, 1.05, 0.82] },
+  // Bright and crisp: opened mids, a touch more contrast and colour.
+  clean: { saturation: 1.08, contrast: 1.08, r: [0, 1.14, 1], g: [0, 1.14, 1], b: [0.005, 1.14, 1] },
+  // Moonlight: darker, cooler, little colour.
+  night: { saturation: 0.5, contrast: 1.1, r: [0, 0.8, 0.7], g: [0.01, 0.86, 0.8], b: [0.05, 1, 1] },
+};
+
+export const LOOK_PICKS: { id: keyof typeof LOOK_CURVES | null; label: string }[] = [
+  { id: null, label: "Original" },
+  { id: "warm", label: "Warm" },
+  { id: "film", label: "Film" },
+  { id: "clean", label: "Clean" },
+  { id: "night", label: "Night" },
+];
+
+/** Clip.color for a Look pick (neutral sliders plus the grade). */
+export function lookColor(id: keyof typeof LOOK_CURVES): ClipColor {
+  return { ...NEUTRAL_COLOR, preset: `look-${id}`, curve: LOOK_CURVES[id] };
+}
+
+/** One channel of the curve at x (0..1). Mirrored by `curve_filters` in export/color.rs. */
+export function curveValue(c: GradeCurve, ch: "r" | "g" | "b", x: number): number {
+  const [lift, gamma, gain] = c[ch];
+  const y = Math.min(1, Math.max(0, 0.5 + (x - 0.5) * c.contrast));
+  return Math.min(1, Math.max(0, lift + (gain - lift) * Math.pow(y, 1 / gamma)));
+}
+
+/** Rec. 709 saturation matrix, row-major 3x3. Mirrored in export/color.rs. */
+export function saturationMatrix(s: number): number[] {
+  const [r, g, b] = [0.2126, 0.7152, 0.0722];
+  return [
+    r + (1 - r) * s,
+    g - g * s,
+    b - b * s,
+    r - r * s,
+    g + (1 - g) * s,
+    b - b * s,
+    r - r * s,
+    g - g * s,
+    b + (1 - b) * s,
+  ];
+}
+
+/** SVG filter id the preview uses for a Look preset. */
+export const lookFilterId = (preset: string) => `vs-${preset}`;

@@ -120,7 +120,7 @@ Some panels have their own one-tap presets:
 - Text: preset tiles.
 - Audio: Louder, Balanced, Music under voice.
 - Templates: one tap applies.
-- Export: Reel, Short, Story, YouTube 16:9 ("Made for").
+- Export: Reel, Short, Feed post (4:5), YouTube 16:9 ("Made for").
 
 ## Time saved
 
@@ -160,9 +160,12 @@ this reel".
 
 ## Visual styling
 
-The look of all three workspaces comes from `src/styles/premium.css`, which
-implements `docs/design/premium-ui/PREMIUM-UI-SPEC.md` and is loaded after
-the other stylesheets. Craft is the mock's layout with the spec's fixed panel
+The look of all three workspaces comes from the `--ui-*` token layer at the
+top of `src/styles/app.css` and the shell components in
+`src/styles/premium.css`, which implement
+`docs/design/premium-ui/PREMIUM-UI-SPEC.md`. premium.css is loaded last, and
+app.css no longer repeats declarations it overrides. What the last design pass
+added is in `docs/design/LEFTOVERS.md`. Craft is the mock's layout with the spec's fixed panel
 sizes. Studio uses the same chrome with drag-to-resize panels. Quick uses the
 same components (tiles, chips, 36px panel headers, clip strip) in its steps
 layout. Before-and-after screenshots for each restyle step are in

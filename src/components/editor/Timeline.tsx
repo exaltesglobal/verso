@@ -49,7 +49,7 @@ const THIN_H = 12;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
-  video: "play",
+  video: "video",
   audio: "voiceover",
   music: "music",
 };
@@ -476,7 +476,7 @@ export function Timeline(props: TimelineProps) {
         }}
       >
         <div className="timeline__grid" style={gridStyle}>
-          {headers && <div className="timeline__corner tc">{FPS} fps</div>}
+          {headers && <div className="timeline__corner tc">{project.fps ?? FPS} fps</div>}
           <div
             className="ruler"
             onPointerDown={(e) => e.button === 0 && scrubFrom(e, e.currentTarget)}
@@ -488,7 +488,18 @@ export function Timeline(props: TimelineProps) {
           >
             {ticks.map(({ t, level }) => (
               <span key={t} className={`ruler__tick is-l${level}`} style={{ left: x(t) }}>
-                {level === 0 && <span className="ruler__label">{label(t)}</span>}
+                {level === 0 && (
+                  <span
+                    className={
+                      // Suppress a label the playhead head or a snap flag would cover (spec section 3).
+                      (!empty && covers(x(t), head)) || (snapAt !== null && covers(x(t), x(snapAt)))
+                        ? "ruler__label is-covered"
+                        : "ruler__label"
+                    }
+                  >
+                    {label(t)}
+                  </span>
+                )}
               </span>
             ))}
             {props.markers?.map((m) => (
@@ -559,11 +570,23 @@ export function Timeline(props: TimelineProps) {
               }
               onLanePointerDown={() => onSelectClip("")}
             >
+              {t.kind === "captions" &&
+                captionGroups(t.clips, pps).map((g) => (
+                  <span
+                    key={g.id}
+                    className="cap-group"
+                    style={{ left: Math.round(x(g.start)) + 1, width: g.width }}
+                    aria-hidden="true"
+                  >
+                    {g.text}
+                  </span>
+                ))}
               {t.clips.map((c) => (
                 <ClipView
                   key={c.id}
                   clip={c}
                   kind={t.kind}
+                  hideLabel={t.kind === "captions"}
                   pps={pps}
                   left={Math.round(x(c.start))}
                   selected={c.id === selectedClip}
@@ -649,7 +672,7 @@ function TrackRow({
             {kind === "audio" || kind === "music"
               ? (toggles || track.muted) && (
                   <IconButton
-                    icon={track.muted ? "volume-off" : "volume"}
+                    icon={track.muted ? "volume-off" : "speaker"}
                     label={track.muted ? `Unmute ${label}` : `Mute ${label}`}
                     size={16}
                     aria-pressed={!!track.muted}
@@ -698,6 +721,8 @@ function TrackRow({
 }
 
 interface ClipViewProps {
+  /** Caption chips: the lane draws grouped labels instead (captionGroups). */
+  hideLabel?: boolean;
   clip: Clip;
   kind: TrackKind;
   pps: number;
@@ -737,6 +762,7 @@ function ClipView({
   locked,
   tool,
   onRazor,
+  hideLabel,
 }: ClipViewProps) {
   const drag = useRef<Drag | null>(null);
   const widthPx = Math.max(12, Math.round((c.end - c.start) * pps) - 2);
@@ -840,12 +866,45 @@ function ClipView({
       {c.variant === "effect" ? (
         <Icon name="transitions" size={16} />
       ) : (
-        widthPx > 28 && <span className="clip__label">{name}</span>
+        widthPx > 28 && !hideLabel && <span className="clip__label">{name}</span>
       )}
       <span className="clip__handle clip__handle--start" aria-hidden="true" />
       <span className="clip__handle clip__handle--end" aria-hidden="true" />
     </button>
   );
+}
+
+/** A ruler label at tick `tickX` (drawn from +4px, about 70px wide) overlaps a 13px head at `at`. */
+const covers = (tickX: number, at: number) => at > tickX - 8 && at < tickX + 82;
+
+/** Shortest readable caption chip label, in px (spec section 3). */
+const CAP_GROUP_MIN = 80;
+
+/**
+ * Runs of touching caption clips joined until a run is at least 80px wide, so
+ * the lane reads as phrases instead of "T…" stubs. A run too narrow for four
+ * characters gets no label.
+ */
+function captionGroups(clips: Clip[], pps: number) {
+  const out: { id: string; start: number; width: number; text: string }[] = [];
+  let cur: { id: string; start: number; end: number; words: string[] } | null = null;
+  const flush = () => {
+    if (!cur) return;
+    const width = Math.round((cur.end - cur.start) * pps) - 3;
+    if (width >= 40) out.push({ id: cur.id, start: cur.start, width, text: cur.words.join(" ") });
+    cur = null;
+  };
+  for (const c of clips) {
+    const text = (c.text ?? c.label).trim();
+    if (cur && (c.start - cur.end > 0.35 || (cur.end - cur.start) * pps >= CAP_GROUP_MIN)) flush();
+    if (!cur) cur = { id: c.id, start: c.start, end: c.end, words: [text] };
+    else {
+      cur.end = c.end;
+      cur.words.push(text);
+    }
+  }
+  flush();
+  return out;
 }
 
 /** Real frames tiled across the clip; denser frames appear as you zoom in. */

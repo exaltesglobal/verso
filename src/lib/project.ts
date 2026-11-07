@@ -5,7 +5,22 @@ import type { CropPath } from "./reframe";
 import type { ProjectBrand } from "./brandkit";
 
 export type TrackKind = "text" | "captions" | "video" | "audio" | "music";
-export type AspectRatio = "9:16" | "1:1" | "16:9";
+export type AspectRatio = "9:16" | "1:1" | "4:5" | "16:9";
+/** Every reel shape, in picker order. */
+export const ASPECTS: readonly AspectRatio[] = ["9:16", "1:1", "4:5", "16:9"];
+/** Output size at 1080p for each shape (export/mod.rs `canvas`). */
+export const ASPECT_SIZE: Record<AspectRatio, [number, number]> = {
+  "9:16": [1080, 1920],
+  "1:1": [1080, 1080],
+  "4:5": [1080, 1350],
+  "16:9": [1920, 1080],
+};
+export const ASPECT_NAME: Record<AspectRatio, string> = {
+  "9:16": "reel",
+  "1:1": "square",
+  "4:5": "feed post",
+  "16:9": "wide",
+};
 
 export type TransitionKind = "fade" | "dissolve" | "slide" | "zoom";
 
@@ -133,6 +148,22 @@ export interface ClipColor {
   /** Rough look of the LUT in slider units, for the CSS preview (export applies the real LUT). */
   lutLook?: { brightness: number; contrast: number; saturation: number; temperature: number };
   preset?: string;
+  /** A Look grade (Original/Warm/Film/Clean/Night) as numbers, applied before the sliders (see looks.ts). */
+  curve?: GradeCurve;
+}
+
+/**
+ * A grade as maths both the preview (SVG filter) and export (FFmpeg) apply the
+ * same way: a saturation matrix, then per channel
+ * out = lift + (gain - lift) * clamp(0.5 + (in - 0.5) * contrast) ^ (1 / gamma).
+ */
+export interface GradeCurve {
+  saturation: number;
+  contrast: number;
+  /** [lift, gamma, gain] per channel, 0..1 values. */
+  r: [number, number, number];
+  g: [number, number, number];
+  b: [number, number, number];
 }
 
 export interface VideoOverride {
@@ -175,6 +206,12 @@ export interface Project {
   templateId?: string;
   /** Timeline markers, in seconds (Studio). */
   markers?: number[];
+  /** Frame rate for export, frame stepping and the preview label. Default 30. */
+  fps?: number;
+  /** Default export quality ("draft" | "standard" | "high" | "ultra"). */
+  quality?: "draft" | "standard" | "high" | "ultra";
+  /** Colour behind the picture where no clip covers the frame. Default black. */
+  background?: string;
 }
 
 export const TRACK_ORDER: { kind: TrackKind; label: string }[] = [
@@ -205,7 +242,8 @@ export function normalizeProject(p: Partial<Project> & { tracks: Track[]; name: 
     id: p.id ?? uid("p"),
     name: p.name,
     subtitle: p.subtitle,
-    aspect: p.aspect ?? "9:16",
+    // A shape this version doesn't know (from a newer Verso) falls back to vertical.
+    aspect: p.aspect && ASPECTS.includes(p.aspect) ? p.aspect : "9:16",
     tracks,
     createdAt: p.createdAt ?? now,
     updatedAt: p.updatedAt ?? now,

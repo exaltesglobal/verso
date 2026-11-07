@@ -55,26 +55,6 @@ pub fn sidecar_path(tool: Tool) -> Option<PathBuf> {
     None
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Holds once `pnpm fetch:ffmpeg` has run; skips silently otherwise.
-    #[test]
-    fn prefers_bundled_sidecar_when_fetched() {
-        let fetched = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("binaries")
-            .join(format!(
-                "ffprobe-{}{}",
-                env!("VERSO_TARGET_TRIPLE"),
-                std::env::consts::EXE_SUFFIX
-            ));
-        if fetched.is_file() {
-            assert_eq!(resolve(Tool::Ffprobe), fetched);
-        }
-    }
-}
-
 /// Where the tool will be run from. Used by the About/diagnostics UI later.
 pub fn resolve(tool: Tool) -> PathBuf {
     sidecar_path(tool).unwrap_or_else(|| PathBuf::from(tool.stem()))
@@ -97,4 +77,24 @@ pub fn command(tool: Tool) -> Command {
 pub fn missing_message() -> String {
     "Verso needs FFmpeg to read videos, and we couldn't find it. Reinstalling Verso usually fixes this."
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Holds once `pnpm fetch:ffmpeg` has run; skips silently otherwise.
+    #[test]
+    fn prefers_bundled_sidecar_when_fetched() {
+        let fetched = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!(
+                "ffprobe-{}{}",
+                env!("VERSO_TARGET_TRIPLE"),
+                std::env::consts::EXE_SUFFIX
+            ));
+        if fetched.is_file() {
+            assert_eq!(resolve(Tool::Ffprobe), fetched);
+        }
+    }
 }

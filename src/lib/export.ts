@@ -109,6 +109,8 @@ export interface ExportRequest {
   outputPath: string;
   fontPath?: string;
   look?: Look;
+  /** "#RRGGBB" behind the picture where no clip covers the frame. */
+  background?: string;
 }
 
 export interface ExportProgress {
@@ -258,7 +260,7 @@ export function buildExportRequest(
   return {
     aspect,
     quality: options.quality,
-    fps: options.fps ?? 30,
+    fps: options.fps ?? project.fps ?? 30,
     videoClips: video.map((c) => {
       // A background copy covers source seconds start..end of the original (see background.ts).
       const o = c.videoOverride;
@@ -304,6 +306,7 @@ export function buildExportRequest(
     outputPath: options.outputPath,
     fontPath: options.fontPath,
     look: project.look,
+    background: project.background,
   };
 }
 

@@ -222,3 +222,29 @@ export function cropPixels(path: CropPath, sourceWidth: number, sourceHeight: nu
     })),
   }));
 }
+
+// Analyses found this session, by source file, so the preview can draw the
+// speaker tracking brackets (spec section 4) without asking Rust again.
+const found = new Map<string, ReframeAnalysis>();
+export const rememberAnalysis = (a: ReframeAnalysis) => found.set(a.sourcePath, a);
+
+/** Face box (source-normalised) of who is talking at source time `t`, if a face was seen within 0.6 s. */
+export function speakerAt(path: string, t: number): { box: Rect; label: string } | null {
+  const a = found.get(path);
+  if (!a) return null;
+  const seg = a.speechSegments.find((s) => t >= s.start && t < s.end && s.speakerId != null);
+  const tracks = seg ? a.faceTracks.filter((f) => f.speakerId === seg.speakerId) : a.faceTracks;
+  let best: { box: TrackBox; speakerId: number } | null = null;
+  let gap = 0.6;
+  for (const f of tracks)
+    for (const b of f.boxes) {
+      const d = Math.abs(b.t - t);
+      if (d < gap) {
+        gap = d;
+        best = { box: b, speakerId: f.speakerId };
+      }
+    }
+  if (!best) return null;
+  const label = a.speakers.find((s) => s.id === best.speakerId)?.label ?? `Speaker ${best.speakerId + 1}`;
+  return { box: best.box, label };
+}

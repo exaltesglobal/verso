@@ -227,14 +227,14 @@ fn english_number(n: u64) -> String {
         0..=19 => ONES[n as usize].into(),
         20..=99 => {
             let t = TENS[(n / 10) as usize];
-            if n % 10 == 0 {
+            if n.is_multiple_of(10) {
                 t.into()
             } else {
                 format!("{t} {}", ONES[(n % 10) as usize])
             }
         }
         100..=999 => {
-            let rest = if n % 100 == 0 {
+            let rest = if n.is_multiple_of(100) {
                 String::new()
             } else {
                 format!(" {}", english_number(n % 100))
@@ -249,7 +249,7 @@ fn english_number(n: u64) -> String {
             } else {
                 (1_000, "thousand")
             };
-            let rest = if n % div == 0 {
+            let rest = if n.is_multiple_of(div) {
                 String::new()
             } else {
                 format!(" {}", english_number(n % div))
@@ -553,10 +553,8 @@ pub fn phonemize(text: &str, dict: &EnglishDict) -> String {
             match c {
                 '।' | '॥' | '.' => out.push('.'),
                 ',' | '!' | '?' | ';' | ':' | '—' | '…' => out.push(c),
-                '-' | '–' | '\n' | '\t' | ' ' => {
-                    if !out.ends_with(' ') && !out.is_empty() {
-                        out.push(' ');
-                    }
+                '-' | '–' | '\n' | '\t' | ' ' if !out.ends_with(' ') && !out.is_empty() => {
+                    out.push(' ');
                 }
                 _ => {}
             }

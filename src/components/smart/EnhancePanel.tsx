@@ -17,6 +17,7 @@ import { Listening, SmartCard } from "./parts";
 import { MoreSettings } from "../MoreSettings";
 import { useCharged } from "../../lib/credits";
 import { playbackRateAt, sourceTimeAt } from "../../lib/speed";
+import { setElementGain } from "../../lib/audioBoost";
 
 export interface EnhancePanelProps {
   project: Project;
@@ -143,12 +144,12 @@ export function EnhancedSound({
   const ref = useRef<HTMLAudioElement>(null);
   const sourceTime = clip && src ? src.inPoint + sourceTimeAt(clip, time) - (clip.inPoint ?? 0) : 0;
   const rate = clip ? playbackRateAt(clip, time) : 1;
-  const volume = Math.max(0, Math.min(1, clip?.volume ?? 1));
+  const volume = clip?.volume ?? 1;
 
   useEffect(() => {
     const a = ref.current;
     if (!a) return;
-    a.volume = volume;
+    setElementGain(a, volume, playing);
     if (Math.abs(a.playbackRate - rate) > 0.01) a.playbackRate = rate;
     if (playing) {
       if (Math.abs(a.currentTime - sourceTime) > 0.3) a.currentTime = sourceTime;
@@ -159,5 +160,7 @@ export function EnhancedSound({
     }
   }, [playing, sourceTime, volume, rate]);
 
-  return src ? <audio key={src.path} ref={ref} src={convertFileSrc(src.path)} preload="auto" /> : null;
+  return src ? (
+    <audio key={src.path} ref={ref} src={convertFileSrc(src.path)} preload="auto" crossOrigin="anonymous" />
+  ) : null;
 }

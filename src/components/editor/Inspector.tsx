@@ -1,6 +1,6 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "../Icon";
-import { IconButton, ScrubNumber, Segmented } from "../ui";
+import { IconButton, ScrubNumber } from "../ui";
 import { ContextMenu } from "../ContextMenu";
 import { Timecode } from "../Timecode";
 import { ReframePanel } from "./ReframePanel";
@@ -15,6 +15,7 @@ import { BackgroundPanel } from "../smart/BackgroundPanel";
 import { useVisibility } from "../../lib/modes";
 import { MoreSettings } from "../MoreSettings";
 import { Group, LookGroup, SpeedGroup, VoiceGroup } from "./InspectorGroups";
+import { ProjectSettings } from "./ProjectSettings";
 
 interface InspectorProps {
   clip: (Clip & { kind: TrackKind }) | undefined;
@@ -32,8 +33,8 @@ interface InspectorProps {
 const KIND: Record<TrackKind, { label: string; icon: IconName; colour: string }> = {
   text: { label: "Text", icon: "text", colour: "var(--ui-track-text)" },
   captions: { label: "Caption", icon: "captions", colour: "var(--ui-track-captions)" },
-  video: { label: "Video clip", icon: "play", colour: "var(--ui-track-video)" },
-  audio: { label: "Sound", icon: "volume", colour: "var(--ui-track-audio)" },
+  video: { label: "Video clip", icon: "video", colour: "var(--ui-track-video)" },
+  audio: { label: "Sound", icon: "voiceover", colour: "var(--ui-track-audio)" },
   music: { label: "Music", icon: "music", colour: "var(--ui-track-audio)" },
 };
 
@@ -73,8 +74,27 @@ export function Inspector({
   const studioOpen = showRamp;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const kind = clip ? KIND[clip.kind] : null;
+  // Spec 1.1: a 40px edge fade only while the body has more below.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const check = () => setMore(el.scrollHeight - el.clientHeight - el.scrollTop > 2);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    const mo = new MutationObserver(check);
+    mo.observe(el, { childList: true, subtree: true, attributes: true });
+    el.addEventListener("scroll", check, { passive: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      el.removeEventListener("scroll", check);
+    };
+  }, []);
   return (
-    <aside className="inspector" aria-label="Properties">
+    <aside className={more ? "inspector can-scroll" : "inspector"} aria-label="Properties">
       <div
         className="inspector__head"
         style={kind ? ({ "--kind": kind.colour } as CSSProperties) : undefined}
@@ -99,25 +119,13 @@ export function Inspector({
           </>
         ) : (
           <>
-            <h2 className="inspector__title">Reel</h2>
+            <h2 className="inspector__title">Project settings</h2>
             <IconButton icon="chevron-right" label="Hide properties" size={16} onClick={onCollapse} />
           </>
         )}
       </div>
-      <div className="inspector__body">
-        {!clip && (
-          <>
-            <Group icon="vertical" title="Reel shape">
-              <Segmented
-                label="Reel shape"
-                options={["9:16", "1:1", "16:9"] as const}
-                value={aspect}
-                onChange={(a) => onApply({ ...project, aspect: a }, `Reel shape set to ${a}.`)}
-              />
-              <p className="help">Pick a clip on the timeline to change it.</p>
-            </Group>
-          </>
-        )}
+      <div className="inspector__body" ref={bodyRef}>
+        {!clip && <ProjectSettings project={project} onApply={onApply} />}
 
         {clip?.kind === "video" && (
           <>

@@ -121,8 +121,8 @@ pub fn translate_all(
     let mut guard = MT
         .lock()
         .map_err(|_| "The translator is busy. Try again.".to_string())?;
-    if !guard.contains_key(&to_english) {
-        guard.insert(to_english, Translator::new(&dir, to_english)?);
+    if let std::collections::hash_map::Entry::Vacant(e) = guard.entry(to_english) {
+        e.insert(Translator::new(&dir, to_english)?);
     }
     let mt = guard.get_mut(&to_english).expect("inserted above");
     let mut out = Vec::with_capacity(prepared.len());
@@ -169,8 +169,10 @@ fn atempo(samples: &[f32], tempo: f64, tmp: &Path) -> Result<Vec<f32>, String> {
     }
     Ok(out
         .stdout
-        .chunks_exact(4)
-        .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| f32::from_le_bytes(*b))
         .collect())
 }
 

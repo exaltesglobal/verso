@@ -1,10 +1,19 @@
 // Design rules every template follows (docs/templates/TEMPLATE-BRIEF.md, "Design rules").
 // withRules enforces them on the template data at load, so pack files can stay as authored.
-import type { Look } from "../lib/project";
+import type { AspectRatio, Look } from "../lib/project";
 import type { PackId, Template, TemplateSlot, TemplateText, TextRole } from "./types";
 
 /** Platform UI covers these edges of a 9:16 frame (fractions of width/height). */
 export const SAFE_ZONE = { top: 0.1, bottom: 0.2, right: 0.12 };
+/**
+ * Edges each shape loses: Reels/Shorts UI on 9:16; the profile grid's 3:4 crop
+ * on a 4:5 feed post (left and right); nothing fixed on 1:1 and 16:9.
+ */
+export function safeZoneFor(aspect: AspectRatio) {
+  if (aspect === "9:16") return { ...SAFE_ZONE, left: 0 };
+  if (aspect === "4:5") return { top: 0, bottom: 0, right: (1 - 0.75 / 0.8) / 2, left: (1 - 0.75 / 0.8) / 2 };
+  return { top: 0, bottom: 0, right: 0, left: 0 };
+}
 /** The hook slot ends by this many seconds. */
 export const HOOK_MAX_SECONDS = 3;
 /** Smallest text on a 1080x1920 canvas, as a fraction of canvas height. */

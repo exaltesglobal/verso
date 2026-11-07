@@ -270,7 +270,7 @@ export function PublishDialog({ outputPath, project, aspect, transcript, onClose
                     key={o.hook}
                     type="button"
                     className="publish__idea"
-                    title={o.text}
+                    data-tip={o.text}
                     onClick={() => {
                       setHook(o.hook);
                       setCaption([o.summary, o.cta].filter(Boolean).join("\n\n"));

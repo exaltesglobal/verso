@@ -32,10 +32,10 @@ pub fn init(app: &AppHandle) {
 fn scrub(text: &str) -> String {
     let mut out = text.to_string();
     for var in ["USERPROFILE", "HOME"] {
-        if let Ok(home) = std::env::var(var) {
-            if home.len() > 3 {
-                out = out.replace(&home, "~");
-            }
+        if let Ok(home) = std::env::var(var)
+            && home.len() > 3
+        {
+            out = out.replace(&home, "~");
         }
     }
     out.chars().take(MAX_TEXT).collect()

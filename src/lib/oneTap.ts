@@ -31,7 +31,7 @@ import {
 } from "./smart";
 import { applyEnhanced, enhanceAudio, soundClipFor } from "./enhance";
 import { applyHookTitle, hookIdeas } from "./insights";
-import { withGrade } from "./looks";
+import { lookColor } from "./looks";
 import { addTextClip, projectDuration, updateClip, type Clip, type Project, type TrackKind } from "./project";
 
 export type OneTapId =
@@ -289,7 +289,7 @@ export const ONE_TAP: OneTapAction[] = [
           ? t
           : {
               ...t,
-              clips: t.clips.map((c) => (!clip || c.id === clip.id ? withGrade(c, "warm-film", 0.8) : c)),
+              clips: t.clips.map((c) => (!clip || c.id === clip.id ? { ...c, color: lookColor("warm") } : c)),
             },
       ),
     }),

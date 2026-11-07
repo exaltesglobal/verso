@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { clipsAt, type Clip, type Project } from "../../lib/project";
+import { setElementGain } from "../../lib/audioBoost";
 
 /**
  * Plays the music clip under the playhead in sync with the timeline, with its
@@ -28,7 +29,7 @@ function AudioClip({ clip, time, playing }: { clip: Clip; time: number; playing:
   useEffect(() => {
     const a = ref.current;
     if (!a) return;
-    a.volume = Math.max(0, Math.min(1, gain));
+    setElementGain(a, gain, playing);
     if (playing) {
       if (Math.abs(a.currentTime - sourceTime) > 0.3) a.currentTime = sourceTime;
       if (a.paused) void a.play().catch(() => {});
@@ -38,7 +39,7 @@ function AudioClip({ clip, time, playing }: { clip: Clip; time: number; playing:
     }
   }, [playing, sourceTime, gain]);
 
-  return src ? <audio ref={ref} src={src} preload="auto" /> : null;
+  return src ? <audio ref={ref} src={src} preload="auto" crossOrigin="anonymous" /> : null;
 }
 
 /** The creator's own logo from their brand kit, in a corner of the frame. */

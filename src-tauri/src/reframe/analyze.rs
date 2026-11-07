@@ -258,7 +258,9 @@ fn voice_segments(
             break;
         }
         let samples: Vec<f32> = bytes[..n - n % 2]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0)
             .collect();
         probs.push(vad.speech_prob(&samples)?);
@@ -460,7 +462,7 @@ fn face_tracks(
             }
         }
         k += 1;
-        if k % 8 == 0 {
+        if k.is_multiple_of(8) {
             progress(
                 25.0 + (k as f64 / expected).min(1.0) * 65.0,
                 "Finding faces…",

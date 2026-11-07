@@ -31,7 +31,7 @@ const TABS: { id: PanelTab; label: string; icon: IconName; smart?: boolean }[] =
   { id: "voice", label: "Voice", icon: "voiceover" },
   { id: "autocut", label: "Auto-cut", icon: "auto-cut", smart: true },
   { id: "magic", label: "Magic", icon: "one-click", smart: true },
-  { id: "boost", label: "Boost", icon: "auto-reel", smart: true },
+  { id: "boost", label: "Boost", icon: "boost", smart: true },
 ];
 
 /** Quick's steps list: what each panel helps you do, in plain words. */
@@ -374,7 +374,7 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
       }}
     >
       <span className="media-item__thumb">
-        {cover ? <img src={cover} alt="" /> : <Icon name={m.hasVideo ? "play" : "music"} size={20} />}
+        {cover ? <img src={cover} alt="" /> : <Icon name={m.hasVideo ? "video" : "music"} size={20} />}
       </span>
       <span className="media-item__text">
         <span className="media-item__name">{m.fileName.replace(/\.[^.]+$/, "")}</span>

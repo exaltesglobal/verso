@@ -40,7 +40,7 @@ if (config.DB_CLIENT !== 'sqlite' && process.env.SKIP_MIGRATE_ON_START !== '1') 
 app.log.info(
   {
     db: config.DB_CLIENT,
-    email: config.RESEND_API_KEY ? 'resend' : 'console',
+    email: config.SMTP_HOST ? 'smtp' : config.RESEND_API_KEY ? 'resend' : 'console',
     google: config.googleConfigured,
     razorpay: config.razorpayConfigured,
   },
