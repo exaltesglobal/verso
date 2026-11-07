@@ -272,72 +272,72 @@ export function ScrubNumber({
     setDraft(null);
   };
 
+  const pct = `${Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))}%`;
+  // Spec 1.3: label (drag to scrub, double-click resets) | 72px field with the unit inside | slider | reset.
   return (
-    <div className={["scrub", changed && "is-changed", disabled && "is-disabled"].filter(Boolean).join(" ")}>
-      <div className="scrub__row">
-        <span
-          className="scrub__label"
-          onPointerDown={scrub}
-          onDoubleClick={() => !disabled && onChange(defaultValue)}
-          data-tip={disabled ? undefined : "Drag to change. Double-click to reset."}
-        >
-          {label}
-        </span>
-        {slider ? (
-          <input
-            className="scrub__slider"
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            disabled={disabled}
-            aria-label={`${label} slider`}
-            onChange={(e) => onChange(Number(e.target.value))}
-            style={{ "--fill": `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties}
-          />
-        ) : (
-          <span />
-        )}
-        <span className="scrub__field">
-          <input
-            className="scrub__input tc"
-            value={draft ?? shown}
-            disabled={disabled}
-            aria-label={label}
-            inputMode="decimal"
-            onFocus={(e) => {
-              setDraft(shown);
-              e.currentTarget.select();
-            }}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              else if (e.key === "Escape") {
-                setDraft(null);
-                e.currentTarget.blur();
-              } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                e.preventDefault();
-                const next = clamp(value + (e.key === "ArrowUp" ? 1 : -1) * step * (e.shiftKey ? 10 : 1));
-                onChange(next);
-                setDraft(next.toFixed(decimals));
-              }
-            }}
-          />
-          {unit && <span className="scrub__unit">{unit}</span>}
-        </span>
-        <button
-          type="button"
-          className="scrub__reset"
-          aria-label={`Reset ${label}`}
-          data-tip="Reset"
-          disabled={disabled || !changed}
-          onClick={() => onChange(defaultValue)}
-        >
-          <Icon name="reset" size={16} />
-        </button>
-      </div>
+    <div
+      className={["adv", changed && "is-changed", disabled && "is-disabled"].filter(Boolean).join(" ")}
+      data-slider={slider ? "" : undefined}
+    >
+      <span
+        className="adv__label"
+        onPointerDown={scrub}
+        onDoubleClick={() => !disabled && onChange(defaultValue)}
+        data-tip={disabled ? undefined : "Drag to change. Double-click to reset."}
+      >
+        {label}
+      </span>
+      <span className="adv__field">
+        <input
+          className="tc"
+          value={draft ?? shown}
+          disabled={disabled}
+          aria-label={label}
+          inputMode="decimal"
+          onFocus={(e) => {
+            setDraft(shown);
+            e.currentTarget.select();
+          }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            else if (e.key === "Escape") {
+              setDraft(null);
+              e.currentTarget.blur();
+            } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault();
+              const next = clamp(value + (e.key === "ArrowUp" ? 1 : -1) * step * (e.shiftKey ? 10 : 1));
+              onChange(next);
+              setDraft(next.toFixed(decimals));
+            }
+          }}
+        />
+        {unit && <span className="adv__unit">{unit}</span>}
+      </span>
+      <span className="adv__slider" style={{ "--p": pct } as React.CSSProperties}>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          aria-label={`${label} slider`}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
+        <i />
+      </span>
+      <button
+        type="button"
+        className="adv__reset"
+        aria-label={`Reset ${label}`}
+        data-tip="Reset"
+        disabled={disabled || !changed}
+        onClick={() => onChange(defaultValue)}
+      >
+        <Icon name="reset" size={16} />
+      </button>
     </div>
   );
 }

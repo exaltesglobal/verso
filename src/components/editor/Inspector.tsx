@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { Icon, type IconName } from "../Icon";
-import { IconButton, ScrubNumber, Section, Segmented } from "../ui";
+import { IconButton, ScrubNumber, Segmented } from "../ui";
 import { ContextMenu } from "../ContextMenu";
 import { Timecode } from "../Timecode";
 import { ReframePanel } from "./ReframePanel";
@@ -13,6 +13,8 @@ import { ColorPanel } from "../smart/ColorPanel";
 import { SpeedPanel } from "../smart/SpeedPanel";
 import { BackgroundPanel } from "../smart/BackgroundPanel";
 import { useVisibility } from "../../lib/modes";
+import { MoreSettings } from "../MoreSettings";
+import { Group, LookGroup, SpeedGroup, VoiceGroup } from "./InspectorGroups";
 
 interface InspectorProps {
   clip: (Clip & { kind: TrackKind }) | undefined;
@@ -94,62 +96,86 @@ export function Inspector({
             />
           </>
         ) : (
-          <h2 className="inspector__title">Properties</h2>
+          <>
+            <h2 className="inspector__title">Reel</h2>
+            <IconButton icon="chevron-right" label="Hide properties" size={16} onClick={onCollapse} />
+          </>
         )}
-        <IconButton
-          icon="chevron-right"
-          label="Hide properties"
-          shortcut="Ctrl+\"
-          size={16}
-          onClick={onCollapse}
-        />
+      </div>
+      <div className="inspector__body">
+        {!clip && (
+          <>
+            <Group icon="vertical" title="Reel shape">
+              <Segmented
+                label="Reel shape"
+                options={["9:16", "1:1", "16:9"] as const}
+                value={aspect}
+                onChange={(a) => onApply({ ...project, aspect: a }, `Reel shape set to ${a}.`)}
+              />
+              <p className="help">Pick a clip on the timeline to change it.</p>
+            </Group>
+          </>
+        )}
+
+        {clip?.kind === "video" && (
+          <>
+            {clip.source?.hasVideo && (
+              <Group icon="reframe" title={`Fit to ${aspect}`}>
+                <ReframePanel key={clip.id} clip={clip} aspect={aspect} onCropPath={onCropPath} />
+              </Group>
+            )}
+            {clip.source?.hasVideo && <LookGroup clip={clip} time={time} onChange={onChange} />}
+            <SpeedGroup clip={clip} onChange={onChange} />
+            {clip.source?.hasAudio && (
+              <VoiceGroup project={project} clip={clip} onChange={onChange} onApply={onApply} />
+            )}
+            <MoreSettings defaultOpen={false} persistKey="verso.inspector.more.v1">
+              <VideoAdvanced key={clip.id} clip={clip} onChange={onChange} />
+              <p className="advhead">Transition in</p>
+              <TransitionChips clip={clip} onChange={onChange} />
+              <p className="advhead">Colour</p>
+              <ColorPanel project={project} clipId={clip.id} onApply={onApply} />
+              {clip.source?.hasVideo && (
+                <>
+                  <p className="advhead">Background</p>
+                  <BackgroundPanel clip={clip} playhead={time} onChange={onChange} />
+                </>
+              )}
+              {showRamp && (
+                <>
+                  <p className="advhead">Speed ramp</p>
+                  <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
+                </>
+              )}
+            </MoreSettings>
+          </>
+        )}
+        {(clip?.kind === "audio" || clip?.kind === "music") && (
+          <>
+            {clip.kind === "audio" && (
+              <VoiceGroup project={project} clip={clip} onChange={onChange} onApply={onApply} />
+            )}
+            {clip.kind === "music" && (
+              <Group icon="music" title="Beat">
+                <CutToBeatToggle project={project} clip={clip} onApply={onApply} />
+              </Group>
+            )}
+            <MoreSettings defaultOpen={false} persistKey="verso.inspector.more.v1">
+              <AudioProps clip={clip} onChange={onChange} />
+              {clip.kind === "audio" && (
+                <>
+                  <p className="advhead">Clean up voice</p>
+                  <EnhancePanel project={project} clipId={clip.id} onApply={onApply} />
+                </>
+              )}
+            </MoreSettings>
+          </>
+        )}
+        {(clip?.kind === "text" || clip?.kind === "captions") && (
+          <TextProps clip={clip} onChange={onChange} />
+        )}
       </div>
 
-      {!clip && (
-        <div className="empty empty--panel">
-          <Icon name="layers" size={32} />
-          <p className="empty__title">Nothing selected</p>
-          <p>Click a clip on the timeline to change it.</p>
-        </div>
-      )}
-
-      {clip?.kind === "video" && (
-        <VideoProps key={clip.id} clip={clip} aspect={aspect} onChange={onChange} onCropPath={onCropPath} />
-      )}
-      {clip?.kind === "video" && (
-        <>
-          {showRamp && (
-            <Section title="Speed ramp" defaultOpen={false}>
-              <SpeedPanel project={project} clipId={clip.id} time={time} onApply={onApply} />
-            </Section>
-          )}
-          <Section title="Colour" defaultOpen={false}>
-            <ColorPanel project={project} clipId={clip.id} onApply={onApply} />
-          </Section>
-          {clip.source?.hasVideo && (
-            <Section title="Background" defaultOpen={false}>
-              <BackgroundPanel clip={clip} playhead={time} onChange={onChange} />
-            </Section>
-          )}
-        </>
-      )}
-      {(clip?.kind === "audio" || clip?.kind === "music") && <AudioProps clip={clip} onChange={onChange} />}
-      {(clip?.kind === "video" || clip?.kind === "audio") && (
-        <Section title="Clean up voice" defaultOpen={false}>
-          <EnhancePanel project={project} clipId={clip.id} onApply={onApply} />
-        </Section>
-      )}
-      {clip?.kind === "music" && (
-        <Section title="Beat">
-          <CutToBeatToggle project={project} clip={clip} onApply={onApply} />
-        </Section>
-      )}
-      {(clip?.kind === "text" || clip?.kind === "captions") && <TextProps clip={clip} onChange={onChange} />}
-
-      <p className="inspector__note">
-        <Icon name="save" size={16} />
-        Changes never touch your original file.
-      </p>
       {menu && (
         <ContextMenu
           x={menu.x}
@@ -162,6 +188,7 @@ export function Inspector({
               disabled: clip?.kind !== "video",
               onSelect: () => onChange({ zoom: 1, pos: undefined, opacity: undefined }),
             },
+            { label: "Hide properties", icon: "chevron-right", shortcut: "Ctrl+\\", onSelect: onCollapse },
             { separator: true },
             { label: "Delete clip", icon: "delete", shortcut: "Del", danger: true, onSelect: onDelete },
           ]}
@@ -171,138 +198,114 @@ export function Inspector({
   );
 }
 
-function VideoProps({
-  clip,
-  aspect,
-  onChange,
-  onCropPath,
-}: {
-  clip: Clip;
-  aspect: AspectRatio;
-  onChange: (p: Partial<Clip>) => void;
-  onCropPath: (path: CropPath | null) => void;
-}) {
-  const transition = clip.transitionIn?.kind ?? "none";
+/** The Premiere rows behind More settings: Scale, Position X/Y, Opacity, Volume. */
+function VideoAdvanced({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>) => void }) {
   const zoom = clip.zoom ?? 1;
   const pos = clip.pos ?? { x: 0, y: 0 };
   const opacity = clip.opacity ?? 1;
   // A speaker crop path owns the framing (preview and export ignore zoom and position then).
   const reframed = !!clip.cropPath;
-  const moved = zoom !== 1 || pos.x !== 0 || pos.y !== 0 || opacity !== 1;
   const setPos = (p: Partial<{ x: number; y: number }>) => {
     const next = { ...pos, ...p };
     onChange({ pos: next.x || next.y ? next : undefined });
   };
   return (
     <>
-      {/* Effect controls first, like Premiere: the basics everyone reaches for. */}
-      <Section
-        title="Size and position"
-        onReset={moved ? () => onChange({ zoom: 1, pos: undefined, opacity: undefined }) : undefined}
-      >
-        <ScrubNumber
-          label="Scale"
-          value={Math.round(zoom * 100)}
-          min={100}
-          max={250}
-          unit="%"
-          defaultValue={100}
-          disabled={reframed}
-          slider
-          onChange={(v) => onChange({ zoom: v / 100 })}
-        />
-        <ScrubNumber
-          label="Position X"
-          value={Math.round(pos.x * 100)}
-          min={-100}
-          max={100}
-          defaultValue={0}
-          disabled={reframed || zoom <= 1}
-          onChange={(v) => setPos({ x: v / 100 })}
-        />
-        <ScrubNumber
-          label="Position Y"
-          value={Math.round(pos.y * 100)}
-          min={-100}
-          max={100}
-          defaultValue={0}
-          disabled={reframed || zoom <= 1}
-          onChange={(v) => setPos({ y: v / 100 })}
-        />
-        <ScrubNumber
-          label="Opacity"
-          value={Math.round(opacity * 100)}
-          min={0}
-          max={100}
-          unit="%"
-          defaultValue={100}
-          onChange={(v) => onChange({ opacity: v >= 100 ? undefined : v / 100 })}
-        />
-        {reframed ? (
-          <p className="insp-hint">Reframe is following speakers, so it sets the framing.</p>
-        ) : (
-          zoom <= 1 && <p className="insp-hint">Scale up to move the picture around.</p>
-        )}
-      </Section>
-      <Section title="Sound">
-        <ScrubNumber
-          label="Volume"
-          value={Math.round((clip.volume ?? 1) * 100)}
-          min={0}
-          max={100}
-          unit="%"
-          defaultValue={100}
-          slider
-          onChange={(v) => onChange({ volume: v / 100 })}
-        />
-      </Section>
-      {clip.source?.hasVideo && (
-        <Section title={`Fit to ${aspect}`}>
-          <ReframePanel clip={clip} aspect={aspect} onCropPath={onCropPath} />
-        </Section>
+      <p className="advhead">Advanced</p>
+      <ScrubNumber
+        label="Scale"
+        value={Math.round(zoom * 100)}
+        min={100}
+        max={250}
+        unit="%"
+        defaultValue={100}
+        disabled={reframed}
+        onChange={(v) => onChange({ zoom: v / 100 })}
+      />
+      <ScrubNumber
+        label="Position X"
+        value={Math.round(pos.x * 100)}
+        min={-100}
+        max={100}
+        unit="px"
+        defaultValue={0}
+        disabled={reframed || zoom <= 1}
+        onChange={(v) => setPos({ x: v / 100 })}
+      />
+      <ScrubNumber
+        label="Position Y"
+        value={Math.round(pos.y * 100)}
+        min={-100}
+        max={100}
+        unit="px"
+        defaultValue={0}
+        disabled={reframed || zoom <= 1}
+        onChange={(v) => setPos({ y: v / 100 })}
+      />
+      <ScrubNumber
+        label="Opacity"
+        value={Math.round(opacity * 100)}
+        min={0}
+        max={100}
+        unit="%"
+        defaultValue={100}
+        onChange={(v) => onChange({ opacity: v >= 100 ? undefined : v / 100 })}
+      />
+      <ScrubNumber
+        label="Volume"
+        value={Math.round((clip.volume ?? 1) * 100)}
+        min={0}
+        max={150}
+        unit="%"
+        defaultValue={100}
+        onChange={(v) => onChange({ volume: v / 100 })}
+      />
+      {reframed ? (
+        <p className="help">Fit to shape is following speakers, so it sets the framing.</p>
+      ) : (
+        zoom <= 1 && <p className="help">Scale up to move the picture around.</p>
       )}
-      <Section title="Speed">
-        <Segmented
-          label="Speed"
-          options={["0.5x", "1x", "1.5x", "2x"] as const}
-          value={(["0.5x", "1x", "1.5x", "2x"] as const).find((o) => o === `${clip.speed ?? 1}x`) ?? "1x"}
-          onChange={(s) => onChange({ speed: parseFloat(s), speedRamp: undefined })}
+    </>
+  );
+}
+
+function TransitionChips({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>) => void }) {
+  const transition = clip.transitionIn?.kind ?? "none";
+  return (
+    <>
+      <Chips
+        options={TRANSITIONS.map((t) => t.label)}
+        value={TRANSITIONS.find((t) => t.id === transition)?.label ?? "None"}
+        onChange={(label) => {
+          const id = TRANSITIONS.find((t) => t.label === label)?.id ?? "none";
+          onChange({
+            transitionIn:
+              id === "none" ? undefined : { kind: id, duration: clip.transitionIn?.duration ?? 0.5 },
+          });
+        }}
+      />
+      {clip.transitionIn && (
+        <ScrubNumber
+          label="Length"
+          value={Math.round(clip.transitionIn.duration * 10) / 10}
+          min={0.2}
+          max={2}
+          step={0.1}
+          unit="s"
+          defaultValue={0.5}
+          onChange={(v) =>
+            clip.transitionIn && onChange({ transitionIn: { ...clip.transitionIn, duration: v } })
+          }
         />
-      </Section>
-      <Section title="Transition in" defaultOpen={false}>
-        <Chips
-          options={TRANSITIONS.map((t) => t.label)}
-          value={TRANSITIONS.find((t) => t.id === transition)?.label ?? "None"}
-          onChange={(label) => {
-            const id = TRANSITIONS.find((t) => t.label === label)?.id ?? "none";
-            onChange({
-              transitionIn:
-                id === "none" ? undefined : { kind: id, duration: clip.transitionIn?.duration ?? 0.5 },
-            });
-          }}
-        />
-        {clip.transitionIn && (
-          <ScrubNumber
-            label="Length"
-            value={Math.round(clip.transitionIn.duration * 10) / 10}
-            min={0.2}
-            max={2}
-            step={0.1}
-            unit="s"
-            defaultValue={0.5}
-            onChange={(v) =>
-              clip.transitionIn && onChange({ transitionIn: { ...clip.transitionIn, duration: v } })
-            }
-          />
-        )}
-      </Section>
+      )}
     </>
   );
 }
 
 function AudioProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>) => void }) {
   return (
-    <Section title="Sound">
+    <>
+      <p className="advhead">Advanced</p>
       <ScrubNumber
         label="Volume"
         value={Math.round((clip.volume ?? 1) * 100)}
@@ -333,7 +336,7 @@ function AudioProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip
         defaultValue={0}
         onChange={(v) => onChange({ fadeOut: v })}
       />
-    </Section>
+    </>
   );
 }
 
@@ -348,7 +351,7 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
   const setStyle = (patch: Partial<TextStyle>) => onChange({ style: { ...style, ...patch } });
   return (
     <>
-      <Section title="Words">
+      <Group icon="text" title="Words">
         <textarea
           className="field__input"
           rows={3}
@@ -363,8 +366,8 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
             onChange({ text, label: text, ...(words && { words }) });
           }}
         />
-      </Section>
-      <Section title="Style">
+      </Group>
+      <Group icon="effects" title="Style">
         <div className="style-pick">
           {TEXT_PRESETS.map((p) => (
             <button
@@ -396,8 +399,9 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
             />
           ))}
         </div>
-      </Section>
-      <Section title="Size and position">
+      </Group>
+      <MoreSettings defaultOpen={false} persistKey="verso.inspector.more.v1">
+        <p className="advhead">Advanced</p>
         <ScrubNumber
           label="Size"
           value={Math.round(style.size * 1000)}
@@ -416,7 +420,7 @@ function TextProps({ clip, onChange }: { clip: Clip; onChange: (p: Partial<Clip>
           defaultValue={70}
           onChange={(v) => setStyle({ y: v / 100 })}
         />
-      </Section>
+      </MoreSettings>
     </>
   );
 }
@@ -436,7 +440,7 @@ function Chips({
         <button
           key={s}
           type="button"
-          className={s === value ? "chip is-active" : "chip"}
+          className={s === value ? "chip is-selected" : "chip"}
           aria-pressed={s === value}
           onClick={() => onChange(s)}
         >

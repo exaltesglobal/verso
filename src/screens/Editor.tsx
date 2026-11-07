@@ -445,11 +445,19 @@ export function Editor({
     [selectedClip, setProject],
   );
 
-  const editorStyle = {
-    "--left-w": layout.leftOpen ? `${layout.left}px` : "0px",
-    "--insp-w": layout.inspOpen ? `${layout.insp}px` : "0px",
-    "--tl-h": `${layout.tl}px`,
-  } as CSSProperties;
+  // Studio sizes come from the drag handles; Craft uses the spec's fixed sizes (premium.css).
+  const editorStyle = (
+    vis.resizable
+      ? {
+          "--left-w": layout.leftOpen ? `${layout.left}px` : "0px",
+          "--insp-w": layout.inspOpen ? `${layout.insp}px` : "0px",
+          "--tl-h": `${layout.tl}px`,
+        }
+      : {
+          ...(layout.leftOpen ? {} : { "--left-w": "0px" }),
+          ...(layout.inspOpen ? {} : { "--insp-w": "0px" }),
+        }
+  ) as CSSProperties;
 
   const clipMenu = menu ? findClip(project, menu.id) : undefined;
   const menuKind = menu ? project.tracks.find((t) => t.clips.some((c) => c.id === menu.id))?.kind : undefined;
