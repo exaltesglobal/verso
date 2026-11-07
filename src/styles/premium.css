@@ -858,7 +858,8 @@ kbd {
 
 .editor--craft {
   --left-w: var(--ui-left-w);
-  --tl-h: var(--ui-tl-h);
+  /* Spec height plus room for the horizontal scrollbar, so the last lane is never cut. */
+  --tl-h: calc(var(--ui-tl-h) + 10px);
 }
 
 .inspector {
@@ -1341,4 +1342,279 @@ kbd {
   .media-item {
     gap: 8px;
   }
+}
+
+/* ---------- 3. Timeline ---------- */
+.timeline {
+  grid-template-rows: 32px minmax(0, 1fr);
+  border-top: 1px solid var(--ui-border);
+  background: var(--ui-bg-app);
+}
+
+.timeline__toolbar {
+  height: 32px;
+  gap: 4px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.timeline__tools,
+.timeline__zoom {
+  gap: 4px;
+}
+
+.timeline__sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--ui-border);
+}
+
+.timeline__zoom input[type="range"] {
+  width: 120px;
+}
+
+.timeline__corner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 24px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ui-border);
+  border-right: 1px solid var(--ui-border);
+  background: var(--ui-bg-panel);
+  color: var(--ui-t3);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.track-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--ui-hair);
+  border-right: 1px solid var(--ui-border);
+  background: var(--ui-bg-panel);
+  color: var(--ui-t2);
+  box-shadow: none;
+}
+
+.track-head::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--tr);
+}
+
+.track-head .vs-icon {
+  color: var(--ui-t3);
+}
+
+.track-head__name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t2);
+}
+
+.track-head--text,
+.clip--text {
+  --tr: var(--ui-tr-text);
+}
+
+.track-head--captions,
+.clip--captions {
+  --tr: var(--ui-tr-captions);
+}
+
+.track-head--video,
+.clip--video {
+  --tr: var(--ui-tr-video);
+}
+
+.track-head--audio,
+.clip--audio {
+  --tr: var(--ui-tr-audio);
+}
+
+.track-head--music,
+.clip--music,
+.clip--effects {
+  --tr: var(--ui-tr-effects);
+}
+
+.track {
+  border-bottom: 1px solid var(--ui-hair);
+  background: var(--ui-bg-app);
+}
+
+.track.is-empty {
+  background: var(--ui-bg-app);
+}
+
+.track__add {
+  height: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ui-t3);
+}
+
+/* Ruler: 24px, surface, tick hierarchy 9 / 6 / 4 px. */
+.ruler {
+  height: 24px;
+  background: var(--ui-bg-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ruler__tick {
+  bottom: 0;
+  top: auto;
+  width: 1px;
+  background: #3a3a45;
+  height: 4px;
+}
+
+.ruler__tick.is-l1 {
+  background: #5c5b66;
+  height: 6px;
+}
+
+.ruler__tick.is-l0 {
+  background: #8e8c96;
+  height: 9px;
+}
+
+.ruler__label {
+  /* The label hangs from its 9px tick: 3px below the ruler's top edge. */
+  top: -12px;
+  left: 4px;
+  font:
+    600 11px/14px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  color: var(--ui-t3);
+  font-variant-numeric: tabular-nums;
+}
+
+.ruler__label .tc-dim {
+  color: #5c5b66;
+}
+
+/* Clips: 20% tint, 55% border, label chip, Glow selection. */
+.clip {
+  top: 3px;
+  bottom: 3px;
+  height: auto;
+  border-radius: var(--ui-r-sm);
+  background: color-mix(in srgb, var(--tr) 20%, var(--ui-bg-surface));
+  border: 1px solid color-mix(in srgb, var(--tr) 55%, var(--ui-bg-surface));
+  color: var(--ui-t1);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.clip:hover {
+  background: color-mix(in srgb, var(--tr) 28%, var(--ui-bg-surface));
+}
+
+.clip.is-selected {
+  background: color-mix(in srgb, var(--tr) 30%, var(--ui-bg-surface));
+  border-color: var(--ui-glow);
+  box-shadow: inset 0 0 0 1px var(--ui-glow);
+  outline: none;
+}
+
+.clip__label {
+  font:
+    600 11px/16px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  padding: 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: var(--ui-t1);
+  background: none;
+}
+
+.clip--video .clip__label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 6px;
+  border-radius: var(--ui-r-xs);
+  background: rgba(11, 11, 15, 0.62);
+  max-width: calc(100% - 8px);
+}
+
+.clip--video .filmstrip {
+  opacity: 0.85;
+  border-radius: 3px;
+}
+
+.clip--audio .clip__label,
+.clip--music .clip__label {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 18px;
+  line-height: 18px;
+  border-radius: var(--ui-r-xs);
+  background: rgba(11, 11, 15, 0.55);
+}
+
+.clip .waveform {
+  color: color-mix(in srgb, var(--tr) 60%, transparent);
+  fill: color-mix(in srgb, var(--tr) 60%, transparent);
+  stroke: none;
+  opacity: 1;
+}
+
+/* Playhead: 1px Ember with a pentagon head; the only Ember besides Export. */
+.playhead {
+  width: 1px;
+  background: var(--ui-ember);
+  box-shadow: none;
+  z-index: 3;
+}
+
+.playhead__head {
+  top: 0;
+  width: 13px;
+  height: 16px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ui-ember);
+  clip-path: polygon(0 0, 100% 0, 100% 58%, 50% 100%, 0 58%);
+  box-shadow: none;
+}
+
+.snap-line {
+  width: 1px;
+  background: rgba(245, 244, 240, 0.7);
+  z-index: 2;
+}
+
+.ruler__flag {
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--ui-r-xs);
+  background: var(--ui-bg-overlay);
+  box-shadow: 0 0 0 1px var(--ui-border-strong);
+  color: var(--ui-t1);
+  font:
+    600 11px/18px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
 }

@@ -34,18 +34,23 @@ const MAX_PX_PER_SEC = 34;
 const GUTTER = 12;
 const EDGE_PX = 8;
 const SNAP_PX = 8;
-const HEAD_W = 148;
-const RULER_H = 28;
-/** Fixed lane heights per kind; empty lanes shrink so they never waste room. */
-const TRACK_H: Record<TrackKind, number> = { video: 56, audio: 40, music: 40, text: 32, captions: 32 };
-const EMPTY_H = 28;
+const HEAD_W = 160;
+const RULER_H = 24;
+/** Lane heights per kind (premium spec): 24 / 24 / 52 / 34 / 34, smaller in the compact window. */
+const LANE_H: Record<TrackKind, string> = {
+  text: "var(--ui-h-text)",
+  captions: "var(--ui-h-cap)",
+  video: "var(--ui-h-video)",
+  audio: "var(--ui-h-audio)",
+  music: "var(--ui-h-audio)",
+};
 /** Overlay lanes in the Quick clip strip: just enough to see that a title or song is there. */
 const THIN_H = 12;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
   video: "play",
-  audio: "volume",
+  audio: "voiceover",
   music: "music",
 };
 const EMPTY_ACTION: Partial<Record<TrackKind, string>> = {
@@ -283,10 +288,11 @@ export function Timeline(props: TimelineProps) {
 
   const empty = duration === 0;
   const beats = useBeatMarkers(project);
-  const heights = lanes.map((t) => (isThin(t.kind) ? THIN_H : t.clips.length ? TRACK_H[t.kind] : EMPTY_H));
+  // Fixed per-kind lane heights from the spec tokens (they shrink in the compact window).
+  const heights = lanes.map((t) => (isThin(t.kind) ? `${THIN_H}px` : LANE_H[t.kind]));
   const gridStyle: CSSProperties = {
     gridTemplateColumns: `${headW}px ${width}px`,
-    gridTemplateRows: `${RULER_H}px ${heights.map((h) => `${h}px`).join(" ")}`,
+    gridTemplateRows: `${RULER_H}px ${heights.join(" ")}`,
   };
   const head = Math.round(x(time));
 
@@ -386,7 +392,7 @@ export function Timeline(props: TimelineProps) {
         }}
       >
         <div className="timeline__grid" style={gridStyle}>
-          {headers && <div className="timeline__corner tc">{formatTimecode(time)}</div>}
+          {headers && <div className="timeline__corner tc">{FPS} fps</div>}
           <div
             className="ruler"
             onPointerDown={(e) => e.button === 0 && scrubFrom(e, e.currentTarget)}
