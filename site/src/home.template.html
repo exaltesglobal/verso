@@ -362,7 +362,7 @@ footer a:hover{color:var(--paper)}
           <div class="src">
             <div class="src-frame">
               <canvas id="studio" width="1600" height="900" role="img" aria-label="Two podcast hosts talking at microphones in a dark studio"></canvas>
-              <div class="crop" id="crop" style="left:5.2%;width:31.64%;opacity:0"></div>
+              <div class="crop" id="crop" style="left:0.2%;width:31.64%;opacity:0"></div>
               <div class="src-tag"><span class="chip">16:9 · 1080p · 47:12</span><span class="chip live" id="who" hidden>Following: Priya</span></div>
             </div>
             <div class="tl">
@@ -429,9 +429,9 @@ footer a:hover{color:var(--paper)}
           <div><span class="tag">Reframe</span><h3>Wide video, made vertical</h3><p>Follow one person, switch to whoever is talking, or stack two speakers for podcast reels. Faces stay in frame on their own.</p></div>
           <div class="viz">
             <div class="frames">
-              <div class="fr"><div class="ph" style="background-image:url({{IMG:hero-podcast}});background-position:7.6% 0"></div>Follow one</div>
-              <div class="fr on"><div class="ph" style="background-image:url({{IMG:hero-podcast}});background-position:93.9% 0"></div>Who's talking</div>
-              <div class="fr"><div class="ph split2"><span style="background-image:url({{IMG:hero-podcast}});background-position:12% 22%"></span><span style="background-image:url({{IMG:hero-podcast}});background-position:84% 22%"></span></div>Both speakers</div>
+              <div class="fr"><div class="ph" style="background-image:url({{IMG:hero-podcast}});background-position:0% 0"></div>Follow one</div>
+              <div class="fr on"><div class="ph" style="background-image:url({{IMG:hero-podcast}});background-position:76% 0"></div>Who's talking</div>
+              <div class="fr"><div class="ph split2"><span style="background-image:url({{IMG:hero-podcast}});background-position:1% 27%"></span><span style="background-image:url({{IMG:hero-podcast}});background-position:76% 27%"></span></div>Both speakers</div>
             </div>
           </div>
         </article>
@@ -631,18 +631,27 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* ---------- studio scene (procedural podcast set) ---------- */
 const cv = document.getElementById('studio'), cx = cv.getContext('2d');
 const W = cv.width, H = cv.height;
-const speakers = [ {name:'Priya', x:.21, y:.32, talk:0}, {name:'Arjun', x:.80, y:.32, talk:0} ];
+const speakers = [ {name:'Priya', x:.16, y:.38, talk:0}, {name:'Arjun', x:.68, y:.38, talk:0} ];
 let active = 0, t0 = performance.now();
+// Hero source: real podcast footage when available, poster still as fallback.
 const heroImg = new Image(); heroImg.src = '{{IMG:hero-podcast}}';
-let ready = false; heroImg.onload = () => { ready = true; };
+let ready = false, src = heroImg; heroImg.onload = () => { ready = true; };
+const HERO_VIDEO = '{{VID:hero-podcast}}';
+if (HERO_VIDEO && !reduce) {
+  const v = document.createElement('video');
+  Object.assign(v, { muted: true, loop: true, playsInline: true, autoplay: true, preload: 'auto', src: HERO_VIDEO });
+  v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+  v.addEventListener('playing', () => { src = v; ready = true; }, { once: true });
+  v.play().catch(() => {});
+}
 function draw(now){
   const t=(now-t0)/1000;
   speakers.forEach((s,i)=>{ s.talk += ((i===active?1:0)-s.talk)*.06; });
   cx.fillStyle='#0B0B0F'; cx.fillRect(0,0,W,H);
   if(ready){
-    const z = 1.02 + Math.sin(t*.25)*.015;            // slow camera breathing
+    const z = src === heroImg ? 1.02 + Math.sin(t*.25)*.015 : 1;   // still image gets a slow push; real video plays as shot
     const dw = W*z, dh = H*z;
-    cx.drawImage(heroImg, (W-dw)/2, (H-dh)/2, dw, dh);
+    cx.drawImage(src, (W-dw)/2, (H-dh)/2, dw, dh);
     // soft ember key on whoever is talking
     cx.save(); cx.globalCompositeOperation='soft-light';
     speakers.forEach(s=>{ if(s.talk<.02) return; const g=cx.createRadialGradient(W*s.x,H*s.y,10,W*s.x,H*s.y,W*.2); g.addColorStop(0,`rgba(255,148,102,${.35*s.talk})`); g.addColorStop(1,'rgba(255,148,102,0)'); cx.fillStyle=g; cx.fillRect(0,0,W,H); });
@@ -655,7 +664,7 @@ function draw(now){
 
 /* ---------- reel view = live crop of studio canvas ---------- */
 const rc=document.getElementById('reel'), rx=rc.getContext('2d');
-let cropX = .052, cropTarget=.052; const cropW = (H*9/16)/W; // fraction of width
+let cropX = .002, cropTarget=.002; const cropW = (H*9/16)/W; // fraction of width
 function reelDraw(){
   cropX += (cropTarget-cropX)*.09;
   const sx = cropX*W, sw = cropW*W, zoom = punch;

@@ -15,6 +15,12 @@ def img(mo):
         cache[n]='data:image/webp;base64,'+base64.b64encode(open(f'{here}/../public/img/{n}.webp','rb').read()).decode()
     return cache[n]
 t=re.sub(r'\{\{IMG:([\w-]+)\}\}',img,t)
+def vid(mo):
+    n=mo.group(1); f=f'{here}/../public/img/{n}.mp4'
+    if not os.path.exists(f): return ''
+    if not inline: return f'/img/{n}.mp4'
+    return 'data:video/mp4;base64,'+base64.b64encode(open(f,'rb').read()).decode()
+t=re.sub(r'\{\{VID:([\w-]+)\}\}',vid,t)
 if not inline:
     head_end=t.index('</style>')+len('</style>')
     t=('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
