@@ -38,6 +38,11 @@ const schema = z.object({
   AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().default(20),
 
   RESEND_API_KEY: opt,
+  // SMTP (e.g. Hostinger mail: smtp.hostinger.com, port 465). Used instead of Resend when SMTP_HOST is set.
+  SMTP_HOST: opt,
+  SMTP_PORT: z.coerce.number().int().default(465),
+  SMTP_USER: opt,
+  SMTP_PASS: opt,
   EMAIL_FROM: z.string().default('Verso <no-reply@example.com>'),
 
   GOOGLE_CLIENT_ID: opt,

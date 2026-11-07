@@ -122,7 +122,14 @@ the end of the paid cycle.
 
 ---
 
-## 4. Email via Resend (RESEND_API_KEY, EMAIL_FROM)
+## 4. Email: Hostinger mailbox (SMTP_*) or Resend (RESEND_API_KEY), plus EMAIL_FROM
+
+**Hostinger mailbox (recommended, no extra service):** in hPanel > Emails, create `no-reply@verso.video` on the
+domain, then set `SMTP_HOST=smtp.hostinger.com`, `SMTP_PORT=465`, `SMTP_USER=no-reply@verso.video`,
+`SMTP_PASS=<mailbox password>` and `EMAIL_FROM=Verso <no-reply@verso.video>`. When `SMTP_HOST` is set, SMTP is
+used instead of Resend. Hostinger adds the SPF/DKIM records when the domain's DNS is on Hostinger.
+
+**Resend (alternative):**
 
 1. Create an account at [resend.com](https://resend.com/).
 2. **Domains > Add domain**. Use a subdomain such as `mail.example.com` so it doesn't clash with your normal
