@@ -7,6 +7,7 @@ import "./styles/account.css";
 import "./styles/credits.css";
 import "./styles/modes.css"; // Quick / Craft / Studio workspaces, one-tap edits
 import "./styles/panels.css"; // simple panel structure: primary action, big choices, More settings
+import "./styles/premium.css"; // premium shell: spec tokens and components, loaded last
 import App from "./App";
 import { AccountHost } from "./components/account/AccountHost";
 import { CreditsHost } from "./components/credits/CreditsHost";

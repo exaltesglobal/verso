@@ -1,0 +1,851 @@
+/* Premium shell: tokens and primitives from docs/design/premium-ui/PREMIUM-UI-SPEC.md.
+   Loaded after app.css so these exact values win. Section numbers refer to the spec. */
+
+/* ---------- 0. Alias layer ---------- */
+:root {
+  --ui-t1: #f5f4f0;
+  --ui-t2: #b9b7bf;
+  --ui-t3: #8e8c96;
+  --ui-t-disabled: #5c5b66;
+  --ui-bg-app: #0b0b0f;
+  --ui-bg-panel: #111116;
+  --ui-bg-surface: #16161c;
+  --ui-bg-raised: #1d1d24;
+  --ui-bg-overlay: #22222a;
+  --ui-bg-pressed: #2a2a33;
+  --ui-border: #2a2a33;
+  --ui-border-strong: #3a3a45;
+  --ui-hair: rgba(255, 255, 255, 0.06);
+  --ui-ember: #ff4a2b;
+  --ui-ember-hover: #ff5f43;
+  --ui-ember-pressed: #e23a1d;
+  --ui-glow: #ff9466;
+  --ui-tr-video: #5b8cff;
+  --ui-tr-audio: #2fd4a3;
+  --ui-tr-text: #ffb547;
+  --ui-tr-effects: #c084fc;
+  --ui-tr-captions: #f472b6;
+  --ui-r-xs: 3px;
+  --ui-r-sm: 4px;
+  --ui-r-md: 6px;
+  --ui-r-lg: 8px;
+  --ui-r-xl: 12px;
+  --ui-e1: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ui-e2: 0 0 0 1px #3a3a45, 0 8px 24px rgba(0, 0, 0, 0.5);
+  --ui-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ui-rail-w: 64px;
+  --ui-left-w: 296px;
+  --ui-insp-w: 384px;
+  --ui-tl-h: 224px;
+  --ui-rail-item: 56px;
+  --ui-ipad: 16px;
+  --ui-swatch: 64px;
+  --ui-tile-h: 56px;
+  --ui-grp-pt: 10px;
+  --ui-grp-pb: 12px;
+  --ui-grp-title: 20px;
+  --ui-grp-gap: 8px;
+  --ui-h-text: 24px;
+  --ui-h-cap: 24px;
+  --ui-h-video: 52px;
+  --ui-h-audio: 34px;
+  --ui-thumb-w: 64px;
+  --ui-thumb-h: 36px;
+  --ui-stage-pb: 36px;
+
+  /* The existing alias names now point at the spec values. */
+  --ui-text: var(--ui-t1);
+  --ui-text-2: var(--ui-t2);
+  --ui-text-3: var(--ui-t3);
+  --ui-text-disabled: var(--ui-t-disabled);
+  --ui-border-subtle: var(--ui-hair);
+  --ui-focus: var(--ui-glow);
+  --ui-track-video: var(--ui-tr-video);
+  --ui-track-audio: var(--ui-tr-audio);
+  --ui-track-text: var(--ui-tr-text);
+  --ui-track-captions: var(--ui-tr-captions);
+  --ui-track-effects: var(--ui-tr-effects);
+  --ui-text-sm: 12px;
+  --ui-text-md: 13px;
+  --ui-control: 28px;
+  --ui-control-sm: 28px;
+  --ui-panel-head: 36px;
+  --ui-pad: var(--ui-ipad);
+}
+
+/* Compact window (the mock's 1280x800 state). */
+@media (max-width: 1400px) {
+  :root {
+    --ui-left-w: 256px;
+    --ui-insp-w: 336px;
+    --ui-tl-h: 216px;
+    --ui-ipad: 12px;
+    --ui-swatch: 56px;
+    --ui-tile-h: 48px;
+    --ui-grp-pt: 8px;
+    --ui-grp-pb: 10px;
+    --ui-grp-title: 18px;
+    --ui-grp-gap: 6px;
+    --ui-h-video: 48px;
+    --ui-h-audio: 32px;
+    --ui-thumb-w: 56px;
+    --ui-thumb-h: 32px;
+    --ui-stage-pb: 84px;
+  }
+}
+
+html,
+body {
+  background: var(--ui-bg-app);
+}
+
+body {
+  color: var(--ui-t2);
+  font:
+    500 12px/16px "Manrope Variable",
+    Manrope,
+    "Segoe UI Variable",
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tc {
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ---------- 1.1 Scrollbars ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3a3a45;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  min-height: 32px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #5c5b66;
+  border-width: 2px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---------- 1.2 Group (section) header and hairline ---------- */
+.grp {
+  padding: var(--ui-grp-pt) 0 var(--ui-grp-pb);
+  border-bottom: 1px solid var(--ui-hair);
+}
+
+.grp__t {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--ui-grp-title);
+  margin-bottom: var(--ui-grp-gap);
+  color: var(--ui-t1);
+  font-weight: 600;
+}
+
+.grp__t .vs-icon {
+  color: var(--ui-t2);
+}
+
+.help {
+  color: var(--ui-t3);
+  margin-top: var(--ui-grp-gap);
+}
+
+.hair {
+  height: 1px;
+  background: var(--ui-hair);
+}
+
+/* ---------- 1.3 Property rows ---------- */
+.adv {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin: 0 -8px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-sm);
+}
+
+.adv:hover {
+  background: var(--ui-bg-surface);
+}
+
+.adv__label {
+  width: 88px;
+  flex: none;
+  text-align: right;
+  color: var(--ui-t3);
+  cursor: ew-resize;
+  white-space: nowrap;
+}
+
+.adv:hover .adv__label {
+  color: var(--ui-t2);
+}
+
+.adv.is-changed .adv__label {
+  color: var(--ui-t1);
+}
+
+.adv__field {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  width: 72px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-sm);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t1);
+  flex: none;
+}
+
+.adv__field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  text-align: right;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.adv:hover .adv__field {
+  border-color: var(--ui-border-strong);
+}
+
+.adv__field:focus-within {
+  border-color: var(--ui-glow);
+}
+
+.adv__unit {
+  color: var(--ui-t3);
+}
+
+.adv__slider {
+  flex: 1;
+  position: relative;
+  height: 28px;
+  min-width: 40px;
+}
+
+.adv__slider input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: default;
+}
+
+.adv__slider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--ui-border-strong);
+}
+
+.adv__slider::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: var(--p);
+  top: 50%;
+  height: 1px;
+  background: var(--ui-t2);
+}
+
+.adv__slider i {
+  position: absolute;
+  left: var(--p);
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--ui-t1);
+  border: 1px solid #0b0b0f;
+  box-shadow: 0 0 0 1px var(--ui-border-strong);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.adv__reset {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-t3);
+  visibility: hidden;
+  flex: none;
+  border-radius: 3px;
+}
+
+.adv:hover .adv__reset,
+.adv.is-changed .adv__reset {
+  visibility: visible;
+}
+
+.adv__reset:hover {
+  color: var(--ui-t1);
+}
+
+.advhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 16px;
+  margin: 4px 0;
+  color: var(--ui-t3);
+  font:
+    600 11px/14px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.advhead::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ui-hair);
+}
+
+/* ---------- 1.4 Segmented control and chips ---------- */
+.segmented {
+  display: inline-flex;
+  height: 28px;
+  padding: 2px;
+  gap: 0;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+}
+
+.segmented__item {
+  height: 22px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--ui-r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t3);
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.segmented__item:hover {
+  color: var(--ui-t1);
+}
+
+.segmented__item.is-active {
+  background: var(--ui-bg-raised);
+  color: var(--ui-t1);
+  box-shadow: inset 0 0 0 1px var(--ui-border-strong);
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+}
+
+.chip {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip .vs-icon {
+  color: var(--ui-t3);
+}
+
+.chip:hover {
+  border-color: var(--ui-border-strong);
+  color: var(--ui-t1);
+}
+
+.chip.is-selected {
+  border-color: var(--ui-glow);
+  box-shadow: inset 0 0 0 1px var(--ui-glow);
+  color: var(--ui-t1);
+}
+
+.chip.is-selected .vs-icon {
+  color: var(--ui-t1);
+}
+
+/* ---------- 1.5 Tiles, look swatches, toggle ---------- */
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ui-grp-gap);
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: var(--ui-tile-h);
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t3);
+}
+
+.tile:hover {
+  border-color: var(--ui-border-strong);
+  color: var(--ui-t2);
+}
+
+.tile .d-strong {
+  color: var(--ui-t1);
+  stroke: var(--ui-t1);
+}
+
+.tile.is-selected {
+  border-color: var(--ui-glow);
+  box-shadow: inset 0 0 0 1px var(--ui-glow);
+  color: var(--ui-t1);
+}
+
+.tile__d {
+  width: 48px;
+  height: 32px;
+}
+
+.tile__l {
+  font-weight: 600;
+  color: var(--ui-t2);
+}
+
+.tile.is-selected .tile__l {
+  color: var(--ui-t1);
+}
+
+.pro {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: var(--ui-r-xs);
+  background: #2a2a33;
+  color: var(--ui-t2);
+  font:
+    600 11px/16px "Manrope Variable",
+    Manrope,
+    sans-serif;
+}
+
+.looks {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.look {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--ui-t3);
+  font-size: 11px;
+  line-height: 14px;
+  flex: none;
+}
+
+.look__sw {
+  position: relative;
+  display: block;
+  width: var(--ui-swatch);
+  height: var(--ui-swatch);
+  border-radius: var(--ui-r-md);
+  border: 1px solid var(--ui-border);
+  overflow: hidden;
+  background: #000;
+}
+
+.look:hover {
+  color: var(--ui-t1);
+}
+
+.look:hover .look__sw {
+  border-color: var(--ui-border-strong);
+}
+
+.look.is-selected {
+  color: var(--ui-t1);
+  font-weight: 600;
+}
+
+.look.is-selected .look__sw {
+  border-color: var(--ui-glow);
+  box-shadow: inset 0 0 0 1px var(--ui-glow);
+}
+
+.trow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 28px;
+  margin-bottom: var(--ui-grp-gap);
+}
+
+.trow__l {
+  color: var(--ui-t1);
+  font-weight: 600;
+}
+
+.trow__h {
+  color: var(--ui-t3);
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The shared Toggle component, drawn as the spec's 32x18 switch. */
+.toggle {
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: #2a2a33;
+  border: 1px solid var(--ui-border-strong);
+}
+
+.toggle__knob {
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  background: var(--ui-t2);
+}
+
+.toggle.is-on {
+  background: var(--ui-t1);
+  border-color: var(--ui-t1);
+}
+
+.toggle.is-on .toggle__knob {
+  transform: translateX(14px);
+  background: #0b0b0f;
+}
+
+/* ---------- 1.6 More settings disclosure ---------- */
+.more-settings {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.more-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 0 4px 0 2px;
+  border-radius: var(--ui-r-md);
+  color: var(--ui-t2);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+}
+
+.more-settings__toggle:hover,
+.more-settings.is-open .more-settings__toggle {
+  background: var(--ui-bg-raised);
+  color: var(--ui-t1);
+}
+
+.more-settings.is-open .more-settings__toggle:not(:hover) {
+  background: none;
+}
+
+.more-settings__chevron {
+  transform: rotate(90deg);
+  transition: transform 180ms var(--ui-ease);
+}
+
+.more-settings.is-open .more-settings__chevron {
+  transform: rotate(270deg);
+}
+
+.more-settings__body {
+  padding-bottom: 12px;
+}
+
+/* ---------- 1.7 Buttons, icon buttons ---------- */
+button {
+  transition:
+    background-color 100ms var(--ui-ease),
+    color 100ms var(--ui-ease),
+    border-color 100ms var(--ui-ease);
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ui-r-md);
+  color: var(--ui-t3);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--ui-bg-raised);
+  color: var(--ui-t1);
+}
+
+.icon-btn:active:not(:disabled) {
+  background: #2a2a33;
+}
+
+.icon-btn.is-active,
+.icon-btn[aria-pressed="true"] {
+  background: var(--ui-bg-raised);
+  color: var(--ui-t1);
+  box-shadow: inset 0 0 0 1px var(--ui-border-strong);
+}
+
+.icon-btn:disabled {
+  color: var(--ui-t-disabled);
+  background: none;
+}
+
+.btn {
+  height: 28px;
+  border-radius: var(--ui-r-md);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn--lg {
+  height: 32px;
+  font-size: 12px;
+}
+
+.btn--secondary {
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t1);
+  box-shadow: none;
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--ui-bg-raised);
+  border-color: var(--ui-border-strong);
+}
+
+.btn--primary {
+  height: 32px;
+  gap: 6px;
+  padding: 0 12px 0 10px;
+  background: var(--ui-ember);
+  color: #0b0b0f;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 4px 14px rgba(255, 74, 43, 0.22);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--ui-ember-hover);
+}
+
+.btn--primary:active:not(:disabled) {
+  background: var(--ui-ember-pressed);
+}
+
+.kbd,
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--ui-r-xs);
+  background: var(--ui-bg-raised);
+  border: 1px solid var(--ui-border-strong);
+  border-bottom-width: 2px;
+  font:
+    600 11px/16px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  color: var(--ui-t2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 1.8 Focus ring ---------- */
+:focus-visible {
+  outline: 2px solid var(--ui-glow);
+  outline-offset: 2px;
+}
+
+/* ---------- 1.9 Toast ---------- */
+.toast {
+  width: 288px;
+  padding: 8px 12px 8px 14px;
+  border-radius: var(--ui-r-lg);
+  background: var(--ui-bg-overlay);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--ui-e2);
+  /* Beside the transport, never over the frame. */
+  bottom: calc(var(--tl-h, 224px) + 8px);
+}
+
+.toast__icon {
+  color: var(--ui-t2);
+}
+
+.toast__text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.toast__action {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-sm);
+  color: var(--ui-t2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.toast__action:hover {
+  background: #2a2a33;
+  color: var(--ui-t1);
+}
+
+.toast__close {
+  width: 24px;
+  height: 24px;
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---------- 1.10 Tooltip ---------- */
+.tooltip {
+  gap: 6px;
+  height: 24px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-overlay);
+  box-shadow: var(--ui-e2);
+  color: var(--ui-t1);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: none;
+}
+
+.tooltip .kbd {
+  height: 16px;
+  min-width: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 14px;
+  border-bottom-width: 1px;
+}
+
+/* ---------- 1.11 Context menu ---------- */
+.menu {
+  min-width: 200px;
+  padding: 4px;
+  border-radius: var(--ui-r-lg);
+  background: var(--ui-bg-overlay);
+  box-shadow: var(--ui-e2);
+  max-height: 60vh;
+}
+
+.menu__item {
+  gap: 8px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-sm);
+  font:
+    500 13px/18px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  color: var(--ui-t2);
+}
+
+.menu__check {
+  width: 16px;
+  color: var(--ui-t3);
+}
+
+.menu__item:hover:not(:disabled),
+.menu__item.is-active,
+.menu__item:focus-visible {
+  background: #2a2a33;
+  color: var(--ui-t1);
+}
+
+.menu__item.is-danger {
+  color: #f87171;
+}
+
+/* The shortcut column: plain muted text, not a key cap. */
+.menu__item .kbd {
+  margin-left: auto;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ui-t3);
+}
+
+.menu__sep {
+  height: 1px;
+  background: var(--ui-hair);
+  margin: 4px 0;
+}
