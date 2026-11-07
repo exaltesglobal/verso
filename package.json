@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:handoff": "node scripts/handoff-selfcheck.ts",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "fmt:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",

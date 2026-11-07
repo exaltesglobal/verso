@@ -80,3 +80,10 @@ Done in the template pass: photos in any slot (`Clip.still`), one-click language
 - **Beat-snapped cuts** using `beatSnapTolerance(template)` when "Cut to the beat" moves slot edges. Fallback: slot times as authored.
 - **Devanagari Hindi copy** for every template layer, next to Hinglish and English. Fallback: Hinglish default.
 - **Noto Emoji (OFL)** bundled for stickers in preview and export. Fallback: the system emoji font.
+
+## Import a Premiere sequence
+
+- **What:** drag a Premiere/FCP7 XML (xmeml) sequence back into Verso to keep editing.
+- **How:** parse the first video track's `clipitem`s (`start`/`end`/`in`/`out`, `rate`, `pathurl`), probe each file with `probe_media`, and rebuild video + linked sound clips through `appendMedia`-style construction. Speed from the Time Remap effect; Basic Motion back to `zoom`/`pos`.
+- **Why later:** needs an XML parser in the frontend (DOMParser works in the webview) plus relinking for moved media; the export side (`src/lib/handoff.ts`) covers the main need first.
+
