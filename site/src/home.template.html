@@ -1,10 +1,10 @@
 <title>Verso</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Verso turns long videos into finished reels on your own computer. Auto-cut, vertical reframe and captions in Hindi, Marathi and Hinglish.">
+<meta name="description" content="Verso turns long videos into finished reels on your own computer. Auto-cut, vertical reframe and captions in English, Hindi and Marathi.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@500;700;800&family=Noto+Sans+Tamil:wght@500;800&family=Noto+Sans+Telugu:wght@500;800&family=Noto+Sans+Bengali:wght@500;800&family=Noto+Sans+Kannada:wght@500;800&family=Noto+Sans+Gujarati:wght@500;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: one cinematic column. A live one-tap demo is the hero, then a quiet product story told in UI fragments, then the waitlist. */
 :root{
@@ -15,7 +15,7 @@
   --ember:#FF4A2B; --glow:#FF9466; --ember-tint:rgba(255,74,43,.12);
   --t-video:#5B8CFF; --t-audio:#2FD4A3; --t-text:#FFB547; --t-captions:#F472B6;
   --grad: linear-gradient(135deg,#FF9466 0%,#FF4A2B 100%);
-  --sans: Manrope, "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Bengali", "Noto Sans Kannada", "Noto Sans Gujarati", "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+  --sans: Manrope, "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
   --ease: cubic-bezier(.2,.8,.2,1);
   --wrap: 1180px;
@@ -42,10 +42,6 @@ p{margin:0}
 .nav-links a{font-size:14px;font-weight:600;color:var(--text-2);text-decoration:none;transition:color .2s}
 .nav-links a:hover{color:var(--paper)}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-.lang{position:relative}
-.lang select{appearance:none;background:transparent;border:1px solid var(--line);color:var(--text-2);font:600 13px var(--sans);padding:8px 30px 8px 12px;border-radius:999px;cursor:pointer}
-.lang::after{content:"";position:absolute;right:13px;top:50%;width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
-.lang select option{background:var(--surface);color:var(--paper)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:700 15px var(--sans);letter-spacing:-.01em;border-radius:999px;padding:12px 20px;border:0;cursor:pointer;text-decoration:none;transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s}
 .btn-ember{background:var(--ember);color:var(--ink);box-shadow:0 0 0 1px rgba(255,74,43,.4),0 8px 28px rgba(255,74,43,.28)}
 .btn-ember:hover{background:#FF5F43;transform:translateY(-1px);box-shadow:0 0 0 1px rgba(255,74,43,.5),0 14px 36px rgba(255,74,43,.36)}
@@ -316,18 +312,6 @@ footer a:hover{color:var(--paper)}
       <a href="#download" data-i18n="nav.download">Download</a>
     </nav>
     <div class="nav-right">
-      <label class="lang"><span class="sr" hidden>Language</span>
-        <select id="lang" aria-label="Language">
-          <option value="en">English</option>
-          <option value="hi">हिन्दी</option>
-          <option value="mr">मराठी</option>
-          <option value="ta">தமிழ்</option>
-          <option value="te">తెలుగు</option>
-          <option value="bn">বাংলা</option>
-          <option value="kn">ಕನ್ನಡ</option>
-          <option value="gu">ગુજરાતી</option>
-        </select>
-      </label>
       <a class="btn btn-ember btn-sm" href="#download" data-i18n="cta.join">Join the waitlist</a>
     </div>
   </div>
@@ -339,7 +323,7 @@ footer a:hover{color:var(--paper)}
       <div class="hero-copy">
         <span class="pill"><b>Beta</b><span data-i18n="hero.pill">For Windows and Mac · Opening in batches</span></span>
         <h1><span data-i18n="hero.h1a">Long videos in.</span> <span class="out" data-i18n="hero.h1b">Reels out.</span></h1>
-        <p class="sub" data-i18n="hero.sub">Drop in a podcast, vlog or class. Verso finds the best moments, frames them for 9:16 and adds captions in Hindi, Marathi or Hinglish. All on your own computer.</p>
+        <p class="sub" data-i18n="hero.sub">Drop in a podcast, vlog or class. Verso finds the best moments, frames them for 9:16 and adds word-by-word captions. All on your own computer.</p>
         <form class="wl" data-wl>
           <input id="hero-email" type="email" required placeholder="you@email.com" aria-label="Email address" autocomplete="email">
           <button class="btn btn-ember" type="submit" data-i18n="cta.join">Join the waitlist</button>
@@ -398,10 +382,10 @@ footer a:hover{color:var(--paper)}
       </div>
     </div>
 
-    <div class="langs" aria-label="Caption languages">
+    <div class="langs" aria-label="What Verso does">
       <div class="langs-row">
-        <span><em>English</em></span><span><em>हिन्दी</em></span><span><em>मराठी</em></span><span><em>Hinglish</em></span><span>தமிழ்</span><span>తెలుగు</span><span>বাংলা</span><span>ಕನ್ನಡ</span><span>ગુજરાતી</span><span>മലയാളം</span><span>ਪੰਜਾਬੀ</span>
-        <span><em>English</em></span><span><em>हिन्दी</em></span><span><em>मराठी</em></span><span><em>Hinglish</em></span><span>தமிழ்</span><span>తెలుగు</span><span>বাংলা</span><span>ಕನ್ನಡ</span><span>ગુજરાતી</span><span>മലയാളം</span><span>ਪੰਜਾਬੀ</span>
+        <span><em>Auto-cut</em></span><span>Speaker reframe</span><span><em>Word-by-word captions</em></span><span>English, Hindi and Marathi</span><span><em>Noise clean-up</em></span><span>Split-screen</span><span><em>4K export</em></span><span>Premiere round-trip</span><span><em>Works offline</em></span>
+        <span><em>Auto-cut</em></span><span>Speaker reframe</span><span><em>Word-by-word captions</em></span><span>English, Hindi and Marathi</span><span><em>Noise clean-up</em></span><span>Split-screen</span><span><em>4K export</em></span><span>Premiere round-trip</span><span><em>Works offline</em></span>
       </div>
     </div>
   </section>
@@ -410,7 +394,7 @@ footer a:hover{color:var(--paper)}
     <div class="wrap">
       <div class="head">
         <span class="eyebrow">What one tap does</span>
-        <h2>The boring 80% of editing, done before your chai cools.</h2>
+        <h2>The boring 80% of editing, done in minutes.</h2>
         <p>Verso does the slow, repetitive work: finding moments, framing, captions and clean-up. You keep the creative calls.</p>
       </div>
       <div class="feats">
@@ -436,14 +420,14 @@ footer a:hover{color:var(--paper)}
           </div>
         </article>
         <article class="feat">
-          <div><span class="tag">Captions</span><h3>Captions in the language you speak</h3><p>Accurate word-by-word captions in English, Hindi, Marathi and Hinglish, made on your computer. Seven styles, each one tap.</p></div>
+          <div><span class="tag">Captions</span><h3>Captions that keep up</h3><p>Accurate word-by-word captions in English, Hindi and Marathi, even when your guests switch languages mid-sentence. Made on your computer. Seven styles, each one tap.</p></div>
           <div class="viz">
             <div class="capviz">
-              <div class="capphone" style="background-image:url({{IMG:creator-portrait}})"><b>यही <span class="hl">असली</span><br>गेम है</b></div>
+              <div class="capphone" style="background-image:url({{IMG:creator-portrait}})"><b>This is the <span class="hl">real</span><br>game</b></div>
               <div class="capstyles">
-                <div class="cs">Roz ek <span class="yl">reel.</span> Bas itna.<small>Hinglish · Bold</small></div>
-                <div class="cs">आज <span class="hl">सुरुवात</span> करा<small>Marathi · Pop</small></div>
-                <div class="cs" style="font-weight:600;font-size:15px">Start before you're ready.<small>English · Clean</small></div>
+                <div class="cs">One reel a <span class="yl">day.</span><small>Bold</small></div>
+                <div class="cs">Start <span class="hl">today.</span><small>Pop</small></div>
+                <div class="cs" style="font-weight:600;font-size:15px">Start before you're ready.<small>Clean</small></div>
               </div>
             </div>
           </div>
@@ -544,7 +528,7 @@ footer a:hover{color:var(--paper)}
           <ul>
             <li>Unlimited editing and 1080p exports</li>
             <li>No watermark, ever</li>
-            <li>Captions in English, Hindi, Marathi and Hinglish</li>
+            <li>Captions in English, Hindi and Marathi</li>
             <li>Try every Pro feature on 3 reels a month</li>
           </ul>
           <a class="btn btn-ghost" href="#download">Join the waitlist</a>
@@ -704,9 +688,9 @@ const crop=document.getElementById('crop'), screen=document.getElementById('scre
 const best=document.getElementById('best'), scan=document.getElementById('scan'), ph=document.getElementById('ph'), who=document.getElementById('who');
 const tapBtn=document.getElementById('tap'), tapLabel=document.getElementById('tapLabel'), tc=document.getElementById('tc');
 const lines=[
-  {s:0, words:['Consistency','hi','asli','growth','hack','hai.']},
-  {s:1, words:['Roz','ek','reel.','Bas','itna.']},
-  {s:0, words:['Perfect','hone','ka','wait','mat','karo.']}
+  {s:0, words:['Consistency','is','the','real','growth','hack.']},
+  {s:1, words:['One','reel','a','day.','That\'s','it.']},
+  {s:0, words:['Stop','waiting','to','be','perfect.']}
 ];
 const posFor = s => Math.min(1-cropW, Math.max(0, speakers[s].x-cropW/2));
 let timers=[], loop=null;
@@ -785,20 +769,5 @@ document.querySelectorAll('form[data-wl]').forEach(f=>f.addEventListener('submit
   if(!ok) setTimeout(()=>big.classList.remove('sent'),3500);
 }));
 
-/* ---------- languages (hero + nav; full-page translation in the build) ---------- */
-const I18N={
-  en:{'nav.features':'Features','nav.modes':'How it works','nav.pricing':'Pricing','nav.download':'Download','cta.join':'Join the waitlist','hero.pill':'For Windows and Mac · Opening in batches','hero.h1a':'Long videos in.','hero.h1b':'Reels out.','hero.sub':'Drop in a podcast, vlog or class. Verso finds the best moments, frames them for 9:16 and adds captions in Hindi, Marathi or Hinglish. All on your own computer.','hero.m1':'No watermark, even on Free','hero.m2':'Works offline','hero.m3':'Built in India'},
-  hi:{'nav.features':'फ़ीचर्स','nav.modes':'कैसे काम करता है','nav.pricing':'कीमत','nav.download':'डाउनलोड','cta.join':'वेटलिस्ट में जुड़ें','hero.pill':'Windows और Mac के लिए · बैच में खुल रहा है','hero.h1a':'लंबा वीडियो डालिए।','hero.h1b':'रील्स पाइए।','hero.sub':'पॉडकास्ट, व्लॉग या क्लास डालिए। Verso सबसे अच्छे पल ढूँढता है, उन्हें 9:16 में फ्रेम करता है और हिंदी, मराठी या हिंग्लिश में कैप्शन जोड़ता है। सब कुछ आपके अपने कंप्यूटर पर।','hero.m1':'Free में भी कोई वॉटरमार्क नहीं','hero.m2':'बिना इंटरनेट के चलता है','hero.m3':'भारत में बना'},
-  mr:{'nav.features':'फीचर्स','nav.modes':'कसे चालते','nav.pricing':'किंमत','nav.download':'डाउनलोड','cta.join':'वेटलिस्टमध्ये सामील व्हा','hero.pill':'Windows आणि Mac साठी · टप्प्याटप्प्याने सुरू','hero.h1a':'मोठा व्हिडिओ द्या.','hero.h1b':'रील्स घ्या.','hero.sub':'पॉडकास्ट, व्लॉग किंवा क्लास टाका. Verso सर्वोत्तम क्षण शोधतो, त्यांना 9:16 मध्ये बसवतो आणि हिंदी, मराठी किंवा हिंग्लिशमध्ये कॅप्शन जोडतो. सगळं तुमच्याच कॉम्प्युटरवर.','hero.m1':'Free मध्येही वॉटरमार्क नाही','hero.m2':'इंटरनेटशिवाय चालते','hero.m3':'भारतात बनलेले'},
-  ta:{'nav.features':'அம்சங்கள்','nav.modes':'எப்படி வேலை செய்கிறது','nav.pricing':'விலை','nav.download':'பதிவிறக்கம்','cta.join':'காத்திருப்புப் பட்டியலில் சேருங்கள்','hero.pill':'Windows மற்றும் Mac-க்கு · தொகுதிகளாகத் திறக்கிறது','hero.h1a':'நீண்ட வீடியோ உள்ளே.','hero.h1b':'ரீல்ஸ் வெளியே.','hero.sub':'பாட்காஸ்ட், விளாக் அல்லது வகுப்பைச் சேர்க்கவும். Verso சிறந்த தருணங்களைக் கண்டறிந்து, 9:16-க்கு அமைத்து, கேப்ஷன்களைச் சேர்க்கிறது. எல்லாம் உங்கள் கணினியிலேயே.','hero.m1':'Free-லும் வாட்டர்மார்க் இல்லை','hero.m2':'இணையம் இல்லாமலும் இயங்கும்','hero.m3':'இந்தியாவில் உருவானது'},
-  te:{'nav.features':'ఫీచర్లు','nav.modes':'ఎలా పనిచేస్తుంది','nav.pricing':'ధర','nav.download':'డౌన్‌లోడ్','cta.join':'వెయిట్‌లిస్ట్‌లో చేరండి','hero.pill':'Windows మరియు Mac కోసం · బ్యాచ్‌లుగా తెరుచుకుంటోంది','hero.h1a':'పొడవైన వీడియో లోపలికి.','hero.h1b':'రీల్స్ బయటికి.','hero.sub':'పాడ్‌కాస్ట్, వ్లాగ్ లేదా క్లాస్ వేయండి. Verso ఉత్తమ క్షణాలను కనుగొని, 9:16కి ఫ్రేమ్ చేసి, క్యాప్షన్లు జోడిస్తుంది. అంతా మీ కంప్యూటర్‌లోనే.','hero.m1':'Freeలో కూడా వాటర్‌మార్క్ లేదు','hero.m2':'ఇంటర్నెట్ లేకుండా పనిచేస్తుంది','hero.m3':'భారతదేశంలో తయారైంది'},
-  bn:{'nav.features':'ফিচার','nav.modes':'কীভাবে কাজ করে','nav.pricing':'দাম','nav.download':'ডাউনলোড','cta.join':'ওয়েটলিস্টে যোগ দিন','hero.pill':'Windows ও Mac-এর জন্য · ধাপে ধাপে খুলছে','hero.h1a':'লম্বা ভিডিও দিন।','hero.h1b':'রিলস নিন।','hero.sub':'পডকাস্ট, ভ্লগ বা ক্লাস দিন। Verso সেরা মুহূর্তগুলো খুঁজে, 9:16-এ সাজিয়ে, ক্যাপশন যোগ করে। সবকিছু আপনার নিজের কম্পিউটারে।','hero.m1':'Free-তেও ওয়াটারমার্ক নেই','hero.m2':'ইন্টারনেট ছাড়াও চলে','hero.m3':'ভারতে তৈরি'},
-  kn:{'nav.features':'ವೈಶಿಷ್ಟ್ಯಗಳು','nav.modes':'ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ','nav.pricing':'ಬೆಲೆ','nav.download':'ಡೌನ್‌ಲೋಡ್','cta.join':'ವೇಟ್‌ಲಿಸ್ಟ್‌ಗೆ ಸೇರಿ','hero.pill':'Windows ಮತ್ತು Mac ಗಾಗಿ · ಹಂತ ಹಂತವಾಗಿ ತೆರೆಯುತ್ತಿದೆ','hero.h1a':'ದೀರ್ಘ ವೀಡಿಯೊ ಒಳಗೆ.','hero.h1b':'ರೀಲ್ಸ್ ಹೊರಗೆ.','hero.sub':'ಪಾಡ್‌ಕಾಸ್ಟ್, ವ್ಲಾಗ್ ಅಥವಾ ತರಗತಿ ಹಾಕಿ. Verso ಉತ್ತಮ ಕ್ಷಣಗಳನ್ನು ಹುಡುಕಿ, 9:16 ಗೆ ಹೊಂದಿಸಿ, ಕ್ಯಾಪ್ಷನ್ ಸೇರಿಸುತ್ತದೆ. ಎಲ್ಲವೂ ನಿಮ್ಮ ಕಂಪ್ಯೂಟರ್‌ನಲ್ಲೇ.','hero.m1':'Free ನಲ್ಲೂ ವಾಟರ್‌ಮಾರ್ಕ್ ಇಲ್ಲ','hero.m2':'ಇಂಟರ್ನೆಟ್ ಇಲ್ಲದೆಯೂ ಕೆಲಸ ಮಾಡುತ್ತದೆ','hero.m3':'ಭಾರತದಲ್ಲಿ ತಯಾರಿಸಲಾಗಿದೆ'},
-  gu:{'nav.features':'ફીચર્સ','nav.modes':'કેવી રીતે કામ કરે છે','nav.pricing':'કિંમત','nav.download':'ડાઉનલોડ','cta.join':'વેઇટલિસ્ટમાં જોડાઓ','hero.pill':'Windows અને Mac માટે · તબક્કાવાર ખુલી રહ્યું છે','hero.h1a':'લાંબો વીડિયો આપો.','hero.h1b':'રીલ્સ મેળવો.','hero.sub':'પોડકાસ્ટ, વ્લોગ કે ક્લાસ નાખો. Verso શ્રેષ્ઠ પળો શોધે છે, તેને 9:16 માં ગોઠવે છે અને કેપ્શન ઉમેરે છે. બધું તમારા પોતાના કમ્પ્યુટર પર.','hero.m1':'Free માં પણ વોટરમાર્ક નહીં','hero.m2':'ઇન્ટરનેટ વગર પણ ચાલે છે','hero.m3':'ભારતમાં બનેલું'}
-};
-const sel=document.getElementById('lang');
-function setLang(l){ const d=I18N[l]||I18N.en; document.documentElement.lang=l; document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.dataset.i18n; if(d[k]) el.textContent=d[k]; }); try{localStorage.setItem('verso-lang',l)}catch(e){} }
-sel.addEventListener('change',()=>setLang(sel.value));
-try{ const s=localStorage.getItem('verso-lang'); if(s&&I18N[s]){ sel.value=s; setLang(s);} }catch(e){}
 })();
 </script>
