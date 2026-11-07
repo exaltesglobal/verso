@@ -25,12 +25,6 @@
     "admin:grant-pro": "tsx src/admin-grant-pro.ts",
     "admin:block": "tsx src/admin-block.ts"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "esbuild"
-    ]
-  },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.4.1",
