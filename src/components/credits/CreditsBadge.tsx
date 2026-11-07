@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import { useCredits } from "../../lib/credits";
 
 const fmt = new Intl.NumberFormat();
@@ -18,8 +19,9 @@ export function CreditsBadge() {
       type="button"
       className={low ? "credits-badge credits-badge--low" : "credits-badge"}
       onClick={openBuy}
-      title={title}
+      data-tip={title}
     >
+      <Icon name="effects" size={16} />
       {fmt.format(total)} {total === 1 ? "credit" : "credits"}
       {balance.offline && <span className="credits-badge__note">offline</span>}
     </button>

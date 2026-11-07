@@ -2,7 +2,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ContextMenu } from "../ContextMenu";
 import { Icon, type IconName } from "../Icon";
-import { Button, Segmented, type ToastMessage } from "../ui";
+import { Button, IconButton, Segmented, type ToastMessage } from "../ui";
 import type { PanelTab } from "../../screens/Editor";
 import { useFilmstrip } from "../../lib/filmstrip";
 import { formatDuration, formatSize, type MediaInfo } from "../../lib/media";
@@ -240,15 +240,29 @@ export function LeftPanel({
   );
 }
 
-function PanelHead({ icon, title, children }: { icon: IconName; title: string; children?: ReactNode }) {
+function PanelHead({
+  icon,
+  title,
+  actions,
+  children,
+}: {
+  icon: IconName;
+  title: string;
+  /** Icon buttons on the right of the 36px header. */
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
-    <div className="panel__head">
-      <h2 className="panel__title">
-        <Icon name={icon} size={20} />
-        {title}
-      </h2>
+    <>
+      <div className="panel__head">
+        <h2 className="panel__title">
+          <Icon name={icon} size={20} />
+          {title}
+        </h2>
+        {actions}
+      </div>
       {children && <p className="panel__lede">{children}</p>}
-    </div>
+    </>
   );
 }
 
@@ -263,34 +277,65 @@ function MediaTab({
   onImport: () => Promise<void>;
   onAddToTimeline: (m: MediaInfo) => void;
 }) {
+  const quick = useVisibility().left === "steps";
+  const [q, setQ] = useState("");
+  const shown = q ? media.filter((m) => m.fileName.toLowerCase().includes(q.toLowerCase())) : media;
   return (
-    <div className="panel__body">
-      <PanelHead icon="folder" title="Media">
-        Your videos and sounds. Originals are never changed.
-      </PanelHead>
-      <Button
-        icon="import"
-        size="lg"
-        className="btn--block"
-        onClick={() => void onImport()}
-        disabled={importing}
-      >
-        {importing ? "Reading your file…" : "Import video"}
-      </Button>
+    <div className="panel__body panel__body--media">
+      <PanelHead
+        icon="folder"
+        title="Media"
+        actions={
+          <IconButton
+            icon="import"
+            label="Import video"
+            size={16}
+            onClick={() => void onImport()}
+            disabled={importing}
+          />
+        }
+      />
+      {(quick || media.length === 0) && (
+        <Button
+          icon="import"
+          size="lg"
+          className="btn--block"
+          onClick={() => void onImport()}
+          disabled={importing}
+        >
+          {importing ? "Reading your file…" : "Import video"}
+        </Button>
+      )}
 
       {media.length === 0 ? (
         <div className="empty">
           <Icon name="import" size={32} />
           <p className="empty__title">No media yet</p>
-          <p>Imported videos and sounds show up here.</p>
+          <p>Imported videos and sounds show up here. Originals are never changed.</p>
         </div>
       ) : (
-        <ul className="media-list">
-          {media.map((m) => (
-            <MediaItem key={m.path} media={m} onAdd={() => onAddToTimeline(m)} />
-          ))}
-        </ul>
+        <>
+          <label className="media-search">
+            <Icon name="search" size={16} />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search media"
+              aria-label="Search media"
+              spellCheck={false}
+            />
+          </label>
+          <ul className="media-list">
+            {shown.map((m) => (
+              <MediaItem key={m.path} media={m} onAdd={() => onAddToTimeline(m)} />
+            ))}
+          </ul>
+        </>
       )}
+      <p className="panel__foot">
+        <Icon name="add" size={16} />
+        Double-click a video to add it to the timeline
+      </p>
     </div>
   );
 }
@@ -303,12 +348,13 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
   const meta = [
     sizeLabel(m) ?? (m.hasVideo ? null : "Audio"),
     m.fps ? `${Math.round(m.fps)} fps` : null,
-    formatSize(m.sizeBytes),
+    formatDuration(m.durationSec),
   ];
   // Codecs stay off the surface (brand rule); the tooltip has them for the curious.
   const details = [
     m.fileName,
     m.width && m.height ? `${m.width}×${m.height}` : null,
+    formatSize(m.sizeBytes),
     m.videoCodec?.toUpperCase(),
     m.audioCodec?.toUpperCase(),
   ];
@@ -325,10 +371,9 @@ function MediaItem({ media: m, onAdd }: { media: MediaInfo; onAdd: () => void })
     >
       <span className="media-item__thumb">
         {cover ? <img src={cover} alt="" /> : <Icon name={m.hasVideo ? "play" : "music"} size={20} />}
-        <span className="media-item__dur tc">{formatDuration(m.durationSec)}</span>
       </span>
       <span className="media-item__text">
-        <span className="media-item__name">{m.fileName}</span>
+        <span className="media-item__name">{m.fileName.replace(/\.[^.]+$/, "")}</span>
         <span className="media-item__meta">{meta.filter(Boolean).join(" · ")}</span>
       </span>
       <button

@@ -976,3 +976,369 @@ kbd {
 .more-settings .chips {
   flex-wrap: wrap;
 }
+
+/* ---------- 5. Title bar ---------- */
+.topbar {
+  height: 48px;
+  padding: 0 var(--winctl-space, 138px) 0 12px;
+  gap: 4px;
+  background: var(--ui-bg-app);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.topbar__left {
+  gap: 0;
+}
+
+.topbar__home {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ui-r-md);
+}
+
+.topbar__logo {
+  width: 20px;
+  height: 20px;
+}
+
+.topbar__name {
+  height: 28px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--ui-r-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.topbar__crumb {
+  color: var(--ui-t2);
+  font-size: 12px;
+}
+
+.topbar__status {
+  gap: 4px;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ui-t3);
+}
+
+.topbar__saved {
+  margin-left: 12px;
+}
+
+.topbar__right {
+  gap: 4px;
+  height: 100%;
+}
+
+.credits-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.credits-badge .vs-icon {
+  color: var(--ui-t3);
+}
+
+.credits-badge:hover {
+  border-color: var(--ui-border-strong);
+  color: var(--ui-t1);
+}
+
+.acct-btn {
+  width: 32px;
+  height: 32px;
+  margin: 0 4px;
+}
+
+.acct-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #3a3a45, #2a2a33);
+  border: 1px solid var(--ui-border-strong);
+  font:
+    700 11px/1 "Manrope Variable",
+    Manrope,
+    sans-serif;
+  color: var(--ui-t1);
+}
+
+.winctl {
+  display: flex;
+  height: 48px;
+}
+
+.winctl__btn {
+  width: 46px;
+  height: 100%;
+  color: var(--ui-t2);
+  border-radius: 0;
+}
+
+.winctl__btn:hover {
+  background: var(--ui-bg-raised);
+}
+
+.winctl__btn--close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+/* ---------- 5. Rail ---------- */
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 0;
+  background: var(--ui-bg-app);
+  border-right: 1px solid var(--ui-border);
+  overflow: hidden;
+}
+
+.rail__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: var(--ui-rail-item);
+  min-height: var(--ui-rail-item);
+  margin: 0 4px;
+  border-radius: var(--ui-r-md);
+  color: var(--ui-t3);
+  font:
+    600 11px/14px "Manrope Variable",
+    Manrope,
+    sans-serif;
+  letter-spacing: 0.01em;
+  background: none;
+}
+
+.rail__item:hover {
+  color: var(--ui-t2);
+  background: var(--ui-bg-raised);
+}
+
+.rail__item.is-active {
+  color: var(--ui-t1);
+  background: var(--ui-bg-raised);
+}
+
+.rail__item.is-active::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  height: 20px;
+  width: 2px;
+  margin-top: -10px;
+  background: var(--ui-t1);
+  border-radius: 1px;
+}
+
+.rail__sep {
+  height: 1px;
+  background: var(--ui-border);
+  margin: 4px 16px;
+}
+
+/* ---------- 1.1 / 5. Panels and the Media panel ---------- */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ui-bg-panel);
+  border-right: 1px solid var(--ui-border);
+}
+
+.panel__body {
+  flex: 1;
+  padding: 0 8px 8px;
+  overflow: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+  gap: 8px;
+}
+
+/* A panel's header is a flush 36px bar, whichever panel renders it. */
+.panel__body > .panel__head:first-child,
+.panel > .panel__head:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  min-height: 36px;
+  margin: 0 -8px;
+  padding: 0 8px 0 var(--ui-ipad);
+  border-bottom: 1px solid var(--ui-hair);
+  flex: none;
+  flex-direction: row;
+}
+
+.panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ui-t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel__title .vs-icon {
+  display: none;
+}
+
+.panel__head .panel__lede {
+  display: none;
+}
+
+.panel__lede {
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ui-t3);
+}
+
+.panel__body--media {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel__foot {
+  margin: auto -8px -8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ui-hair);
+  color: var(--ui-t3);
+  font-size: 11px;
+  line-height: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin-top: 4px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-md);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-t3);
+}
+
+.media-search:focus-within {
+  border-color: var(--ui-glow);
+}
+
+.media-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-t1);
+  font: inherit;
+  outline: none;
+}
+
+.media-search input::placeholder {
+  color: var(--ui-t3);
+}
+
+.media-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.media-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-md);
+  background: none;
+  border: 0;
+}
+
+.media-item:hover {
+  background: var(--ui-bg-raised);
+}
+
+.media-item__thumb {
+  width: var(--ui-thumb-w);
+  height: var(--ui-thumb-h);
+  flex: none;
+  border-radius: var(--ui-r-sm);
+  border: 1px solid var(--ui-border);
+  overflow: hidden;
+}
+
+.media-item__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-item__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-t1);
+}
+
+.media-item__meta {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--ui-t3);
+}
+
+.media-item__add {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--ui-r-sm);
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border-strong);
+  color: var(--ui-t1);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.media-item:hover .media-item__add,
+.media-item:focus-within .media-item__add {
+  display: inline-flex;
+}
+
+@media (max-width: 1400px) {
+  .media-item {
+    gap: 8px;
+  }
+}
