@@ -131,8 +131,16 @@ Auto-cut 45 minutes. A server config can override the table with
 `setTimeSavedTable`.
 
 A one-tap run adds its minutes to today's total and the lifetime total, both
-kept in settings. Undo from the toast or the Do it all summary takes them back.
-Ctrl+Z after the toast has gone does not.
+kept in settings. The minutes are tied to the undo-history entry the edit
+made, so undoing that entry (toast, Do it all summary, Ctrl+Z or the title
+bar) takes them back and Redo adds them again.
+
+While a one-tap edit runs, a progress card covers the editor with Cancel, so
+no newer edit can land under the result. Cancel drops the result; credits
+already spent are not refunded.
+
+In Quick the clip strip also shows text and music as thin bars when there are
+any, so an end card or hook title is visible.
 
 The title bar shows "Saved about 1 h 20 min today". It is hidden below 1360 px
 wide. Settings > Editing shows the lifetime total.

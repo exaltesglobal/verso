@@ -35,9 +35,11 @@ import { replaceCaptions } from "../lib/captions";
 import type { CropPath } from "../lib/reframe";
 import { setMode, useMode, VISIBILITY, type Mode } from "../lib/modes";
 import { actionsFor } from "../lib/oneTap";
+import { redoTimeSaved, undoTimeSaved } from "../lib/timeSaved";
 import { useOneTapRunner } from "../components/workspaces/useOneTapRunner";
 import { OneTapPanel } from "../components/workspaces/OneTapPanel";
 import { MakeItBetter } from "../components/workspaces/MakeItBetter";
+import { BusyBlock } from "../components/workspaces/BusyBlock";
 import { CraftWorkspace, QuickWorkspace, StudioWorkspace } from "../components/workspaces/Workspaces";
 
 const WORKSPACE = { quick: QuickWorkspace, craft: CraftWorkspace, studio: StudioWorkspace } as const;
@@ -88,7 +90,16 @@ export function Editor({
   );
   const history = useHistory<Project>(initialProject);
   const project = history.state;
-  const { set: setProject, replace: livePatch, commit, undo, redo } = history;
+  const { set: setProject, replace: livePatch, commit, undo: undoStep, redo: redoStep, redoTarget } = history;
+  // One-tap edits record time saved against their history entry; undo and redo keep the total honest.
+  const undo = useCallback(() => {
+    if (history.canUndo) undoTimeSaved(project);
+    undoStep();
+  }, [history.canUndo, project, undoStep]);
+  const redo = useCallback(() => {
+    redoTimeSaved(redoTarget);
+    redoStep();
+  }, [redoTarget, redoStep]);
   const [time, setTime] = useState(() => Math.min(12, projectDuration(initialProject) * 0.4));
   const [playing, setPlaying] = useState(false);
   const [selectedClip, setSelectedClip] = useState(
@@ -566,6 +577,7 @@ export function Editor({
             else openTab(kind === "captions" ? "captions" : "audio");
           }}
           tracks={vis.tracks}
+          thinTracks={quick ? ["text", "music"] : undefined}
           headers={vis.trackHeaders}
           tools={vis.timelineTools}
           onMute={
@@ -704,6 +716,7 @@ export function Editor({
             />
           )}
           {showShortcuts && <ShortcutSheet onClose={() => setShowShortcuts(false)} />}
+          <BusyBlock runner={runner} />
         </>
       }
     />

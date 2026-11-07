@@ -39,6 +39,8 @@ const RULER_H = 28;
 /** Fixed lane heights per kind; empty lanes shrink so they never waste room. */
 const TRACK_H: Record<TrackKind, number> = { video: 56, audio: 40, music: 40, text: 32, captions: 32 };
 const EMPTY_H = 28;
+/** Overlay lanes in the Quick clip strip: just enough to see that a title or song is there. */
+const THIN_H = 12;
 const TRACK_ICON: Record<TrackKind, IconName> = {
   text: "text",
   captions: "captions",
@@ -106,6 +108,8 @@ interface TimelineProps {
   onEmptyTrack?: (kind: TrackKind) => void;
   /** Lanes to show (workspace visibility); all when omitted. */
   tracks?: TrackKind[] | null;
+  /** Extra lanes drawn thin, only when they have clips (Quick: text and music). */
+  thinTracks?: TrackKind[];
   /** Lane names on the left. Off in the Quick clip strip. */
   headers?: boolean;
   /** "strip": split, delete and mute only (Quick). "full": snapping and zoom too. */
@@ -122,7 +126,11 @@ export function Timeline(props: TimelineProps) {
   const headers = props.headers !== false;
   const headW = headers ? HEAD_W : 0;
   const strip = props.tools === "strip";
-  const lanes = props.tracks ? project.tracks.filter((t) => props.tracks?.includes(t.kind)) : project.tracks;
+  const thin = new Set(props.thinTracks ?? []);
+  const lanes = props.tracks
+    ? project.tracks.filter((t) => props.tracks?.includes(t.kind) || (thin.has(t.kind) && t.clips.length > 0))
+    : project.tracks;
+  const isThin = (k: TrackKind) => !!props.tracks && !props.tracks.includes(k) && thin.has(k);
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ left: 0, width: 1200 });
   const [snapAt, setSnapAt] = useState<number | null>(null);
@@ -275,7 +283,7 @@ export function Timeline(props: TimelineProps) {
 
   const empty = duration === 0;
   const beats = useBeatMarkers(project);
-  const heights = project.tracks.map((t) => (t.clips.length ? TRACK_H[t.kind] : EMPTY_H));
+  const heights = lanes.map((t) => (isThin(t.kind) ? THIN_H : t.clips.length ? TRACK_H[t.kind] : EMPTY_H));
   const gridStyle: CSSProperties = {
     gridTemplateColumns: `${headW}px ${width}px`,
     gridTemplateRows: `${RULER_H}px ${heights.map((h) => `${h}px`).join(" ")}`,
@@ -433,6 +441,7 @@ export function Timeline(props: TimelineProps) {
             <TrackRow
               key={t.kind}
               header={headers}
+              thin={isThin(t.kind)}
               row={row + 2}
               kind={t.kind}
               label={t.label}
@@ -489,6 +498,7 @@ export function Timeline(props: TimelineProps) {
 
 function TrackRow({
   header,
+  thin,
   row,
   kind,
   label,
@@ -499,6 +509,7 @@ function TrackRow({
   children,
 }: {
   header: boolean;
+  thin: boolean;
   row: number;
   kind: TrackKind;
   label: string;
@@ -521,7 +532,7 @@ function TrackRow({
         </div>
       )}
       <div
-        className={count ? `track track--${kind}` : `track track--${kind} is-empty`}
+        className={`track track--${kind}${count ? "" : " is-empty"}${thin ? " is-thin" : ""}`}
         style={{ gridRow: row }}
         onContextMenu={(e) => e.target === e.currentTarget && menu(e)}
         onPointerDown={(e) => {

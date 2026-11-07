@@ -101,6 +101,8 @@ export function useHistory<T>(initial: T) {
     commit,
     undo,
     redo,
+    /** The state Redo would bring back, if any. */
+    redoTarget: h.future[0] as T | undefined,
     canUndo: h.past.length > 0,
     canRedo: h.future.length > 0,
   };

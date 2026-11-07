@@ -9,7 +9,13 @@ export function MakeItBetter({ project, runner }: { project: Project; runner: On
   return (
     <div className="make-better" role="toolbar" aria-label="Make it better">
       <span className="make-better__label">Make it better</span>
-      <div className="make-better__row">
+      <div
+        className="make-better__row"
+        // A mouse wheel scrolls the single row sideways.
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+        }}
+      >
         {MAKE_IT_BETTER.map(oneTap).map((a) => {
           const why = a.blocked(project);
           const busy = runner.busy === a.id;

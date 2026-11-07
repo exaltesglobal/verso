@@ -43,24 +43,38 @@ export function estimateMinutes(actionId: string, project: Project): number {
 
 const today = () => new Date().toLocaleDateString("en-CA");
 
-/** Adds minutes to today's and the lifetime total. Returns a function that takes them back (for Undo). */
-export function recordTimeSaved(minutes: number): () => void {
-  if (minutes <= 0) return () => undefined;
-  const add = (m: number) => {
-    const t = getSettings().timeSaved;
-    const day = today();
-    const todayMin = t.day === day ? t.today : 0;
-    updateSettings({
-      timeSaved: { lifetime: Math.max(0, t.lifetime + m), day, today: Math.max(0, todayMin + m) },
-    });
-  };
+function add(minutes: number) {
+  const t = getSettings().timeSaved;
+  const day = today();
+  const todayMin = t.day === day ? t.today : 0;
+  updateSettings({
+    timeSaved: { lifetime: Math.max(0, t.lifetime + minutes), day, today: Math.max(0, todayMin + minutes) },
+  });
+}
+
+/**
+ * Minutes saved per undo-history entry (the project state a one-tap edit
+ * produced). Undoing that entry takes the minutes back; redoing adds them again.
+ */
+const ledger = new WeakMap<object, number>();
+
+/** Records `minutes` for the history entry `entry` (the project the edit produced). */
+export function recordTimeSaved(entry: object, minutes: number) {
+  if (minutes <= 0) return;
+  ledger.set(entry, minutes);
   add(minutes);
-  let undone = false;
-  return () => {
-    if (undone) return;
-    undone = true;
-    add(-minutes);
-  };
+}
+
+/** Call with the entry being undone. */
+export function undoTimeSaved(entry: object) {
+  const m = ledger.get(entry);
+  if (m) add(-m);
+}
+
+/** Call with the entry being redone. */
+export function redoTimeSaved(entry: object | undefined) {
+  const m = entry && ledger.get(entry);
+  if (m) add(m);
 }
 
 /** "1 h 20 min", "45 min". */

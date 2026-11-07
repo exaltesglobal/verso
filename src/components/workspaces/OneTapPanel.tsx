@@ -114,7 +114,7 @@ export function OneTapPanel({
             <Button variant="ghost" onClick={runner.clearSummary}>
               OK
             </Button>
-            <Button icon="undo" onClick={runner.summary.undo}>
+            <Button icon="undo" onClick={runner.undoAll}>
               Undo all
             </Button>
           </div>
